@@ -47,6 +47,16 @@ export default function Navbar() {
                 </NavLink>
               </li>
             ))}
+            {session && (
+              <li>
+                <NavLink
+                  to="/my-submissions"
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                >
+                  <i className="bi bi-person-lines-fill"></i> My Submissions
+                </NavLink>
+              </li>
+            )}
           </ul>
 
           <div className="nav-actions">
@@ -136,6 +146,15 @@ export default function Navbar() {
                 <i className={`bi ${link.icon}`}></i> {link.label}
               </NavLink>
             ))}
+            {session && (
+              <NavLink
+                to="/my-submissions"
+                className="nav-link"
+                onClick={() => setOpen(false)}
+              >
+                <i className="bi bi-person-lines-fill"></i> My Submissions
+              </NavLink>
+            )}
             {session?.role === 'admin' && (
               <div className="nav-mobile-admin-links">
                 <span>Admin Panel</span>

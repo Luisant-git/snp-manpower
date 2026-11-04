@@ -346,13 +346,14 @@ export default function Register({ readOnly = false }) {
   const proofFileInputRef = useRef(null);
   const bankProofFileRef = useRef(null);
 
-  // Dual OTP state
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [candidateSentOtp, setCandidateSentOtp] = useState('');
-  const [employeeSentOtp, setEmployeeSentOtp] = useState('');
+  const [candidateOtpSent, setCandidateOtpSent] = useState(false);
+  const [employeeOtpSent, setEmployeeOtpSent] = useState(false);
   const [candidateInputOtp, setCandidateInputOtp] = useState('');
   const [employeeInputOtp, setEmployeeInputOtp] = useState('');
-  const [otpError, setOtpError] = useState('');
+  const [candidateOtpError, setCandidateOtpError] = useState('');
+  const [employeeOtpError, setEmployeeOtpError] = useState('');
+  const [candidateVerified, setCandidateVerified] = useState(false);
+  const [employeeVerified, setEmployeeVerified] = useState(false);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -362,6 +363,16 @@ export default function Register({ readOnly = false }) {
 
   const showToast = (type, message) => {
     setToast({ type, message, id: Date.now() });
+  };
+
+  const handleCandidateMobileChange = (e) => {
+    const mobile = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setForm((f) => ({ ...f, mobile }));
+    setCandidateOtpSent(false);
+    setCandidateSentOtp('');
+    setCandidateInputOtp('');
+    setCandidateOtpError('');
+    setCandidateVerified(false);
   };
 
   const handleBankProofUpload = (e) => {
@@ -377,7 +388,7 @@ export default function Register({ readOnly = false }) {
   };
 
   const handleEmployeeMobileChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '');
+    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
     setForm((f) => {
       const found = val.length === 10
         ? DEFAULT_STAFF.find((staff) => staff.mobile === val)
@@ -402,6 +413,49 @@ export default function Register({ readOnly = false }) {
           : (previousCustomerWasEmployee ? '' : f.prevCustomer),
       };
     });
+    setEmployeeOtpSent(false);
+    setEmployeeSentOtp('');
+    setEmployeeInputOtp('');
+    setEmployeeOtpError('');
+    setEmployeeVerified(false);
+  };
+
+  const sendOtp = (person) => {
+    if (person === 'candidate') {
+      if (!/^\d{10}$/.test(form.mobile)) return;
+      setCandidateSentOtp('1234');
+      setCandidateOtpSent(true);
+      setCandidateInputOtp('');
+      setCandidateOtpError('');
+      setCandidateVerified(false);
+      return;
+    }
+    if (!/^\d{10}$/.test(form.employeeMobile)) return;
+    setEmployeeSentOtp('1234');
+    setEmployeeOtpSent(true);
+    setEmployeeInputOtp('');
+    setEmployeeOtpError('');
+    setEmployeeVerified(false);
+  };
+
+  const verifyOtp = (person) => {
+    if (person === 'candidate') {
+      if (!candidateOtpSent || candidateInputOtp !== candidateSentOtp) {
+        setCandidateOtpError('Incorrect OTP. Enter 1234 to verify the candidate mobile.');
+        setCandidateVerified(false);
+        return;
+      }
+      setCandidateOtpError('');
+      setCandidateVerified(true);
+      return;
+    }
+    if (!employeeOtpSent || employeeInputOtp !== employeeSentOtp) {
+      setEmployeeOtpError('Incorrect OTP. Enter 1234 to verify the employee mobile.');
+      setEmployeeVerified(false);
+      return;
+    }
+    setEmployeeOtpError('');
+    setEmployeeVerified(true);
   };
 
   const handleProofUpload = (e) => {
@@ -491,6 +545,18 @@ export default function Register({ readOnly = false }) {
       return;
     }
 
+    if (!candidateVerified) {
+      showToast('error', 'Verify the candidate mobile number using the OTP before submitting.');
+      document.querySelector('[name="mobile"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (!employeeVerified) {
+      showToast('error', 'Verify the employee mobile number using the OTP before submitting.');
+      document.querySelector('.branch-verification-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     if (!form.addressProofUrl) {
       showToast('error', 'Upload an address proof document before submitting.');
       document.querySelector('.address-proof-upload-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -504,25 +570,10 @@ export default function Register({ readOnly = false }) {
       return;
     }
 
-    setCandidateSentOtp('1234');
-    setEmployeeSentOtp('1234');
-    setCandidateInputOtp('1234');
-    setEmployeeInputOtp('1234');
-    setOtpError('');
-    setShowOtpModal(true);
+    completeRegistration();
   };
 
-  const handleVerifyBothOtps = () => {
-    if (candidateInputOtp !== candidateSentOtp) {
-      setOtpError(`Candidate OTP is incorrect. Please enter ${candidateSentOtp}`);
-      return;
-    }
-    if (employeeInputOtp !== employeeSentOtp) {
-      setOtpError(`Employee OTP is incorrect. Please enter ${employeeSentOtp}`);
-      return;
-    }
-
-    setShowOtpModal(false);
+  const completeRegistration = () => {
     const paidAmount = Number(form.registrationFeePaid);
 
     const d = new Date();
@@ -541,6 +592,8 @@ export default function Register({ readOnly = false }) {
       mobile: form.mobile ? `+91 ${form.mobile}` : '',
       submittedBy: form.employeeName || (session ? session.name : 'Authorized Staff'),
       submittedByMobile: form.employeeMobile || form.mobile,
+      submittedByUserId: session?.id || '',
+      submittedByLoginMobile: session?.mobile || '',
       branch: form.employeeBranch,
       designation: (form.designation || 'General Staff').toUpperCase(),
       dl: form.hasLicense === 'NO' ? 'NO LICENCE' : (form.dlNumber || '—'),
@@ -561,6 +614,23 @@ export default function Register({ readOnly = false }) {
     setRefCode(code);
     showToast('success', 'Registration submitted successfully.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const isOwnedByCurrentUser = () => {
+    if (!viewApplication || !session) return false;
+    if (session.role === 'admin') return true;
+    if (viewApplication.submittedByUserId) {
+      return viewApplication.submittedByUserId === session.id;
+    }
+    if (viewApplication.submittedByLoginMobile) {
+      return viewApplication.submittedByLoginMobile.replace(/\D/g, '')
+        === String(session.mobile || '').replace(/\D/g, '');
+    }
+    const ownerMobile = session.role === 'applicant'
+      ? viewApplication.mobile
+      : viewApplication.submittedByMobile || viewApplication.filledByMobile;
+    return String(ownerMobile || '').replace(/\D/g, '')
+      === String(session.mobile || '').replace(/\D/g, '');
   };
 
   /* Helper component to render bilingual label cells matching the uploaded images */
@@ -589,8 +659,8 @@ export default function Register({ readOnly = false }) {
     );
   };
 
-  if (readOnly && !viewApplication) {
-    return <Navigate to="/admin/applications" replace />;
+  if (readOnly && (!viewApplication || !isOwnedByCurrentUser())) {
+    return <Navigate to={session?.role === 'admin' ? '/admin/applications' : '/my-submissions'} replace />;
   }
 
   /* ---------- Login Guard ---------- */
@@ -908,7 +978,7 @@ export default function Register({ readOnly = false }) {
                           required
                           maxLength={10}
                           value={form.mobile}
-                          onChange={set}
+                          onChange={handleCandidateMobileChange}
                           placeholder="JOB SEEKER'S 10-DIGIT MOBILE"
                           style={{
                             border: '1px solid transparent',
@@ -922,6 +992,42 @@ export default function Register({ readOnly = false }) {
                           }}
                         />
                       </div>
+                      {form.mobile.length === 10 && (
+                        <div className="mobile-otp-controls">
+                          {candidateVerified ? (
+                            <span className="mobile-otp-verified">
+                              <i className="bi bi-check-circle-fill"></i> Candidate mobile verified
+                            </span>
+                          ) : (
+                            <div className="mobile-otp-verification">
+                              <button type="button" className="mobile-otp-send" onClick={() => sendOtp('candidate')}>
+                                <i className="bi bi-send"></i> {candidateOtpSent ? 'Resend OTP' : 'Send OTP'}
+                              </button>
+                              {candidateOtpSent && (
+                                <div className="mobile-otp-entry">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={4}
+                                    aria-label="Candidate mobile OTP"
+                                    placeholder="Enter 4-digit OTP"
+                                    value={candidateInputOtp}
+                                    onChange={(event) => {
+                                      setCandidateInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4));
+                                      setCandidateOtpError('');
+                                    }}
+                                  />
+                                  <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('candidate')}>
+                                    Verify
+                                  </button>
+                                </div>
+                              )}
+                              {candidateOtpSent && <small className="mobile-otp-demo-hint">Demo OTP: 1234</small>}
+                              {candidateOtpError && <small className="mobile-otp-error">{candidateOtpError}</small>}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
 
@@ -2395,6 +2501,42 @@ export default function Register({ readOnly = false }) {
                       required
                     />
                   </div>
+                  {form.employeeMobile.length === 10 && (
+                    <div className="mobile-otp-controls">
+                      {employeeVerified ? (
+                        <span className="mobile-otp-verified">
+                          <i className="bi bi-check-circle-fill"></i> Employee mobile verified
+                        </span>
+                      ) : (
+                        <div className="mobile-otp-verification">
+                          <button type="button" className="mobile-otp-send" onClick={() => sendOtp('employee')}>
+                            <i className="bi bi-send"></i> {employeeOtpSent ? 'Resend OTP' : 'Send OTP'}
+                          </button>
+                          {employeeOtpSent && (
+                            <div className="mobile-otp-entry">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={4}
+                                aria-label="Employee mobile OTP"
+                                placeholder="Enter 4-digit OTP"
+                                value={employeeInputOtp}
+                                onChange={(event) => {
+                                  setEmployeeInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4));
+                                  setEmployeeOtpError('');
+                                }}
+                              />
+                              <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('employee')}>
+                                Verify
+                              </button>
+                            </div>
+                          )}
+                          {employeeOtpSent && <small className="mobile-otp-demo-hint">Demo OTP: 1234</small>}
+                          {employeeOtpError && <small className="mobile-otp-error">{employeeOtpError}</small>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2509,81 +2651,6 @@ export default function Register({ readOnly = false }) {
         </fieldset>
       </form>
 
-      {showOtpModal && (
-        <div className="modal-overlay" onClick={() => setShowOtpModal(false)}>
-          <div
-            className="modal-card registration-otp-modal"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="registrationOtpTitle"
-          >
-            <div className="modal-head">
-              <div className="add-user-icon">
-                <i className="bi bi-shield-check"></i>
-              </div>
-              <div>
-                <h4 id="registrationOtpTitle">Confirm Registration</h4>
-                <small>Enter the candidate and employee OTPs to submit this application.</small>
-              </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setShowOtpModal(false)}
-                aria-label="Close verification"
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
-
-            <div className="modal-body">
-              {otpError && (
-                <div className="track-result track-error" role="alert" style={{ marginBottom: 14 }}>
-                  <i className="bi bi-exclamation-triangle-fill"></i>
-                  <div>{otpError}</div>
-                </div>
-              )}
-              <p className="registration-otp-hint">
-                Both verification codes are preset to <strong>1234</strong>.
-              </p>
-              <div className="field-block full">
-                <label className="input-label" htmlFor="candidateOtp">Candidate OTP</label>
-                <input
-                  id="candidateOtp"
-                  className="auth-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  autoComplete="one-time-code"
-                  value={candidateInputOtp}
-                  onChange={(event) => setCandidateInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
-                />
-              </div>
-              <div className="field-block full">
-                <label className="input-label" htmlFor="employeeOtp">Employee OTP</label>
-                <input
-                  id="employeeOtp"
-                  className="auth-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={employeeInputOtp}
-                  onChange={(event) => setEmployeeInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
-                />
-              </div>
-            </div>
-
-            <div className="modal-foot">
-              <button type="button" className="btn btn-outline" onClick={() => setShowOtpModal(false)}>
-                Cancel
-              </button>
-              <button type="button" className="btn add-user-btn modal-submit" onClick={handleVerifyBothOtps}>
-                <i className="bi bi-check-lg"></i> Verify &amp; Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

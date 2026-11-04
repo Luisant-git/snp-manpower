@@ -21,6 +21,8 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/my-submissions" element={<ManageApplications mySubmissions />} />
+          <Route path="/my-submissions/:ref" element={<Register readOnly />} />
 
           {/* Admin area — shared layout with sub navigation */}
           <Route path="/admin" element={<AdminLayout />}>

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import {
   getApplications,
+  getSession,
   updateApplicationPayment,
   updateApplicationFees,
   seedApplications,
@@ -33,20 +34,43 @@ function feesOf(a) {
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
 
-export default function ManageApplications() {
+function normalizeMobile(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function wasSubmittedBy(application, session) {
+  if (application.submittedByUserId) return application.submittedByUserId === session.id;
+  if (application.submittedByLoginMobile) {
+    return normalizeMobile(application.submittedByLoginMobile) === normalizeMobile(session.mobile);
+  }
+
+  if (session.role === 'applicant') {
+    return normalizeMobile(application.mobile) === normalizeMobile(session.mobile);
+  }
+
+  return normalizeMobile(application.submittedByMobile || application.filledByMobile)
+    === normalizeMobile(session.mobile);
+}
+
+export default function ManageApplications({ mySubmissions = false }) {
   const navigate = useNavigate();
-  const [apps, setApps] = useState(getApplications());
+  const session = getSession();
+  const [apps, setApps] = useState(getApplications);
   const [search, setSearch] = useState('');
   const [staffFilter, setStaffFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
   const [feeForm, setFeeForm] = useState({ payment: 'Pending', paid: '0', pending: '0' });
 
-  /* When no real submissions exist yet, show the sample registry rows (like the original page) */
+  const scopedApps = mySubmissions && session && session.role !== 'admin'
+    ? apps.filter((application) => wasSubmittedBy(application, session))
+    : apps;
+
+  /* Do not mix demo rows into a user's personal submission list. */
   const entries = useMemo(() => {
-    if (apps.length) return apps;
+    if (scopedApps.length || mySubmissions) return scopedApps;
     return RECENT.map((r) => ({ ...r, demo: true }));
-  }, [apps]);
+  }, [apps, mySubmissions, session?.id, session?.mobile, session?.role]);
 
   /* Unique list of employee names who filled forms (for the filter) */
   const staffList = useMemo(
@@ -71,6 +95,8 @@ export default function ManageApplications() {
   const paidCount = filtered.filter((a) => (a.payment || 'Pending') === 'Paid').length;
   const pendingCount = filtered.filter((a) => (a.payment || 'Pending') === 'Pending').length;
   const totalDues = filtered.reduce((sum, a) => sum + rupees(feesOf(a).pending), 0);
+
+  if (!session) return <Navigate to="/login" replace />;
 
   const sync = () => setApps(getApplications());
 
@@ -114,10 +140,11 @@ export default function ManageApplications() {
       {/* ---------- Registry header ---------- */}
       <div className="registry-head">
         <span className="section-eyebrow">
-          <i className="bi bi-journal-text"></i> Manage Applications
+          <i className={`bi ${mySubmissions ? 'bi-person-lines-fill' : 'bi-journal-text'}`}></i>{' '}
+          {mySubmissions && session.role !== 'admin' ? 'My Submissions' : 'Manage Applications'}
         </span>
         <h2 className="section-title" style={{ fontSize: '1.45rem', marginBottom: 0 }}>
-          Manpower Application Registry
+          {mySubmissions && session.role !== 'admin' ? 'My Submitted Forms' : 'Manpower Application Registry'}
         </h2>
       </div>
 
@@ -170,7 +197,7 @@ export default function ManageApplications() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
+        {(!mySubmissions || session.role === 'admin') && <select
           className="auth-input"
           style={{ maxWidth: 220 }}
           value={staffFilter}
@@ -182,7 +209,7 @@ export default function ManageApplications() {
               {s}
             </option>
           ))}
-        </select>
+        </select>}
         <select
           className="auth-input"
           style={{ maxWidth: 180 }}
@@ -215,6 +242,15 @@ export default function ManageApplications() {
             </tr>
           </thead>
           <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan="10" className="text-center py-4 text-muted">
+                  {mySubmissions
+                    ? 'You have not submitted any registration forms yet.'
+                    : 'No applications match the selected filters.'}
+                </td>
+              </tr>
+            )}
             {filtered.map((a, i) => {
               const fees = feesOf(a);
               const pay = a.payment || 'Pending';
@@ -258,15 +294,19 @@ export default function ManageApplications() {
                   </td>
                   <td>
                     <div className="fees-cell">
-                      <select
-                        className={`status-select ${payClass[pay] || ''}`}
-                        value={pay}
-                        onChange={(e) => setPayment(a.ref, e.target.value)}
-                      >
-                        <option>Pending</option>
-                        <option>Partial</option>
-                        <option>Paid</option>
-                      </select>
+                      {session.role === 'admin' ? (
+                        <select
+                          className={`status-select ${payClass[pay] || ''}`}
+                          value={pay}
+                          onChange={(e) => setPayment(a.ref, e.target.value)}
+                        >
+                          <option>Pending</option>
+                          <option>Partial</option>
+                          <option>Paid</option>
+                        </select>
+                      ) : (
+                        <span className={`badge-pay ${payClass[pay] || ''}`}>{pay}</span>
+                      )}
                       <small>
                         {fees.paid} paid / {fees.pending} pending
                       </small>
@@ -278,13 +318,13 @@ export default function ManageApplications() {
                       className="icon-btn"
                       title="View application"
                       onClick={() => navigate(
-                        `/admin/application/${encodeURIComponent(a.ref)}`,
+                        `${session.role === 'admin' ? '/admin/application' : '/my-submissions'}/${encodeURIComponent(a.ref)}`,
                         { state: { application: a } }
                       )}
                     >
                       <i className="bi bi-eye"></i>
                     </button>{' '}
-                    <button
+                    {session.role === 'admin' && <><button
                       className="icon-btn"
                       title="Update fees"
                       onClick={() => openFees(a)}
@@ -300,7 +340,7 @@ export default function ManageApplications() {
                       onClick={() => remove(a.ref)}
                     >
                       <i className="bi bi-trash3"></i>
-                    </button>
+                    </button></>}
                   </td>
                 </tr>
               );
@@ -309,7 +349,7 @@ export default function ManageApplications() {
         </table>
       </div>
 
-      {apps.length === 0 && (
+      {apps.length === 0 && !mySubmissions && (
         <p className="registry-note">
           <i className="bi bi-info-circle"></i> Sample records are shown until candidates submit the
           registration form — real entries will replace them automatically.
