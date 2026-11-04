@@ -5,6 +5,7 @@ import { getSession } from '../data/session.js';
 import { registrationApi } from '../api/registrationApi.js';
 import { branchApi } from '../api/branchApi.js';
 import { employeeApi } from '../api/employeeApi.js';
+import { uploadRegistrationFile } from '../api/uploadApi.js';
 import { whatsappApi } from '../api/whatsappApi.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
@@ -271,19 +272,13 @@ const emptyForm = {
   confirmed: true,
 };
 
-function readUpload(file, acceptedTypes) {
+function validateUpload(file, acceptedTypes) {
   if (!acceptedTypes.includes(file.type)) {
-    return Promise.reject(new Error('Choose a JPG, PNG, or PDF file.'));
+    throw new Error('Choose a JPG, PNG, or PDF file.');
   }
   if (file.size > 2 * 1024 * 1024) {
-    return Promise.reject(new Error('Each uploaded document must be 2 MB or smaller.'));
+    throw new Error('Each uploaded document must be 2 MB or smaller.');
   }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Could not read the selected file.'));
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function Register({ readOnly = false, editable = false }) {
@@ -405,10 +400,14 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const handleBankProofUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      readUpload(file, ['image/jpeg', 'image/png', 'application/pdf'])
-        .then((url) => setForm((f) => ({ ...f, bankProofUrl: url, bankProofName: file.name })))
+    if (!file) return;
+    try {
+      validateUpload(file, ['image/jpeg', 'image/png', 'application/pdf']);
+      uploadRegistrationFile('bank-proof', file)
+        .then((uploaded) => setForm((f) => ({ ...f, bankProofUrl: uploaded.url, bankProofName: uploaded.name })))
         .catch((error) => showToast('error', error.message));
+    } catch (error) {
+      showToast('error', error.message);
     }
   };
 
@@ -522,10 +521,14 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const handleProofUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      readUpload(file, ['image/jpeg', 'image/png', 'application/pdf'])
-        .then((url) => setForm((f) => ({ ...f, addressProofUrl: url, addressProofName: file.name })))
+    if (!file) return;
+    try {
+      validateUpload(file, ['image/jpeg', 'image/png', 'application/pdf']);
+      uploadRegistrationFile('address-proof', file)
+        .then((uploaded) => setForm((f) => ({ ...f, addressProofUrl: uploaded.url, addressProofName: uploaded.name })))
         .catch((error) => showToast('error', error.message));
+    } catch (error) {
+      showToast('error', error.message);
     }
   };
 
@@ -568,10 +571,14 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      readUpload(file, ['image/jpeg', 'image/png'])
-        .then((url) => setForm((f) => ({ ...f, photoUrl: url })))
+    if (!file) return;
+    try {
+      validateUpload(file, ['image/jpeg', 'image/png']);
+      uploadRegistrationFile('photo', file)
+        .then((uploaded) => setForm((f) => ({ ...f, photoUrl: uploaded.url })))
         .catch((error) => showToast('error', error.message));
+    } catch (error) {
+      showToast('error', error.message);
     }
   };
 
@@ -914,7 +921,11 @@ export default function Register({ readOnly = false, editable = false }) {
               <div className="photo-affix-box">
                 {form.photoUrl ? (
                   <>
-                    <img src={form.photoUrl} alt="Candidate Passport" />
+                    <img
+                      src={form.photoUrl}
+                      alt="Candidate Passport"
+                      crossOrigin={form.photoUrl.startsWith('http') ? 'use-credentials' : undefined}
+                    />
                     <div className="photo-overlay-bottom no-print">
                       <button
                         type="button"
@@ -2188,14 +2199,21 @@ export default function Register({ readOnly = false, editable = false }) {
                     {form.addressProofUrl ? (
                       <div className="address-proof-preview-card">
                         <div className="d-flex align-items-center gap-3">
-                          <img
-                            src={form.addressProofUrl}
-                            alt="Address Proof Preview"
-                            className="address-proof-thumb"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
+                          {form.addressProofName?.toLowerCase().endsWith('.pdf') ? (
+                            <a href={form.addressProofUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                              <i className="bi bi-file-earmark-pdf"></i> View PDF
+                            </a>
+                          ) : (
+                            <img
+                              src={form.addressProofUrl}
+                              alt="Address Proof Preview"
+                              className="address-proof-thumb"
+                              crossOrigin={form.addressProofUrl.startsWith('http') ? 'use-credentials' : undefined}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
                           <div>
                             <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
                               <i className="bi bi-file-earmark-check-fill text-success me-1"></i>
@@ -2322,12 +2340,19 @@ export default function Register({ readOnly = false, editable = false }) {
                       {form.bankProofUrl ? (
                         <div className="address-proof-preview-card">
                           <div className="d-flex align-items-center gap-2">
-                            <img
-                              src={form.bankProofUrl}
-                              alt="Bank Document Preview"
-                              className="address-proof-thumb"
-                              onError={(e) => { e.target.style.display = 'none'; }}
-                            />
+                            {form.bankProofName?.toLowerCase().endsWith('.pdf') ? (
+                              <a href={form.bankProofUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                                <i className="bi bi-file-earmark-pdf"></i> View PDF
+                              </a>
+                            ) : (
+                              <img
+                                src={form.bankProofUrl}
+                                alt="Bank Document Preview"
+                                className="address-proof-thumb"
+                                crossOrigin={form.bankProofUrl.startsWith('http') ? 'use-credentials' : undefined}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            )}
                             <div>
                               <div className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
                                 <i className="bi bi-file-earmark-check-fill text-success me-1"></i>

@@ -3,7 +3,7 @@ export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3
   .replace(/\/+$/, '')
   .replace(/\/api$/i, '');
 
-function getApiOrigin() {
+export function getApiOrigin() {
   const apiUrl = new URL(API_BASE_URL);
   const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
   if (localHosts.has(window.location.hostname) && localHosts.has(apiUrl.hostname)) {
@@ -14,16 +14,17 @@ function getApiOrigin() {
 
 export async function apiRequest(path, { method = 'GET', body, headers = {} } = {}) {
   const apiOrigin = getApiOrigin();
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   let response;
   try {
     response = await fetch(`${apiOrigin}/api${path.startsWith('/') ? path : `/${path}`}`, {
       method,
       credentials: 'include',
       headers: {
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(body === undefined || isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...headers,
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
     });
   } catch {
     throw new Error(`Could not connect to the API at ${apiOrigin}.`);

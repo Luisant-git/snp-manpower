@@ -62,6 +62,13 @@ async function bootstrap() {
       },
     }),
   );
+  app.use('/uploads/registration', (request, _response, next) => {
+    request.url = request.originalUrl.replace(
+      /^\/uploads\/registration(?=\/|$)/,
+      '/api/uploads/registration',
+    );
+    next();
+  });
   app.enableShutdownHooks();
   app.getHttpServer().on('close', () => {
     sessionStore.close();

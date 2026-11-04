@@ -26,6 +26,8 @@ Standalone NestJS + Prisma backend using the modular structure of the reference 
 - `GET /api/branches` (active branches), administrator-only `GET /api/branches/all`, `POST /api/branches`, `PATCH /api/branches/:id`
 - Administrator-only `GET /api/users`, `POST /api/users`, `PATCH /api/users/:id`, `PATCH /api/users/:id/active`, `DELETE /api/users/:id`
 - Authenticated `GET /api/employees/:mobile` to look up an active employee and assigned branch
+- Authenticated `POST /api/uploads/photo`, `/api/uploads/address-proof`, and `/api/uploads/bank-proof` with multipart field `file`
+- Authenticated `GET /uploads/registration/:filename` to retrieve a saved registration document (previous `/api/uploads/registration/:filename` links remain supported)
 - Authenticated `POST /api/registrations`, `GET /api/registrations/my-submissions`, `GET /api/registrations/:ref`
 - Public `POST /api/registrations/track` requires both `ref` and candidate `mobile`; it returns only application and payment status.
 - Administrator-only `GET /api/registrations`, `PATCH /api/registrations/:ref/review`, `DELETE /api/registrations/:ref`
@@ -50,4 +52,4 @@ Use the approved template text:
 
 The registration endpoint only accepts OTP challenges that were requested and verified through these backend endpoints, and consumes both candidate and employee verifications when saving. The registration confirmation template is sent to the candidate only after an administrator approves the application; the review API returns `confirmationStatus` (`SENT` or `FAILED`). The OTP lasts five minutes, allows five attempts, and has a 60-second per-number resend cooldown. The server does not expose OTPs in API responses.
 
-Registration uploads are converted to data URLs (JPG/PNG, and PDF for proofs; maximum 2 MB per file) and stored with the registration in PostgreSQL. This avoids browser-only `blob:` URLs, but increases database size; use private object storage for production-scale document retention. JSON request bodies are limited to 10 MB.
+Candidate photos and address/bank proof files are uploaded to the backend's ignored `uploads/registration` directory (or `UPLOADS_DIR/registration` when configured). The API accepts JPG/PNG and PDF proofs up to 2 MB, checks their file signatures, and serves files through authenticated `/api/uploads/registration/:filename` routes. Registration rows store the returned file URL and original filename rather than embedding binary data in PostgreSQL JSON.

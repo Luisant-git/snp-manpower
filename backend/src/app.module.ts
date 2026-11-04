@@ -5,8 +5,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RegistrationsModule } from './registrations/registrations.module';
 import { UsersModule } from './users/users.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, BranchesModule, RegistrationsModule, WhatsAppModule],
+  imports: [PrismaModule, AuthModule, UsersModule, BranchesModule, RegistrationsModule, WhatsAppModule, UploadsModule],
 })
 export class AppModule {}

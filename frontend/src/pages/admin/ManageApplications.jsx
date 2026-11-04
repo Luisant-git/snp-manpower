@@ -294,7 +294,12 @@ export default function ManageApplications({ mySubmissions = false }) {
                   </td>
                   <td>
                     {a.photo ? (
-                      <img className="photo-thumb" src={a.photo} alt="" />
+                      <img
+                        className="photo-thumb"
+                        src={a.photo}
+                        alt=""
+                        crossOrigin={String(a.photo).startsWith('http') ? 'use-credentials' : undefined}
+                      />
                     ) : (
                       <div className="photo-thumb photo-empty" title="No photograph attached">
                         <i className="bi bi-person-fill"></i>
