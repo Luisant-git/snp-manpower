@@ -23,6 +23,12 @@ function feesOf(a) {
 }
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
+const applicationStatusLabel = (status) =>
+  ({
+    UNDER_REVIEW: 'Under Review',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+  }[status] || String(status || '—').replace(/_/g, ' '));
 
 function toApplication(row) {
   const details = row.details || {};
@@ -50,14 +56,22 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState('');
-  const [staffFilter, setStaffFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const [filterValues, setFilterValues] = useState({
+    keyword: '',
+    staff: 'All',
+    paymentStatus: 'All',
+    designation: 'All',
+  });
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
   const [feeForm, setFeeForm] = useState({ paid: '0' });
+  const [statusModal, setStatusModal] = useState(null);
+  const [statusSaveError, setStatusSaveError] = useState('');
 
   const refresh = async () => {
     setLoadError('');
+    setCurrentPage(1);
     try {
       const rows = mySubmissions
         ? await registrationApi.listMine()
@@ -74,6 +88,17 @@ export default function ManageApplications({ mySubmissions = false }) {
     refresh();
   }, [mySubmissions]);
 
+  useEffect(() => {
+    if (!statusModal) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !saving) setStatusModal(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [statusModal, saving]);
+
   const entries = apps;
 
   /* Unique list of employee names who filled forms (for the filter) */
@@ -82,25 +107,54 @@ export default function ManageApplications({ mySubmissions = false }) {
     [entries]
   );
 
+  const designationList = useMemo(
+    () => [...new Set(entries.map((a) => a.designation).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [entries]
+  );
+
   const filtered = useMemo(
     () =>
       entries.filter((a) => {
-        const q = search.toLowerCase();
+        const q = filterValues.keyword.trim().toLowerCase();
         const staff = a.submittedBy || a.filledBy || 'Direct / Admin';
         return (
-          ((a.ref || '').toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q)) &&
-          (staffFilter === 'All' || staff === staffFilter) &&
-          (statusFilter === 'All' || (a.payment || 'Pending') === statusFilter)
+          ((a.ref || '').toLowerCase().includes(q) ||
+            (a.name || '').toLowerCase().includes(q) ||
+            (a.mobile || '').toLowerCase().includes(q) ||
+            (a.registrationData?.pan || '').toLowerCase().includes(q)) &&
+          (filterValues.staff === 'All' || staff === filterValues.staff) &&
+          (filterValues.paymentStatus === 'All' || (a.payment || 'Pending') === filterValues.paymentStatus) &&
+          (filterValues.designation === 'All' || a.designation === filterValues.designation)
         );
       }),
-    [entries, search, staffFilter, statusFilter]
+    [entries, filterValues]
   );
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageEntries = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const firstVisible = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastVisible = Math.min(currentPage * pageSize, filtered.length);
   const paidCount = filtered.filter((a) => (a.payment || 'Pending') === 'Paid').length;
   const pendingCount = filtered.filter((a) => (a.payment || 'Pending') === 'Pending').length;
   const totalDues = filtered.reduce((sum, a) => sum + rupees(feesOf(a).pending), 0);
 
   if (!session) return <Navigate to="/login" replace />;
+
+  const updateFilter = (key, value) => {
+    setCurrentPage(1);
+    setFilterValues((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    const clearedFilters = {
+      keyword: '',
+      staff: 'All',
+      paymentStatus: 'All',
+      designation: 'All',
+    };
+    setCurrentPage(1);
+    setFilterValues(clearedFilters);
+  };
 
   const remove = async (ref) => {
     if (!window.confirm(`Delete application ${ref}? This cannot be undone.`)) return;
@@ -122,15 +176,29 @@ export default function ManageApplications({ mySubmissions = false }) {
     }
   };
 
-  const setApplicationStatus = async (ref, status) => {
+  const stageApplicationStatus = (application, status) => {
+    if (status === (application.status || 'UNDER_REVIEW')) return;
+    setStatusSaveError('');
+    setStatusModal({ application, status });
+  };
+
+  const saveApplicationStatus = async () => {
+    if (!statusModal || saving) return;
+    const { application, status } = statusModal;
+    const confirmationFailure = 'Application status was updated, but WhatsApp confirmation failed. Check the approved template configuration and retry by changing status away from Approved and approving again.';
+    setSaving(true);
+    setStatusSaveError('');
+    setLoadError('');
     try {
-      const updated = await registrationApi.review(ref, { status });
-      if (updated.confirmationStatus === 'FAILED') {
-        setLoadError('Application status was updated, but WhatsApp confirmation failed. Check the approved template configuration and retry by changing status away from Approved and approving again.');
-      }
+      const updated = await registrationApi.review(application.ref, { status });
       await refresh();
+      if (updated.confirmationStatus === 'FAILED') setLoadError(confirmationFailure);
+      setStatusModal(null);
     } catch (error) {
+      setStatusSaveError(error.message);
       setLoadError(error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -163,18 +231,102 @@ export default function ManageApplications({ mySubmissions = false }) {
   };
 
   return (
-    <div className="admin-panel">
+    <div className={`admin-panel ${mySubmissions ? 'my-submissions-neat' : 'manage-apps-neat'}`}>
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
-      {/* ---------- Registry header ---------- */}
-      <div className="registry-head">
-        <span className="section-eyebrow">
-          <i className={`bi ${mySubmissions ? 'bi-person-lines-fill' : 'bi-journal-text'}`}></i>{' '}
-          {mySubmissions && session.role !== 'admin' ? 'My Submissions' : 'Manage Applications'}
-        </span>
-        <h2 className="section-title" style={{ fontSize: '1.45rem', marginBottom: 0 }}>
-          {mySubmissions && session.role !== 'admin' ? 'My Submitted Forms' : 'Manpower Application Registry'}
-        </h2>
-      </div>
+      <header className="neat-registry-head">
+        <div className="neat-head-icon" aria-hidden="true">
+          <i className={`bi ${mySubmissions ? 'bi-file-earmark-person' : 'bi-clipboard-data'}`}></i>
+        </div>
+        <div className="neat-head-copy">
+          <div className="section-eyebrow">{mySubmissions ? 'My Submissions' : 'Manage Applications'}</div>
+          <h1 className="section-title">
+            {mySubmissions ? 'My Submitted Forms' : 'Manpower Application Registry'}
+          </h1>
+          <p>
+            {mySubmissions
+              ? 'Review and track the registration forms you have submitted.'
+              : 'Review, manage, and track submitted manpower applications.'}
+          </p>
+        </div>
+        <div className="neat-head-chip">
+          <i className="bi bi-files"></i>
+          {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
+        </div>
+      </header>
+
+      {/* ---------- Filters ---------- */}
+      <form
+        className="registry-filter-toolbar"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setCurrentPage(1);
+        }}
+      >
+        <label className="registry-filter-field registry-filter-keyword">
+          <span>Keyword Search</span>
+          <input
+            className="auth-input"
+            placeholder="Candidate, Ref, Mobile or PAN"
+            value={filterValues.keyword}
+            onChange={(e) => updateFilter('keyword', e.target.value)}
+          />
+        </label>
+        {(!mySubmissions || session.role === 'admin') && (
+          <label className="registry-filter-field">
+            <span>Filled By Employee / Staff</span>
+            <select
+              className="auth-input"
+              value={filterValues.staff}
+              onChange={(e) => updateFilter('staff', e.target.value)}
+            >
+              <option value="All">All employees / staff</option>
+              {staffList.map((staff) => (
+                <option key={staff} value={staff}>{staff}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="registry-filter-field">
+          <span>Payment Status</span>
+          <select
+            className="auth-input"
+            value={filterValues.paymentStatus}
+            onChange={(e) => updateFilter('paymentStatus', e.target.value)}
+          >
+            <option value="All">All payment statuses</option>
+            <option>Pending</option>
+            <option>Partial</option>
+            <option>Paid</option>
+          </select>
+        </label>
+        <label className="registry-filter-field">
+          <span>Applied Designation</span>
+          <select
+            className="auth-input"
+            value={filterValues.designation}
+            onChange={(e) => updateFilter('designation', e.target.value)}
+          >
+            <option value="All">All designations</option>
+            {designationList.map((designation) => (
+              <option key={designation} value={designation}>{designation}</option>
+            ))}
+          </select>
+        </label>
+        <div className="registry-filter-actions">
+          <button type="submit" className="btn btn-primary registry-filter-apply">
+            <i className="bi bi-funnel"></i> Filter
+          </button>
+          <button
+            type="button"
+            className="registry-filter-reset"
+            onClick={resetFilters}
+            aria-label="Reset all filters"
+            title="Reset all filters"
+          >
+            <i className="bi bi-arrow-counterclockwise"></i>
+          </button>
+        </div>
+      </form>
 
       {/* ---------- Stat cards ---------- */}
       <div className="stats-grid registry-stats">
@@ -216,42 +368,6 @@ export default function ManageApplications({ mySubmissions = false }) {
         </div>
       </div>
 
-      {/* ---------- Filters ---------- */}
-      <div className="table-toolbar">
-        <input
-          className="auth-input"
-          style={{ maxWidth: 260 }}
-          placeholder="Search by reference code or name…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {(!mySubmissions || session.role === 'admin') && <select
-          className="auth-input"
-          style={{ maxWidth: 220 }}
-          value={staffFilter}
-          onChange={(e) => setStaffFilter(e.target.value)}
-        >
-          <option value="All">Filled By (Employee) — All</option>
-          {staffList.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>}
-        <select
-          className="auth-input"
-          style={{ maxWidth: 180 }}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="All">Fees Status — All</option>
-          <option>Pending</option>
-          <option>Partial</option>
-          <option>Paid</option>
-        </select>
-        <span style={{ color: 'var(--muted)', fontSize: '.85rem' }}>{filtered.length} record(s)</span>
-      </div>
-
       {/* ---------- Registry table ---------- */}
       <div className="admin-table-wrap">
         <table className="admin-table registry-table">
@@ -271,7 +387,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr>
                 <td colSpan="11" className="text-center py-4 text-muted">
                   {loadError
@@ -282,13 +398,13 @@ export default function ManageApplications({ mySubmissions = false }) {
                 </td>
               </tr>
             )}
-            {filtered.map((a, i) => {
+            {pageEntries.map((a, i) => {
               const fees = feesOf(a);
               const pay = a.payment || 'Pending';
               return (
                 <tr key={a.ref || `row-${i}`}>
                   <td>
-                    <strong style={{ color: 'var(--navy)', letterSpacing: '.3px', whiteSpace: 'nowrap' }}>
+                    <strong style={{ color: 'var(--navy)', letterSpacing: '.3px', overflowWrap: 'anywhere' }}>
                       {a.ref}
                     </strong>
                   </td>
@@ -331,9 +447,11 @@ export default function ManageApplications({ mySubmissions = false }) {
                   <td>
                     {session.role === 'admin' ? (
                       <select
-                        className="status-select"
+                        className={`status-select app-status-select ${String(
+                          a.status || 'UNDER_REVIEW'
+                        ).toLowerCase().replace('_', '-')}`}
                         value={a.status || 'UNDER_REVIEW'}
-                        onChange={(e) => setApplicationStatus(a.ref, e.target.value)}
+                        onChange={(e) => stageApplicationStatus(a, e.target.value)}
                         aria-label={`Application status for ${a.ref}`}
                       >
                         <option value="UNDER_REVIEW">Under Review</option>
@@ -406,6 +524,33 @@ export default function ManageApplications({ mySubmissions = false }) {
         </table>
       </div>
 
+      <nav className="registry-pagination" aria-label="Applications pagination">
+        <span className="registry-pagination-count">
+          Showing {firstVisible}–{lastVisible} of {filtered.length} applications
+        </span>
+        <div className="registry-pagination-controls">
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            disabled={currentPage === 1}
+            aria-label="Previous page"
+          >
+            <i className="bi bi-chevron-left"></i>
+          </button>
+          <span className="registry-page-indicator">Page {currentPage} of {pageCount}</span>
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+            disabled={currentPage === pageCount}
+            aria-label="Next page"
+          >
+            <i className="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </nav>
+
       {loading && <p className="registry-note">Loading applications…</p>}
       {!loading && apps.length === 0 && <p className="registry-note">No application records found.</p>}
 
@@ -453,6 +598,100 @@ export default function ManageApplications({ mySubmissions = false }) {
               </button>
               <button className="btn add-user-btn modal-submit" onClick={saveFees} disabled={saving}>
                 <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {statusModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!saving) setStatusModal(null);
+          }}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: 480 }}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="status-confirmation-title"
+            aria-describedby="status-confirmation-description"
+          >
+            <div className="modal-head">
+              <div className="add-user-icon" aria-hidden="true">
+                <i className="bi bi-arrow-left-right"></i>
+              </div>
+              <div>
+                <h4 id="status-confirmation-title">Confirm status change</h4>
+                <small>
+                  {statusModal.application.name || 'Candidate'} · Ref: {statusModal.application.ref}
+                </small>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setStatusModal(null)}
+                aria-label="Close"
+                disabled={saving}
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {statusSaveError && <div className="track-result track-error" role="alert">{statusSaveError}</div>}
+              <p id="status-confirmation-description">
+                Confirm the application status update for {statusModal.application.name || 'this candidate'}.
+              </p>
+              <div className="modal-grid">
+                <div className="field-block">
+                  <span className="input-label">Current status</span>
+                  <span className={`status-select app-status-select ${String(
+                    statusModal.application.status || 'UNDER_REVIEW'
+                  ).toLowerCase().replace('_', '-')}`} style={{ display: 'inline-block' }}>
+                    {applicationStatusLabel(statusModal.application.status || 'UNDER_REVIEW')}
+                  </span>
+                </div>
+                <div className="field-block">
+                  <span className="input-label">New status</span>
+                  <select
+                    className={`status-confirmation-select ${statusModal.status
+                      .toLowerCase()
+                      .replace('_', '-')}`}
+                    value={statusModal.status}
+                    onChange={(event) => setStatusModal((current) => (
+                      current ? { ...current, status: event.target.value } : current
+                    ))}
+                    disabled={saving}
+                    aria-label="New application status"
+                  >
+                    <option value="UNDER_REVIEW">Under Review</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-foot">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setStatusModal(null)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn add-user-btn modal-submit"
+                onClick={saveApplicationStatus}
+                disabled={saving}
+              >
+                <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Confirm Update'}
               </button>
             </div>
           </div>

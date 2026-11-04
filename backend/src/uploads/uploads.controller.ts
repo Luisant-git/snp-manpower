@@ -34,6 +34,23 @@ function isAllowedSignature(mimeType: string, header: Buffer) {
   return false;
 }
 
+function getPublicFileUrl(filePath: string) {
+  const configuredUrl = process.env.UPLOADS_PUBLIC_URL?.trim();
+  if (!configuredUrl) return filePath;
+
+  let baseUrl: URL;
+  try {
+    baseUrl = new URL(configuredUrl);
+  } catch {
+    throw new Error('UPLOADS_PUBLIC_URL must be a valid absolute URL.');
+  }
+  if (baseUrl.protocol !== 'http:' && baseUrl.protocol !== 'https:') {
+    throw new Error('UPLOADS_PUBLIC_URL must use HTTP or HTTPS.');
+  }
+
+  return new URL(filePath, baseUrl.origin).toString();
+}
+
 @Controller('uploads')
 @UseGuards(AuthGuard)
 export class UploadsController {
@@ -85,8 +102,9 @@ export class UploadsController {
       throw new BadRequestException('The uploaded file content does not match its file type.');
     }
 
+    const fileUrl = `/uploads/registration/${encodeURIComponent(file.filename)}`;
     return {
-      url: `/uploads/registration/${encodeURIComponent(file.filename)}`,
+      url: getPublicFileUrl(fileUrl),
       name: file.originalname,
       mimeType: file.mimetype,
       size: file.size,

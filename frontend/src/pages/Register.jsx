@@ -235,6 +235,7 @@ const emptyForm = {
   vehicleName: '',
   vehicleRegNo: '',
   taxiSeaterType: '7+1 Seater (Innova / Crysta / Carens / Hycross)',
+  taxiPermitType: '',
   vehicleModel: '',
   taxiFcNo: '',
   taxiFcExpiryDate: '',
@@ -1511,6 +1512,7 @@ export default function Register({ readOnly = false, editable = false }) {
                               jobType: 'DRIVER',
                               designation: 'DRIVER',
                               hasLicense: 'YES',
+                              taxiPermitType: '',
                             }));
                           }}
                         />
@@ -1526,6 +1528,7 @@ export default function Register({ readOnly = false, editable = false }) {
                             setForm((f) => ({
                               ...f,
                               jobType: 'OTHERS',
+                              taxiPermitType: '',
                               designation:
                                 f.designation === 'TAXI' || f.designation === 'DRIVER'
                                   ? ''
@@ -1800,6 +1803,23 @@ export default function Register({ readOnly = false, editable = false }) {
                               {opt}
                             </option>
                           ))}
+                        </select>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <FormLabelCell k="taxiPermitType" enSecondary="Taxi Permit Type *" required />
+                      <td className="field-input-cell">
+                        <select
+                          name="taxiPermitType"
+                          value={form.taxiPermitType}
+                          onChange={set}
+                          required
+                          className="form-select"
+                        >
+                          <option value="">Select taxi permit type</option>
+                          <option value="State Permit">State Permit</option>
+                          <option value="All India Permit">All India Permit</option>
                         </select>
                       </td>
                     </tr>

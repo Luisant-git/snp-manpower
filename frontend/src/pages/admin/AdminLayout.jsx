@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { authApi } from '../../api/authApi.js';
 import { getSession, setSession, clearSession } from '../../data/session.js';
@@ -12,6 +12,7 @@ const LINKS = [
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [session, setCurrentSession] = useState(getSession);
   const [checkingSession, setCheckingSession] = useState(true);
   const [sessionError, setSessionError] = useState('');
@@ -66,16 +67,19 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="container admin-shell">
+    <div className={`container admin-shell${pathname === '/admin/applications' ? ' admin-applications-wide' : ''}`}>
       {/* ---------- Header ---------- */}
       <div className="admin-head">
-        <div>
-          <span className="section-eyebrow">
-            <i className="bi bi-shield-lock-fill"></i> Admin Control Panel
+        <div className="admin-welcome-tile">
+          <span className="admin-welcome-mark" aria-hidden="true">
+            <i className="bi bi-sliders2"></i>
           </span>
-          <h2 className="section-title" style={{ marginBottom: 0 }}>
-            Welcome, {session.name}
-          </h2>
+          <div className="admin-welcome-copy">
+            <span className="section-eyebrow">Admin Control Panel</span>
+            <h2 className="section-title">
+              Welcome, {session.name}
+            </h2>
+          </div>
         </div>
         <button className="btn logout-btn" onClick={doLogout}>
           <i className="bi bi-box-arrow-right"></i> Logout
