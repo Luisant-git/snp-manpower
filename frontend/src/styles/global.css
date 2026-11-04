@@ -1843,6 +1843,29 @@ textarea {
   color: #0369a1;
 }
 
+.fee-status-select:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.fee-status-select.fee-status-paid:disabled {
+  border-color: #86efac;
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.fee-status-select.fee-status-pending:disabled {
+  border-color: #fcd34d;
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.fee-status-select.fee-status-partial:disabled {
+  border-color: #7dd3fc;
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
 .chip-fee {
   display: inline-block;
   font-size: 0.78rem;

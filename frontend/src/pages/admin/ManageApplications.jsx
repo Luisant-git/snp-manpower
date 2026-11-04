@@ -15,6 +15,8 @@ function rupees(str) {
   return isNaN(n) ? 0 : n;
 }
 
+const REGISTRATION_FEE = 2400;
+
 function feesOf(a) {
   return {
     paid: `₹${Number(a.feesPaid || 0).toLocaleString('en-IN')}`,
@@ -65,9 +67,32 @@ export default function ManageApplications({ mySubmissions = false }) {
     designation: 'All',
   });
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
-  const [feeForm, setFeeForm] = useState({ paid: '0' });
+  const [feeForm, setFeeForm] = useState({ paid: '' });
+  const [feeSaveError, setFeeSaveError] = useState('');
+  const [feeAttempted, setFeeAttempted] = useState(false);
   const [statusModal, setStatusModal] = useState(null);
   const [statusSaveError, setStatusSaveError] = useState('');
+  const feeCurrentPaid = feeModal ? Number(feeModal.feesPaid || 0) : 0;
+  const feePendingAmount = feeModal
+    ? Number(feeModal.feesPending ?? Math.max(0, REGISTRATION_FEE - feeCurrentPaid))
+    : 0;
+  const feePaidNow = feeForm.paid === '' ? NaN : Number(feeForm.paid);
+  const feeAmountValid =
+    Number.isInteger(feePaidNow) &&
+    feePaidNow > 0 &&
+    feePaidNow <= feePendingAmount &&
+    feeCurrentPaid + feePaidNow <= REGISTRATION_FEE;
+  const feeTotalAfter = feeAmountValid ? feeCurrentPaid + feePaidNow : feeCurrentPaid;
+  const feePendingAfter = Math.max(0, REGISTRATION_FEE - feeTotalAfter);
+  const feeStatusAfter =
+    feeTotalAfter === 0 ? 'Pending' : feeTotalAfter >= REGISTRATION_FEE ? 'Paid' : 'Partial';
+  const feeValidationError = feeAttempted || feeForm.paid !== ''
+    ? !Number.isInteger(feePaidNow) || feePaidNow <= 0
+      ? 'Enter a whole-rupee amount greater than ₹0.'
+      : feePaidNow > feePendingAmount || feeCurrentPaid + feePaidNow > REGISTRATION_FEE
+        ? `Amount cannot exceed the current pending balance of ₹${feePendingAmount.toLocaleString('en-IN')}.`
+        : ''
+    : '';
 
   const refresh = async () => {
     setLoadError('');
@@ -166,16 +191,6 @@ export default function ManageApplications({ mySubmissions = false }) {
     }
   };
 
-  const setPayment = async (ref, payment) => {
-    const paidAmounts = { Pending: 0, Partial: 1200, Paid: 2400 };
-    try {
-      await registrationApi.review(ref, { feesPaid: paidAmounts[payment] });
-      await refresh();
-    } catch (error) {
-      setLoadError(error.message);
-    }
-  };
-
   const stageApplicationStatus = (application, status) => {
     if (status === (application.status || 'UNDER_REVIEW')) return;
     setStatusSaveError('');
@@ -204,27 +219,27 @@ export default function ManageApplications({ mySubmissions = false }) {
 
   /* ---- Update Fees modal (₹ button) ---- */
   const openFees = (a) => {
-    const fees = feesOf(a);
-    setFeeForm({
-      paid: String(rupees(fees.paid)),
-    });
+    setFeeForm({ paid: '' });
+    setFeeSaveError('');
+    setFeeAttempted(false);
     setFeeModal(a);
   };
 
   const saveFees = async () => {
     if (!feeModal) return;
-    const paidAmount = Number(feeForm.paid);
-    if (!Number.isInteger(paidAmount) || paidAmount < 0 || paidAmount > 2400) {
-      setLoadError('Paid amount must be a whole number between ₹0 and ₹2,400.');
+    setFeeAttempted(true);
+    if (!feeAmountValid) {
+      setFeeSaveError(feeValidationError || 'Enter a valid payment amount.');
       return;
     }
     setSaving(true);
+    setFeeSaveError('');
     try {
-      await registrationApi.review(feeModal.ref, { feesPaid: paidAmount });
+      await registrationApi.review(feeModal.ref, { feesPaid: feeCurrentPaid + feePaidNow });
       await refresh();
       setFeeModal(null);
     } catch (error) {
-      setLoadError(error.message);
+      setFeeSaveError(error.message);
     } finally {
       setSaving(false);
     }
@@ -464,19 +479,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                   </td>
                   <td>
                     <div className="fees-cell">
-                      {session.role === 'admin' ? (
-                        <select
-                          className={`status-select ${payClass[pay] || ''}`}
-                          value={pay}
-                          onChange={(e) => setPayment(a.ref, e.target.value)}
-                        >
-                          <option>Pending</option>
-                          <option>Partial</option>
-                          <option>Paid</option>
-                        </select>
-                      ) : (
-                        <span className={`badge-pay ${payClass[pay] || ''}`}>{pay}</span>
-                      )}
+                      <span className={`badge-pay ${payClass[pay] || ''}`}>{pay}</span>
                       <small>
                         {fees.paid} paid / {fees.pending} pending
                       </small>
@@ -556,47 +559,116 @@ export default function ManageApplications({ mySubmissions = false }) {
 
       {/* ============ UPDATE FEES MODAL (₹ icon) ============ */}
       {feeModal && (
-        <div className="modal-overlay" onClick={() => setFeeModal(null)}>
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!saving) setFeeModal(null);
+          }}
+        >
           <div
             className="modal-card"
-            style={{ maxWidth: 480 }}
+            style={{ maxWidth: 520 }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="fees-modal-title"
+            aria-describedby="fees-modal-description"
           >
             <div className="modal-head">
               <div className="add-user-icon">
                 <i className="bi bi-currency-rupee"></i>
               </div>
               <div>
-                <h4>Update Fees: {feeModal.ref}</h4>
-                <small>Applicant: {feeModal.name}</small>
+                <h4 id="fees-modal-title">Record Fee Payment</h4>
+                <small>{feeModal.name} · Ref: {feeModal.ref}</small>
               </div>
-              <button className="modal-close" onClick={() => setFeeModal(null)} aria-label="Close">
+              <button
+                className="modal-close"
+                onClick={() => setFeeModal(null)}
+                aria-label="Close"
+                disabled={saving}
+              >
                 <i className="bi bi-x-lg"></i>
               </button>
             </div>
 
             <div className="modal-body">
-              <div className="field-block full">
-                <label className="input-label">Paid Amount (₹)</label>
-                <input
-                  className="auth-input"
-                  type="number"
-                  min="0"
-                  value={feeForm.paid}
-                  onChange={(e) => setFeeForm({ ...feeForm, paid: e.target.value })}
-                  placeholder="e.g. 2400"
-                />
+              <p id="fees-modal-description">
+                Enter the amount received now. The payment status and remaining balance are calculated from the total paid.
+              </p>
+              <div className="modal-grid">
+                <div className="field-block full">
+                  <label className="input-label" htmlFor="fee-amount-paid">Amount paid now (₹)</label>
+                  <input
+                    id="fee-amount-paid"
+                    className="auth-input"
+                    type="number"
+                    min="1"
+                    max={feePendingAmount}
+                    step="1"
+                    value={feeForm.paid}
+                    onBlur={() => setFeeAttempted(true)}
+                    onChange={(e) => {
+                      setFeeForm({ paid: e.target.value });
+                      setFeeSaveError('');
+                    }}
+                    placeholder={`Enter up to ₹${feePendingAmount.toLocaleString('en-IN')}`}
+                    aria-invalid={Boolean(feeSaveError || feeValidationError)}
+                    aria-describedby={feeSaveError || feeValidationError ? 'fee-payment-error' : undefined}
+                    disabled={saving || feePendingAmount === 0}
+                  />
+                </div>
+                <div className="field-block">
+                  <label className="input-label" htmlFor="fee-payment-status">Payment status</label>
+                  <select
+                    id="fee-payment-status"
+                    className={`auth-input fee-status-select fee-status-${payClass[feeStatusAfter] || 'pending'}`}
+                    value={feeStatusAfter}
+                    disabled
+                    aria-label="Payment status (calculated)"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
+                <div className="field-block">
+                  <span className="input-label">Total paid after</span>
+                  <strong>₹{feeTotalAfter.toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="field-block">
+                  <span className="input-label">Pending dues</span>
+                  <strong>₹{feePendingAfter.toLocaleString('en-IN')}</strong>
+                </div>
               </div>
-              <small>Pending dues are calculated from the ₹2,400 registration fee.</small>
+              <small>
+                Current paid: ₹{feeCurrentPaid.toLocaleString('en-IN')} · Current pending: ₹{feePendingAmount.toLocaleString('en-IN')}
+              </small>
+              {(feeSaveError || feeValidationError) && (
+                <div id="fee-payment-error" className="track-result track-error" role="alert">
+                  {feeSaveError || feeValidationError}
+                </div>
+              )}
+              {feePendingAmount === 0 && (
+                <div className="track-result" role="status">
+                  This application has no remaining fee balance.
+                </div>
+              )}
             </div>
 
             <div className="modal-foot">
-              <button className="btn btn-outline" onClick={() => setFeeModal(null)}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setFeeModal(null)}
+                disabled={saving}
+              >
                 Cancel
               </button>
-              <button className="btn add-user-btn modal-submit" onClick={saveFees} disabled={saving}>
+              <button
+                className="btn add-user-btn modal-submit"
+                onClick={saveFees}
+                disabled={saving || !feeAmountValid}
+              >
                 <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
