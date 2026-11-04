@@ -81,9 +81,13 @@ export default function UserManagement() {
 
   const save = async () => {
     setFormError('');
-    if (!form.name.trim() || form.mobile.length !== 10 || (modal.mode === 'add' && form.password.length < 12)
+    const requiresPassword = form.role === 'ADMIN';
+    if (!form.name.trim() || form.mobile.length !== 10
+      || (requiresPassword && isAdd && form.password.length < 12)
       || (form.password && form.password.length < 12)) {
-      setFormError('Enter a name, 10-digit mobile, and a password of at least 12 characters.');
+      setFormError(requiresPassword
+        ? 'Enter a name, 10-digit mobile, and an administrator password of at least 12 characters.'
+        : 'Enter a name and a valid 10-digit mobile number.');
       return;
     }
     setSaving(true);
@@ -92,7 +96,7 @@ export default function UserManagement() {
         await userApi.create({
           name: form.name.trim(),
           mobile: form.mobile,
-          password: form.password,
+          ...(form.password ? { password: form.password } : {}),
           role: form.role,
           branchId: form.branchId ? Number(form.branchId) : undefined,
         });
@@ -293,17 +297,6 @@ export default function UserManagement() {
                 </div>
 
                 <div className="field-block">
-                  <label className="input-label">Password</label>
-                  <input
-                    className="auth-input"
-                    type="password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder={isAdd ? 'At least 12 characters' : 'Leave blank to keep current'}
-                  />
-                </div>
-
-                <div className="field-block">
                   <label className="input-label">Role</label>
                   <div className="field-icon">
                     <i className="bi bi-shield-check"></i>
@@ -318,6 +311,23 @@ export default function UserManagement() {
                     </select>
                   </div>
                 </div>
+
+                {form.role === 'ADMIN' && (
+                  <div className="field-block full">
+                    <label className="input-label">
+                      Administrator Password {isAdd ? '*' : '(optional)'}
+                    </label>
+                    <input
+                      className="auth-input"
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      placeholder={isAdd ? 'At least 12 characters' : 'Leave blank to keep current'}
+                      autoComplete="new-password"
+                    />
+                    <small>Employees and applicants sign in with WhatsApp OTP; no password is needed for them.</small>
+                  </div>
+                )}
 
                 <div className="field-block full">
                   <label className="input-label">Branch</label>

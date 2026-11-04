@@ -122,6 +122,18 @@ export default function ManageApplications({ mySubmissions = false }) {
     }
   };
 
+  const setApplicationStatus = async (ref, status) => {
+    try {
+      const updated = await registrationApi.review(ref, { status });
+      if (updated.confirmationStatus === 'FAILED') {
+        setLoadError('Application status was updated, but WhatsApp confirmation failed. Check the approved template configuration and retry by changing status away from Approved and approving again.');
+      }
+      await refresh();
+    } catch (error) {
+      setLoadError(error.message);
+    }
+  };
+
   /* ---- Update Fees modal (₹ button) ---- */
   const openFees = (a) => {
     const fees = feesOf(a);
@@ -252,6 +264,7 @@ export default function ManageApplications({ mySubmissions = false }) {
               <th>Applied Role</th>
               <th>Filled By (Employee)</th>
               <th>DL &amp; Vehicle</th>
+              <th>Application Status</th>
               <th>Fees Status</th>
               <th>Date</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
@@ -260,7 +273,7 @@ export default function ManageApplications({ mySubmissions = false }) {
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan="10" className="text-center py-4 text-muted">
+                <td colSpan="11" className="text-center py-4 text-muted">
                   {loadError
                     ? 'Applications could not be loaded.'
                     : mySubmissions
@@ -311,6 +324,22 @@ export default function ManageApplications({ mySubmissions = false }) {
                     </div>
                   </td>
                   <td>
+                    {session.role === 'admin' ? (
+                      <select
+                        className="status-select"
+                        value={a.status || 'UNDER_REVIEW'}
+                        onChange={(e) => setApplicationStatus(a.ref, e.target.value)}
+                        aria-label={`Application status for ${a.ref}`}
+                      >
+                        <option value="UNDER_REVIEW">Under Review</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
+                      </select>
+                    ) : (
+                      <span>{String(a.status || 'UNDER_REVIEW').replace(/_/g, ' ')}</span>
+                    )}
+                  </td>
+                  <td>
                     <div className="fees-cell">
                       {session.role === 'admin' ? (
                         <select
@@ -342,15 +371,20 @@ export default function ManageApplications({ mySubmissions = false }) {
                     >
                       <i className="bi bi-eye"></i>
                     </button>{' '}
-                    {session.role === 'admin' && <><button
+                    {session.role === 'admin' && <>
+                    <button
+                      className="icon-btn primary"
+                      title="Edit application"
+                      onClick={() => navigate(`/admin/application/${encodeURIComponent(a.ref)}/edit`)}
+                    >
+                      <i className="bi bi-pencil"></i>
+                    </button>{' '}
+                    <button
                       className="icon-btn"
                       title="Update fees"
                       onClick={() => openFees(a)}
                     >
                       <i className="bi bi-currency-rupee"></i>
-                    </button>{' '}
-                    <button className="icon-btn" title="Print registry" onClick={() => window.print()}>
-                      <i className="bi bi-printer"></i>
                     </button>{' '}
                     <button
                       className="icon-btn danger"

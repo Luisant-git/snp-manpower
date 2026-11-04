@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { LANGUAGES, T } from '../data/translations.js';
 import { getSession } from '../data/session.js';
 import { registrationApi } from '../api/registrationApi.js';
@@ -187,19 +187,11 @@ const TAXI_SEATER_OPTIONS = [
   'Other Passenger Car / Taxi',
 ];
 
-function makeRegistrationReference() {
-  const suffix = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
-    .toUpperCase();
-  return `SNP-${new Date().getFullYear()}-${suffix}`;
-}
-
 const emptyForm = {
   // Page 1 Meta
   formDate: new Date().toISOString().split('T')[0],
   state: 'KARNATAKA',
-  regNo: makeRegistrationReference(),
+  regNo: '',
   mobile: '',
   policeCertDate: '',
   policeCertNo: '',
@@ -294,12 +286,14 @@ function readUpload(file, acceptedTypes) {
   });
 }
 
-export default function Register({ readOnly = false }) {
+export default function Register({ readOnly = false, editable = false }) {
+  const navigate = useNavigate();
   const { ref: applicationRef } = useParams();
+  const recordMode = readOnly || editable;
   const [branches, setBranches] = useState([]);
   const [branchLoadError, setBranchLoadError] = useState('');
   const [viewApplication, setViewApplication] = useState(null);
-  const [recordLoading, setRecordLoading] = useState(readOnly);
+  const [recordLoading, setRecordLoading] = useState(recordMode);
   const [recordError, setRecordError] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [refCode, setRefCode] = useState(null);
@@ -334,8 +328,11 @@ export default function Register({ readOnly = false }) {
   }, []);
 
   useEffect(() => {
-    if (!readOnly) return;
+    if (!recordMode) return;
     let active = true;
+    setRecordLoading(true);
+    setRecordError('');
+    setViewApplication(null);
     registrationApi.get(applicationRef)
       .then((row) => {
         if (!active) return;
@@ -355,7 +352,7 @@ export default function Register({ readOnly = false }) {
         if (active) setRecordLoading(false);
       });
     return () => { active = false; };
-  }, [applicationRef, readOnly]);
+  }, [applicationRef, recordMode]);
 
   useEffect(() => {
     if (!viewApplication) {
@@ -380,12 +377,12 @@ export default function Register({ readOnly = false }) {
   }, [viewApplication, branches]);
 
   useEffect(() => {
-    if (readOnly || !branches.length) return;
+    if (recordMode || !branches.length) return;
     setForm((current) => ({
       ...current,
       employeeBranch: branches.includes(current.employeeBranch) ? current.employeeBranch : branches[0],
     }));
-  }, [branches, readOnly]);
+  }, [branches, recordMode]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -608,13 +605,13 @@ export default function Register({ readOnly = false }) {
       return;
     }
 
-    if (!candidateVerified) {
+    if (!editable && !candidateVerified) {
       showToast('error', 'Verify the candidate mobile number using the OTP before submitting.');
       document.querySelector('[name="mobile"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    if (!employeeVerified) {
+    if (!editable && !employeeVerified) {
       showToast('error', 'Verify the employee mobile number using the OTP before submitting.');
       document.querySelector('.branch-verification-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -640,14 +637,27 @@ export default function Register({ readOnly = false }) {
     const paidAmount = Number(form.registrationFeePaid);
     setSubmitting(true);
     try {
-      const registration = await registrationApi.create({
-        ref: form.regNo,
+      const payload = {
         name: (form.fullName || '').trim().toUpperCase(),
         mobile: form.mobile,
         designation: (form.designation || 'General Staff').toUpperCase(),
-        feesPaid: paidAmount,
-        registrationData: { ...form },
-      });
+        registrationData: {
+          ...form,
+          regNo: applicationRef || form.regNo,
+          ...(editable ? { registrationFeePaid: String(viewApplication.feesPaid) } : {}),
+        },
+      };
+      const registration = editable
+        ? await registrationApi.update(applicationRef, payload)
+        : await registrationApi.create({
+          ...payload,
+          feesPaid: paidAmount,
+          registrationData: { ...form },
+        });
+      if (editable) {
+        navigate('/admin/applications', { replace: true });
+        return;
+      }
       setRefCode(registration.ref);
       showToast('success', 'Registration submitted successfully.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -675,11 +685,11 @@ export default function Register({ readOnly = false }) {
       === String(session.mobile || '').replace(/\D/g, '');
   };
 
-  if (readOnly && recordLoading) {
+  if (recordMode && recordLoading) {
     return <div className="container py-5 text-center">Loading application record…</div>;
   }
 
-  if (readOnly && recordError) {
+  if (recordMode && recordError) {
     return <div className="container py-5"><div className="track-result track-error" role="alert">{recordError}</div></div>;
   }
 
@@ -711,6 +721,9 @@ export default function Register({ readOnly = false }) {
 
   if (readOnly && (!viewApplication || !isOwnedByCurrentUser())) {
     return <Navigate to={session?.role === 'admin' ? '/admin/applications' : '/my-submissions'} replace />;
+  }
+  if (editable && (!viewApplication || session?.role !== 'admin')) {
+    return <Navigate to="/admin/applications" replace />;
   }
 
   /* ---------- Login Guard ---------- */
@@ -773,7 +786,7 @@ export default function Register({ readOnly = false }) {
               className="btn btn-teal"
               onClick={() => {
                 setRefCode(null);
-                setForm({ ...emptyForm, regNo: makeRegistrationReference() });
+                setForm(emptyForm);
               }}
             >
               <i className="bi bi-plus-circle"></i> New Application
@@ -795,10 +808,10 @@ export default function Register({ readOnly = false }) {
           </button>
         </div>
       )}
-      {readOnly ? (
+      {recordMode ? (
         <div className="registration-record-toolbar no-print">
           <div>
-            <span className="section-eyebrow"><i className="bi bi-file-earmark-person"></i> Application Record</span>
+            <span className="section-eyebrow"><i className="bi bi-file-earmark-person"></i> {editable ? 'Edit Application' : 'Application Record'}</span>
             <h2>{viewApplication.name || 'Candidate Application'}</h2>
             <small>Reference: {viewApplication.ref}</small>
           </div>
@@ -806,6 +819,11 @@ export default function Register({ readOnly = false }) {
             <Link to="/admin/applications" className="btn btn-outline">
               <i className="bi bi-arrow-left"></i> Back to Applications
             </Link>
+            {readOnly && session?.role === 'admin' && (
+              <Link to={`/admin/application/${encodeURIComponent(viewApplication.ref)}/edit`} className="btn btn-primary">
+                <i className="bi bi-pencil"></i> Edit
+              </Link>
+            )}
             <button type="button" className="btn btn-primary" onClick={() => window.print()}>
               <i className="bi bi-printer"></i> Print
             </button>
@@ -822,7 +840,7 @@ export default function Register({ readOnly = false }) {
           LANGUAGE SELECTOR ON TOP (REQUESTED BY USER)
           Changes all form labels dynamically to chosen language
           ============================================================ */}
-      {!readOnly && <div className="language-bar-container no-print">
+      {!recordMode && <div className="language-bar-container no-print">
         <div className="language-bar-inner">
           <div className="lang-icon-title">
             <i className="bi bi-translate"></i>
@@ -851,7 +869,7 @@ export default function Register({ readOnly = false }) {
 
       <form noValidate onSubmit={readOnly ? (event) => event.preventDefault() : submit}>
         {branchLoadError && <div className="track-result track-error" role="alert">{branchLoadError}</div>}
-        <fieldset className="registration-view-fieldset" disabled={readOnly}>
+        <fieldset className="registration-view-fieldset" disabled={readOnly || submitting}>
         <div className="physical-form-wrapper">
           {/* ============================================================
               PAGE 1 / SHEET 1: Job Interview Application Form
@@ -999,8 +1017,8 @@ export default function Register({ readOnly = false }) {
                         type="text"
                         name="regNo"
                         value={form.regNo}
-                        onChange={set}
-                        placeholder="SNP-2026-0001"
+                        readOnly
+                        placeholder="Assigned after submission"
                         style={{
                           border: 'none',
                           background: 'transparent',

@@ -3,10 +3,20 @@ export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3
   .replace(/\/+$/, '')
   .replace(/\/api$/i, '');
 
+function getApiOrigin() {
+  const apiUrl = new URL(API_BASE_URL);
+  const localHosts = new Set(['localhost', '127.0.0.1', '::1']);
+  if (localHosts.has(window.location.hostname) && localHosts.has(apiUrl.hostname)) {
+    apiUrl.hostname = window.location.hostname;
+  }
+  return apiUrl.origin;
+}
+
 export async function apiRequest(path, { method = 'GET', body, headers = {} } = {}) {
+  const apiOrigin = getApiOrigin();
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}/api${path.startsWith('/') ? path : `/${path}`}`, {
+    response = await fetch(`${apiOrigin}/api${path.startsWith('/') ? path : `/${path}`}`, {
       method,
       credentials: 'include',
       headers: {
@@ -16,7 +26,7 @@ export async function apiRequest(path, { method = 'GET', body, headers = {} } = 
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch {
-    throw new Error(`Could not connect to the API at ${API_BASE_URL}.`);
+    throw new Error(`Could not connect to the API at ${apiOrigin}.`);
   }
 
   const contentType = response.headers.get('content-type') || '';

@@ -31,6 +31,7 @@ export default function App() {
             <Route path="branches" element={<BranchMaster />} />
             <Route path="applications" element={<ManageApplications />} />
             <Route path="application/:ref" element={<Register readOnly />} />
+            <Route path="application/:ref/edit" element={<Register editable />} />
           </Route>
 
           <Route path="*" element={<Home />} />

@@ -15,7 +15,7 @@ export class AuthController {
     @Req() request: SessionRequest,
   ) {
     const user = await this.authService.login(body.mobile, body.password);
-    request.session.user = user;
+    await this.establishSession(request, user);
     return user;
   }
 
@@ -25,7 +25,7 @@ export class AuthController {
     @Req() request: SessionRequest,
   ) {
     const user = await this.authService.loginWithOtp(body.mobile, body.code);
-    request.session.user = user;
+    await this.establishSession(request, user);
     return user;
   }
 
@@ -47,5 +47,15 @@ export class AuthController {
     }
     request.session.user = user;
     return user;
+  }
+
+  private async establishSession(request: SessionRequest, user: SessionUser) {
+    await new Promise<void>((resolve, reject) => {
+      request.session.regenerate((error) => (error ? reject(error) : resolve()));
+    });
+    request.session.user = user;
+    await new Promise<void>((resolve, reject) => {
+      request.session.save((error) => (error ? reject(error) : resolve()));
+    });
   }
 }

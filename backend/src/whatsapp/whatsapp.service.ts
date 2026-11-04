@@ -33,7 +33,27 @@ export class WhatsAppService {
 
   async sendOtp(toPhoneNumber: string, otp: string): Promise<string> {
     const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'customer_login_otp1';
-    return this.sendTemplate(toPhoneNumber, templateName, [{ type: 'text', text: otp }]);
+    const buttonIndex = process.env.WHATSAPP_OTP_BUTTON_INDEX ?? '0';
+    const components: Array<Record<string, unknown>> = [
+      {
+        type: 'body',
+        parameters: [{ type: 'text', text: otp }],
+      },
+    ];
+
+    if (buttonIndex !== '') {
+      if (!/^\d+$/.test(buttonIndex)) {
+        throw new ServiceUnavailableException('WHATSAPP_OTP_BUTTON_INDEX must be a non-negative integer or empty.');
+      }
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: buttonIndex,
+        parameters: [{ type: 'text', text: otp }],
+      });
+    }
+
+    return this.sendTemplate(toPhoneNumber, templateName, components);
   }
 
   async sendRegistrationConfirmation(
@@ -42,25 +62,31 @@ export class WhatsAppService {
     registrationRef: string,
     designation: string,
   ): Promise<string> {
-    const templateName = process.env.WHATSAPP_REGISTRATION_TEMPLATE || 'snp_registration_confirmed';
-    return this.sendTemplate(toPhoneNumber, templateName, [
-      { type: 'text', text: candidateName }, // {{1}}
-      { type: 'text', text: registrationRef }, // {{2}}
-      { type: 'text', text: designation }, // {{3}}
-    ]);
+    const templateName = process.env.WHATSAPP_REGISTRATION_TEMPLATE || 'driver_registration_confirmation';
+    return this.sendTemplate(toPhoneNumber, templateName, [{
+      type: 'body',
+      parameters: [
+        { type: 'text', text: candidateName },
+        { type: 'text', text: registrationRef },
+        { type: 'text', text: designation },
+      ],
+    }], process.env.WHATSAPP_REGISTRATION_TEMPLATE_LANGUAGE);
   }
 
   private async sendTemplate(
     toPhoneNumber: string,
     templateName: string,
-    parameters: TemplateParameter[],
+    components: Array<Record<string, unknown>>,
+    templateLanguage?: string,
   ): Promise<string> {
     if (!this.phoneNumberId || !this.accessToken) {
       throw new ServiceUnavailableException('WhatsApp Cloud API credentials are not configured.');
     }
 
     const formattedNumber = this.formatPhoneNumber(toPhoneNumber);
-    const language = process.env.WHATSAPP_TEMPLATE_LANGUAGE || 'en';
+    const language = templateLanguage
+      || process.env.WHATSAPP_TEMPLATE_LANGUAGE
+      || 'en';
     try {
       const response = await axios.post<WhatsAppMessageResponse>(
         `${this.apiUrl}/${encodeURIComponent(this.phoneNumberId)}/messages`,
@@ -71,7 +97,7 @@ export class WhatsAppService {
           template: {
             name: templateName,
             language: { code: language },
-            components: [{ type: 'body', parameters }],
+            components,
           },
         },
         {
@@ -94,7 +120,7 @@ export class WhatsAppService {
       const apiError = error as AxiosError<WhatsAppMessageResponse>;
       const apiMessage = apiError.response?.data?.error?.message;
       this.logger.error(
-        `Error sending WhatsApp template "${templateName}"`,
+        `Error sending WhatsApp template "${templateName}" (${language})`,
         apiMessage || apiError.message,
       );
       if (apiError.response) {

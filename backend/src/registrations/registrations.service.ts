@@ -23,10 +23,8 @@ export class RegistrationsService {
     const details = parseRegistrationDetails(body.registrationData ?? body);
     const name = String(body.name ?? details.fullName ?? '').trim();
     const mobile = this.normalizeMobile(body.mobile ?? details.mobile);
-    const ref = String(body.ref || this.generateReference()).trim();
     const feesPaid = this.parseFeesPaid(body.feesPaid ?? details.registrationFeePaid ?? 0);
     if (!name || name.length > 160) throw new BadRequestException('Candidate name is required.');
-    if (!/^[A-Za-z0-9-]{4,40}$/.test(ref)) throw new BadRequestException('Registration reference is invalid.');
     if (!Number.isInteger(feesPaid) || feesPaid < 0 || feesPaid > maxRegistrationFee) {
       throw new BadRequestException(`feesPaid must be a whole amount from 0 to ${maxRegistrationFee}.`);
     }
@@ -53,10 +51,10 @@ export class RegistrationsService {
       : null;
     if (branchName && !branch) throw new BadRequestException('Selected branch is not active or does not exist.');
 
-    const data = details as Prisma.InputJsonValue;
     let registration;
     try {
       registration = await this.prisma.$transaction(async (transaction) => {
+        const ref = await this.generateReference(transaction);
         await this.otpService.consumeVerified(transaction, mobile, OtpPurpose.CANDIDATE);
         await this.otpService.consumeVerified(transaction, employeeMobile, OtpPurpose.EMPLOYEE);
         return transaction.registration.create({
@@ -69,7 +67,7 @@ export class RegistrationsService {
             paymentStatus: this.paymentStatus(feesPaid),
             feesPaid,
             feesPending: maxRegistrationFee - feesPaid,
-            details: data,
+            details: { ...details, regNo: ref } as Prisma.InputJsonValue,
             photoUrl: this.optionalString(body.photoUrl ?? details.photoUrl),
             addressProofUrl: this.optionalString(body.addressProofUrl ?? details.addressProofUrl),
             addressProofName: this.optionalString(body.addressProofName ?? details.addressProofName),
@@ -89,26 +87,7 @@ export class RegistrationsService {
       throw error;
     }
 
-    try {
-      const messageId = await this.whatsApp.sendRegistrationConfirmation(
-        mobile,
-        name,
-        registration.ref,
-        registration.designation || 'General Staff',
-      );
-      return await this.prisma.registration.update({
-        where: { id: registration.id },
-        data: { confirmationStatus: NotificationStatus.SENT, confirmationMessageId: messageId },
-      });
-    } catch (error) {
-      this.logger.error(
-        `Registration ${registration.ref} was saved, but its WhatsApp confirmation could not be delivered.`,
-      );
-      return this.prisma.registration.update({
-        where: { id: registration.id },
-        data: { confirmationStatus: NotificationStatus.FAILED },
-      });
-    }
+    return registration;
   }
 
   listMySubmissions(user: SessionUser) {
@@ -152,7 +131,54 @@ export class RegistrationsService {
     return registration;
   }
 
+  async update(ref: string, body: Record<string, unknown>) {
+    const registration = await this.prisma.registration.findUnique({ where: { ref } });
+    if (!registration) throw new NotFoundException('Registration not found.');
+
+    const details = parseRegistrationDetails(body.registrationData);
+    const name = String(body.name ?? details.fullName ?? '').trim();
+    const mobile = this.normalizeMobile(body.mobile ?? details.mobile);
+    if (!name || name.length > 160) throw new BadRequestException('Candidate name is required.');
+    if (!details.presentAddress?.trim() || !details.permanentAddress?.trim()) {
+      throw new BadRequestException('Present and permanent addresses are required.');
+    }
+    if (!details.addressProofUrl) {
+      throw new BadRequestException('An address proof document is required.');
+    }
+
+    let branchId = registration.branchId;
+    const branchName = String(details.employeeBranch || '').trim();
+    if (branchName) {
+      const branch = await this.prisma.branch.findFirst({ where: { name: branchName, isActive: true } });
+      if (!branch) throw new BadRequestException('Selected branch is not active or does not exist.');
+      branchId = branch.id;
+    }
+
+    try {
+      return await this.prisma.registration.update({
+        where: { ref },
+        data: {
+          name,
+          mobile,
+          designation: String(body.designation ?? details.designation ?? '').trim() || null,
+          details: details as Prisma.InputJsonValue,
+          photoUrl: this.optionalString(details.photoUrl),
+          addressProofUrl: this.optionalString(details.addressProofUrl),
+          addressProofName: this.optionalString(details.addressProofName),
+          bankProofUrl: this.optionalString(details.bankProofUrl),
+          bankProofName: this.optionalString(details.bankProofName),
+          branchId,
+        },
+      });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) throw new BadRequestException('This registration reference already exists.');
+      throw error;
+    }
+  }
+
   async review(ref: string, body: { status?: string; feesPaid?: number }) {
+    const existing = await this.prisma.registration.findUnique({ where: { ref } });
+    if (!existing) throw new NotFoundException('Registration not found.');
     const data: { status?: ApplicationStatus; feesPaid?: number; feesPending?: number; paymentStatus?: PaymentStatus } = {};
     if (body.status !== undefined) {
       const status = String(body.status).toUpperCase();
@@ -170,7 +196,28 @@ export class RegistrationsService {
       data.paymentStatus = this.paymentStatus(body.feesPaid);
     }
     if (!Object.keys(data).length) throw new BadRequestException('Provide a review status or feesPaid amount.');
-    return this.prisma.registration.update({ where: { ref }, data });
+    const registration = await this.prisma.registration.update({ where: { ref }, data });
+    const approved = registration.status === ApplicationStatus.APPROVED;
+    if (!approved || registration.confirmationStatus === NotificationStatus.SENT) return registration;
+
+    try {
+      const messageId = await this.whatsApp.sendRegistrationConfirmation(
+        registration.mobile,
+        registration.name,
+        registration.ref,
+        registration.designation || 'General Staff',
+      );
+      return this.prisma.registration.update({
+        where: { ref },
+        data: { confirmationStatus: NotificationStatus.SENT, confirmationMessageId: messageId },
+      });
+    } catch (error) {
+      this.logger.error(`Registration ${ref} was approved, but its WhatsApp confirmation could not be delivered.`);
+      return this.prisma.registration.update({
+        where: { ref },
+        data: { confirmationStatus: NotificationStatus.FAILED },
+      });
+    }
   }
 
   async remove(ref: string) {
@@ -201,8 +248,24 @@ export class RegistrationsService {
     return paid >= maxRegistrationFee ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
   }
 
-  private generateReference() {
-    return `SNP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  private async generateReference(transaction: Prisma.TransactionClient) {
+    const now = new Date();
+    const dateKey = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('');
+    const prefix = `SNP-${dateKey}-`;
+    await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${dateKey}))`;
+    const existing = await transaction.registration.findMany({
+      where: { ref: { startsWith: prefix } },
+      select: { ref: true },
+    });
+    const lastSequence = existing.reduce((highest, registration) => {
+      const match = registration.ref.match(/^SNP-\d{8}-(\d+)$/);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+    return `${prefix}${String(lastSequence + 1).padStart(4, '0')}`;
   }
 
   private isUniqueViolation(error: unknown) {

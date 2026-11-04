@@ -48,6 +48,12 @@ export class RegistrationsController {
     return this.registrationsService.review(ref, body);
   }
 
+  @Patch(':ref')
+  @UseGuards(AuthGuard, AdminGuard)
+  update(@Param('ref') ref: string, @Body() body: Record<string, unknown>) {
+    return this.registrationsService.update(ref, body);
+  }
+
   @Delete(':ref')
   @UseGuards(AuthGuard, AdminGuard)
   remove(@Param('ref') ref: string) {

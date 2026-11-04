@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const roles = new Set<string>(Object.values(UserRole));
@@ -49,14 +50,19 @@ export class UsersService {
   async create(body: {
     name: string;
     mobile: string;
-    password: string;
+    password?: string;
     role?: string;
     branchId?: number;
   }) {
     const name = this.requiredName(body.name);
     const mobile = this.normalizeMobile(body.mobile);
-    const passwordHash = await this.hashPassword(body.password);
     const role = this.parseRole(body.role || UserRole.EMPLOYEE);
+    if (role === UserRole.ADMIN && !body.password) {
+      throw new BadRequestException('An administrator password is required.');
+    }
+    const passwordHash = body.password
+      ? await this.hashPassword(body.password)
+      : await this.hashPassword(randomBytes(32).toString('hex'));
     await this.assertBranch(body.branchId);
     try {
       return await this.prisma.user.create({
@@ -73,6 +79,15 @@ export class UsersService {
     id: number,
     body: { name?: string; mobile?: string; password?: string; role?: string; branchId?: number | null },
   ) {
+    const existing = await this.prisma.user.findUnique({
+      where: { id },
+      select: { role: true },
+    });
+    if (!existing) throw new NotFoundException('User not found.');
+    const nextRole = body.role === undefined ? existing.role : this.parseRole(body.role);
+    if (nextRole === UserRole.ADMIN && existing.role !== UserRole.ADMIN && !body.password) {
+      throw new BadRequestException('Set an administrator password when changing a user to administrator.');
+    }
     const data: {
       name?: string;
       mobile?: string;
@@ -83,7 +98,7 @@ export class UsersService {
     if (body.name !== undefined) data.name = this.requiredName(body.name);
     if (body.mobile !== undefined) data.mobile = this.normalizeMobile(body.mobile);
     if (body.password !== undefined) data.passwordHash = await this.hashPassword(body.password);
-    if (body.role !== undefined) data.role = this.parseRole(body.role);
+    if (body.role !== undefined) data.role = nextRole;
     if (body.branchId !== undefined) {
       await this.assertBranch(body.branchId || undefined);
       data.branchId = body.branchId || null;

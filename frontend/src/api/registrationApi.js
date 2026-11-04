@@ -16,5 +16,9 @@ export const registrationApi = {
     method: 'PATCH',
     body: changes,
   }),
+  update: (ref, changes) => apiRequest(`/registrations/${encodeURIComponent(ref)}`, {
+    method: 'PATCH',
+    body: changes,
+  }),
   remove: (ref) => apiRequest(`/registrations/${encodeURIComponent(ref)}`, { method: 'DELETE' }),
 };

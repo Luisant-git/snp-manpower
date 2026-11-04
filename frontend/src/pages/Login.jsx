@@ -216,7 +216,7 @@ export default function Login() {
                   className="btn btn-primary btn-block"
                   disabled={digits.length !== 6 || verifyingOtp}
                 >
-                  <i className="bi bi-box-arrow-in-right"></i> {verifyingOtp ? 'Verifying...' : 'Verify &amp; Login'}
+                  <i className="bi bi-box-arrow-in-right"></i> {verifyingOtp ? 'Verifying...' : 'Login'}
                 </button>
                 <button
                   type="button"
