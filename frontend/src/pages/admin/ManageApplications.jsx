@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getApplications,
   updateApplicationPayment,
@@ -33,13 +34,13 @@ function feesOf(a) {
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
 
 export default function ManageApplications() {
+  const navigate = useNavigate();
   const [apps, setApps] = useState(getApplications());
   const [search, setSearch] = useState('');
   const [staffFilter, setStaffFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
   const [feeForm, setFeeForm] = useState({ payment: 'Pending', paid: '0', pending: '0' });
-  const [viewApp, setViewApp] = useState(null); // entry shown in the view modal
 
   /* When no real submissions exist yet, show the sample registry rows (like the original page) */
   const entries = useMemo(() => {
@@ -276,7 +277,10 @@ export default function ManageApplications() {
                     <button
                       className="icon-btn"
                       title="View application"
-                      onClick={() => setViewApp(a)}
+                      onClick={() => navigate(
+                        `/admin/application/${encodeURIComponent(a.ref)}`,
+                        { state: { application: a } }
+                      )}
                     >
                       <i className="bi bi-eye"></i>
                     </button>{' '}
@@ -386,101 +390,6 @@ export default function ManageApplications() {
         </div>
       )}
 
-      {/* ============ VIEW APPLICATION MODAL (eye icon) ============ */}
-      {viewApp && (
-        <div className="modal-overlay" onClick={() => setViewApp(null)}>
-          <div
-            className="modal-card"
-            style={{ maxWidth: 520 }}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div className="modal-head">
-              {viewApp.photo ? (
-                <img className="photo-thumb" src={viewApp.photo} alt="" />
-              ) : (
-                <div className="photo-thumb photo-empty">
-                  <i className="bi bi-person-fill"></i>
-                </div>
-              )}
-              <div>
-                <h4>Application — {viewApp.ref}</h4>
-                <small>Registered on {viewApp.demo ? viewApp.date : fmtDate(viewApp.date)}</small>
-              </div>
-              <button className="modal-close" onClick={() => setViewApp(null)} aria-label="Close">
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
-
-            <div className="modal-body view-details">
-              <div className="detail-row">
-                <span>Candidate Name</span>
-                <strong>{viewApp.name}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Gender / Age</span>
-                <strong>{viewApp.meta || '—'}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Mobile</span>
-                <strong>{viewApp.mobile || '—'}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Applied Role</span>
-                <strong>{viewApp.designation || '—'}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Filled By (Employee)</span>
-                <strong>
-                  {viewApp.submittedBy || viewApp.filledBy || 'Direct / Admin'}
-                  {(viewApp.submittedByMobile || viewApp.filledByMobile) && (
-                    <small> — {viewApp.submittedByMobile || viewApp.filledByMobile}</small>
-                  )}
-                </strong>
-              </div>
-              <div className="detail-row">
-                <span>Driving Licence No.</span>
-                <strong>{viewApp.dl || '—'}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Vehicle Number</span>
-                <strong>{viewApp.vehicleNo || '—'}</strong>
-              </div>
-              <div className="detail-row">
-                <span>Payment Status</span>
-                <strong>{viewApp.payment || 'Pending'}</strong>
-              </div>
-              {(() => {
-                const f = feesOf(viewApp);
-                return (
-                  <div className="detail-row">
-                    <span>Fees</span>
-                    <strong>
-                      {f.paid} paid / {f.pending} pending
-                    </strong>
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="modal-foot">
-              <button className="btn btn-outline" onClick={() => setViewApp(null)}>
-                Close
-              </button>
-              <button
-                className="btn add-user-btn modal-submit"
-                onClick={() => {
-                  setViewApp(null);
-                  openFees(viewApp);
-                }}
-              >
-                <i className="bi bi-currency-rupee"></i> Update Fees
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

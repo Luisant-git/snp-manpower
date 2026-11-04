@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { LANGUAGES, T } from '../data/translations.js';
-import { getSession, addApplication, listActiveBranches } from '../data/mockDb.js';
+import { getSession, getApplications, addApplication, listActiveBranches } from '../data/mockDb.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
 
@@ -289,6 +289,7 @@ const emptyForm = {
   employeeMobile: '',
   employeeName: '',
   employeeRole: '',
+  registrationFeePaid: '1300',
   bankName: 'STATE BANK OF INDIA',
   accountNumber: '',
   ifscCode: 'SBIN0001911',
@@ -305,13 +306,39 @@ const emptyForm = {
   confirmed: true,
 };
 
-export default function Register() {
+export default function Register({ readOnly = false }) {
+  const { ref: applicationRef } = useParams();
+  const location = useLocation();
   const [branches] = useState(listActiveBranches);
+  const [viewApplication] = useState(() => {
+    if (!readOnly) return null;
+    return getApplications().find((application) => application.ref === applicationRef)
+      || location.state?.application
+      || null;
+  });
   const [form, setForm] = useState(() => ({
     ...emptyForm,
     employeeBranch: branches[0] || emptyForm.employeeBranch,
+    ...(viewApplication ? {
+      fullName: viewApplication.name || '',
+      mobile: (viewApplication.mobile || '').replace(/^\+91\s*/, ''),
+      designation: viewApplication.designation || '',
+      employeeName: viewApplication.submittedBy || viewApplication.filledBy || '',
+      employeeMobile: (viewApplication.submittedByMobile || viewApplication.filledByMobile || '')
+        .replace(/^\+91\s*/, ''),
+      employeeBranch: viewApplication.branch || branches[0] || emptyForm.employeeBranch,
+      dlNumber: viewApplication.dl === '—' ? '' : viewApplication.dl || '',
+      vehicleRegNo: viewApplication.vehicleNo === '—' ? '' : viewApplication.vehicleNo || '',
+      bankProofUrl: viewApplication.bankProofUrl || null,
+      bankProofName: viewApplication.bankProofName || '',
+      registrationFeePaid: String(
+        Number(String(viewApplication.feesPaid || '1300').replace(/[^\d.]/g, '')) || 0
+      ),
+      ...(viewApplication.registrationData || {}),
+    } : {}),
   }));
   const [refCode, setRefCode] = useState(null);
+  const [toast, setToast] = useState(null);
   const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'kn'); // Default to Kannada as in physical sheet
   const session = getSession();
   const fileInputRef = useRef(null);
@@ -326,6 +353,16 @@ export default function Register() {
   const [candidateInputOtp, setCandidateInputOtp] = useState('');
   const [employeeInputOtp, setEmployeeInputOtp] = useState('');
   const [otpError, setOtpError] = useState('');
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = (type, message) => {
+    setToast({ type, message, id: Date.now() });
+  };
 
   const handleBankProofUpload = (e) => {
     const file = e.target.files?.[0];
@@ -427,28 +464,50 @@ export default function Register() {
   const submit = (e) => {
     e.preventDefault();
 
+    const formElement = e.currentTarget;
+    if (!formElement.checkValidity()) {
+      const invalidField = formElement.querySelector(':invalid');
+      const fieldName = invalidField?.name
+        ? invalidField.name.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())
+        : 'a required field';
+      showToast('error', `Please complete or correct: ${fieldName}.`);
+      invalidField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      invalidField?.focus({ preventScroll: true });
+      return;
+    }
+
     // Check candidate mobile
-    if (!form.mobile || form.mobile.length !== 10) {
-      alert('Please enter a valid 10-digit Job Seeker Mobile Number on Page 1.');
-      window.scrollTo({ top: 350, behavior: 'smooth' });
+    if (!/^\d{10}$/.test(form.mobile)) {
+      showToast('error', 'Please enter a valid 10-digit job seeker mobile number.');
+      document.querySelector('[name="mobile"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
     // Check employee mobile
-    if (!form.employeeMobile || form.employeeMobile.length !== 10) {
-      alert('Please choose Branch and enter a valid 10-digit Employee Mobile Number on Page 2.');
+    if (!/^\d{10}$/.test(form.employeeMobile)) {
+      showToast('error', 'Choose a branch and enter a valid 10-digit employee mobile number.');
       const el = document.querySelector('.branch-verification-card');
       if (el) el.scrollIntoView({ behavior: 'smooth' });
       return;
     }
 
-    // Generate random 4-digit OTPs
-    const cOtp = String(Math.floor(1000 + Math.random() * 9000));
-    const eOtp = String(Math.floor(1000 + Math.random() * 9000));
-    setCandidateSentOtp(cOtp);
-    setEmployeeSentOtp(eOtp);
-    setCandidateInputOtp('');
-    setEmployeeInputOtp('');
+    if (!form.addressProofUrl) {
+      showToast('error', 'Upload an address proof document before submitting.');
+      document.querySelector('.address-proof-upload-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    const paidAmount = Number(form.registrationFeePaid);
+    if (!Number.isInteger(paidAmount) || paidAmount < 0 || paidAmount > 2400) {
+      showToast('error', 'Enter a whole-rupee paid amount between ₹0 and ₹2,400.');
+      document.querySelector('[name="registrationFeePaid"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    setCandidateSentOtp('1234');
+    setEmployeeSentOtp('1234');
+    setCandidateInputOtp('1234');
+    setEmployeeInputOtp('1234');
     setOtpError('');
     setShowOtpModal(true);
   };
@@ -464,6 +523,7 @@ export default function Register() {
     }
 
     setShowOtpModal(false);
+    const paidAmount = Number(form.registrationFeePaid);
 
     const d = new Date();
     const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(
@@ -485,18 +545,21 @@ export default function Register() {
       designation: (form.designation || 'General Staff').toUpperCase(),
       dl: form.hasLicense === 'NO' ? 'NO LICENCE' : (form.dlNumber || '—'),
       vehicleNo: form.vehicleRegNo || '—',
-      payment: 'Partial',
-      feesPaid: '₹1,300',
-      feesPending: '₹1,100',
+      payment: paidAmount === 0 ? 'Pending' : paidAmount >= 2400 ? 'Paid' : 'Partial',
+      feesPaid: `₹${paidAmount.toLocaleString('en-IN')}`,
+      feesPending: `₹${(2400 - paidAmount).toLocaleString('en-IN')}`,
       status: 'Under Review',
       date: new Date().toISOString(),
       candidateOtpVerified: true,
       employeeOtpVerified: true,
+      registrationData: { ...form },
+      photo: form.photoUrl,
       bankProofUrl: form.bankProofUrl,
       bankProofName: form.bankProofName,
     });
 
     setRefCode(code);
+    showToast('success', 'Registration submitted successfully.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -525,6 +588,10 @@ export default function Register() {
       </td>
     );
   };
+
+  if (readOnly && !viewApplication) {
+    return <Navigate to="/admin/applications" replace />;
+  }
 
   /* ---------- Login Guard ---------- */
   if (!session) {
@@ -556,6 +623,15 @@ export default function Register() {
   if (refCode) {
     return (
       <div className="container" style={{ padding: '40px 15px' }}>
+        {toast && (
+          <div className={`register-toast ${toast.type}`} role={toast.type === 'error' ? 'alert' : 'status'} aria-live="polite">
+            <i className={`bi ${toast.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'}`}></i>
+            <span>{toast.message}</span>
+            <button type="button" onClick={() => setToast(null)} aria-label="Dismiss message">
+              <i className="bi bi-x-lg"></i>
+            </button>
+          </div>
+        )}
         <div className="submit-success">
           <div className="auth-success">
             <div className="big">
@@ -589,8 +665,33 @@ export default function Register() {
   }
 
   return (
-    <div className="register-wrap">
-      {session && (
+    <div className={`register-wrap${readOnly ? ' registration-view-mode' : ''}`}>
+      {toast && (
+        <div className={`register-toast ${toast.type}`} role={toast.type === 'error' ? 'alert' : 'status'} aria-live="polite">
+          <i className={`bi ${toast.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'}`}></i>
+          <span>{toast.message}</span>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss message">
+            <i className="bi bi-x-lg"></i>
+          </button>
+        </div>
+      )}
+      {readOnly ? (
+        <div className="registration-record-toolbar no-print">
+          <div>
+            <span className="section-eyebrow"><i className="bi bi-file-earmark-person"></i> Application Record</span>
+            <h2>{viewApplication.name || 'Candidate Application'}</h2>
+            <small>Reference: {viewApplication.ref}</small>
+          </div>
+          <div className="registration-record-actions">
+            <Link to="/admin/applications" className="btn btn-outline">
+              <i className="bi bi-arrow-left"></i> Back to Applications
+            </Link>
+            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+              <i className="bi bi-printer"></i> Print
+            </button>
+          </div>
+        </div>
+      ) : session && (
         <div className="session-ribbon no-print">
           <i className="bi bi-person-badge-fill"></i> Filling as: <strong>{session.name}</strong>
           {session.role === 'admin' ? ' (System Administrator)' : ' (Employee)'}
@@ -601,7 +702,7 @@ export default function Register() {
           LANGUAGE SELECTOR ON TOP (REQUESTED BY USER)
           Changes all form labels dynamically to chosen language
           ============================================================ */}
-      <div className="language-bar-container no-print">
+      {!readOnly && <div className="language-bar-container no-print">
         <div className="language-bar-inner">
           <div className="lang-icon-title">
             <i className="bi bi-translate"></i>
@@ -626,9 +727,10 @@ export default function Register() {
             {ts('langNote')}
           </span>
         </div>
-      </div>
+      </div>}
 
-      <form onSubmit={submit}>
+      <form noValidate onSubmit={readOnly ? (event) => event.preventDefault() : submit}>
+        <fieldset className="registration-view-fieldset" disabled={readOnly}>
         <div className="physical-form-wrapper">
           {/* ============================================================
               PAGE 1 / SHEET 1: Job Interview Application Form
@@ -1806,9 +1908,12 @@ export default function Register() {
 
             {/* Bottom Yellow Fee Strip (Page 1) */}
             <div className="fee-yellow-bar">
-              <div>
+              <div className="registration-fee-summary">
                 <i className="bi bi-receipt-cutoff me-1"></i>
-                <span>{ts('registrationFeeNote')}</span>
+                <span>
+                  {ts('registrationFeePaidLabel')}: ₹{Number(form.registrationFeePaid || 0).toLocaleString('en-IN')}
+                  {' | '}{ts('registrationFeePendingLabel')}: ₹{Math.max(0, 2400 - Number(form.registrationFeePaid || 0)).toLocaleString('en-IN')}
+                </span>
               </div>
               <div style={{ color: '#78350f' }}>{ts('page1Of2')}</div>
             </div>
@@ -2101,6 +2206,34 @@ export default function Register() {
                   </td>
                 </tr>
 
+                {/* Registration fee payment amount */}
+                <tr>
+                  <FormLabelCell
+                    k="registrationFeePaidLabel"
+                    enSecondary="Registration Fee Paid (₹)"
+                    required
+                  />
+                  <td className="field-input-cell">
+                    <div className="registration-fee-field">
+                      <span className="registration-fee-currency">₹</span>
+                      <input
+                        className="registration-fee-input"
+                        type="number"
+                        name="registrationFeePaid"
+                        min="0"
+                        max="2400"
+                        step="1"
+                        inputMode="numeric"
+                        value={form.registrationFeePaid}
+                        onChange={set}
+                        aria-label="Registration fee paid in rupees"
+                        required
+                      />
+                      <small>Enter the amount received (maximum ₹2,400).</small>
+                    </div>
+                  </td>
+                </tr>
+
                 {/* 4. Family Background Information (4 rows) */}
                 <tr>
                   <FormLabelCell k="familyBackground" enSecondary="Family Background Information & Name & Mobile Number" />
@@ -2344,7 +2477,7 @@ export default function Register() {
           {/* ============================================================
               BOTTOM DISPATCH ACTIONS (OUTSIDE PRINT)
               ============================================================ */}
-          <div className="text-center mt-4 mb-5 no-print">
+          {!readOnly && <div className="text-center mt-4 mb-5 no-print">
             <div className="form-check d-inline-block text-start mb-3">
               <input
                 className="form-check-input"
@@ -2371,9 +2504,86 @@ export default function Register() {
             >
               <i className="bi bi-printer me-2"></i> {ts('printBtn')}
             </button>
+          </div>}
+        </div>
+        </fieldset>
+      </form>
+
+      {showOtpModal && (
+        <div className="modal-overlay" onClick={() => setShowOtpModal(false)}>
+          <div
+            className="modal-card registration-otp-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="registrationOtpTitle"
+          >
+            <div className="modal-head">
+              <div className="add-user-icon">
+                <i className="bi bi-shield-check"></i>
+              </div>
+              <div>
+                <h4 id="registrationOtpTitle">Confirm Registration</h4>
+                <small>Enter the candidate and employee OTPs to submit this application.</small>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setShowOtpModal(false)}
+                aria-label="Close verification"
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {otpError && (
+                <div className="track-result track-error" role="alert" style={{ marginBottom: 14 }}>
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <div>{otpError}</div>
+                </div>
+              )}
+              <p className="registration-otp-hint">
+                Both verification codes are preset to <strong>1234</strong>.
+              </p>
+              <div className="field-block full">
+                <label className="input-label" htmlFor="candidateOtp">Candidate OTP</label>
+                <input
+                  id="candidateOtp"
+                  className="auth-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  autoComplete="one-time-code"
+                  value={candidateInputOtp}
+                  onChange={(event) => setCandidateInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                />
+              </div>
+              <div className="field-block full">
+                <label className="input-label" htmlFor="employeeOtp">Employee OTP</label>
+                <input
+                  id="employeeOtp"
+                  className="auth-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={employeeInputOtp}
+                  onChange={(event) => setEmployeeInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                />
+              </div>
+            </div>
+
+            <div className="modal-foot">
+              <button type="button" className="btn btn-outline" onClick={() => setShowOtpModal(false)}>
+                Cancel
+              </button>
+              <button type="button" className="btn add-user-btn modal-submit" onClick={handleVerifyBothOtps}>
+                <i className="bi bi-check-lg"></i> Verify &amp; Submit
+              </button>
+            </div>
           </div>
         </div>
-      </form>
+      )}
     </div>
   );
 }

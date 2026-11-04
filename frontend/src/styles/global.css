@@ -264,6 +264,76 @@ textarea {
   gap: 8px;
 }
 
+.nav-admin-menu {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.nav-admin-trigger {
+  gap: 8px;
+}
+
+.nav-admin-dropdown {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: 0;
+  z-index: 80;
+  display: none;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+}
+
+.nav-admin-menu.open .nav-admin-dropdown {
+  display: grid;
+}
+
+.nav-admin-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 8px;
+  color: var(--slate);
+  font-size: 0.84rem;
+  font-weight: 650;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-admin-dropdown-link:hover,
+.nav-admin-dropdown-link.active {
+  background: #eff6ff;
+  color: var(--navy);
+}
+
+.nav-admin-dropdown-link > i {
+  width: 18px;
+  color: #2563eb;
+  text-align: center;
+}
+
+.nav-mobile-admin-links {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.nav-mobile-admin-links > span {
+  padding: 4px 14px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .nav-toggle {
   display: none;
   background: none;
@@ -2298,6 +2368,139 @@ textarea {
   margin: 0 auto;
 }
 
+.register-toast {
+  position: fixed;
+  top: 88px;
+  right: 22px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 14px 14px 14px 16px;
+  border: 1px solid;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  font-size: 0.88rem;
+  font-weight: 700;
+  animation: register-toast-in 0.2s ease-out;
+}
+
+.register-toast > span {
+  flex: 1;
+}
+
+.register-toast > button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+
+.register-toast > button:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.register-toast.error {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.register-toast.success {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.registration-otp-modal {
+  max-width: 460px;
+}
+
+.registration-otp-hint {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.84rem;
+}
+
+@keyframes register-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.registration-record-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 auto 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.registration-record-toolbar h2 {
+  margin: 3px 0;
+  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.registration-record-toolbar small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.registration-record-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.registration-view-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.registration-view-mode .registration-view-fieldset {
+  opacity: 1;
+  pointer-events: none;
+}
+
+.registration-view-mode .registration-view-fieldset :disabled {
+  opacity: 1;
+  color: inherit;
+  cursor: default;
+}
+
+.registration-view-mode .registration-view-fieldset input:disabled,
+.registration-view-mode .registration-view-fieldset select:disabled,
+.registration-view-mode .registration-view-fieldset textarea:disabled {
+  -webkit-text-fill-color: currentColor;
+}
+
+.registration-view-mode .no-print {
+  display: none !important;
+}
+
 .physical-sheet {
   background: #ffffff;
   border: 2px solid #881337;
@@ -2879,21 +3082,21 @@ textarea {
 }
 
 .section-title {
-  background: #1e3a8a;
-  color: #ffffff;
+  background: transparent;
+  color: #1e3a8a;
   font-size: 0.85rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 4px 10px;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: 0;
   display: inline-block;
   margin-bottom: 8px;
 }
 
 .section-title.kannada {
   color: #881337;
-  background: #fdf2f8;
+  background: transparent;
 }
 
 /* Declaration & Thanking */
@@ -3079,6 +3282,61 @@ textarea {
   color: #854d0e;
   margin-top: 10px;
   margin-bottom: 6px;
+}
+
+.registration-fee-field {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 180px);
+  align-items: center;
+  gap: 7px 9px;
+  padding: 9px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.registration-fee-currency {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 36px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.registration-fee-input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-size: 0.9rem !important;
+  font-weight: 800 !important;
+  text-transform: none !important;
+}
+
+.registration-fee-input:focus {
+  border-color: #3b82f6 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.registration-fee-field > small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.registration-fee-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .field-label-primary {
@@ -3381,6 +3639,18 @@ textarea {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .register-toast {
+    top: 76px;
+    right: 12px;
+  }
+  .registration-record-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .registration-record-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
   .physical-sheet {
     padding: 16px 20px;
   }

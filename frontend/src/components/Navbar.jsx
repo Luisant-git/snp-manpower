@@ -6,11 +6,13 @@ import { getSession, clearSession } from '../data/mockDb.js';
 export default function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const session = getSession();
 
   const doLogout = () => {
     clearSession();
     setOpen(false);
+    setAdminMenuOpen(false);
     navigate('/');
   };
 
@@ -54,9 +56,48 @@ export default function Navbar() {
                   <i className={`bi ${session.role === 'admin' ? 'bi-shield-lock-fill' : 'bi-person-badge-fill'}`}></i>
                   {session.name}
                 </span>
-                <Link to={panelLink.to} className="btn btn-sm btn-outline">
-                  {panelLink.label}
-                </Link>
+                {session.role === 'admin' ? (
+                  <div
+                    className={`nav-admin-menu${adminMenuOpen ? ' open' : ''}`}
+                    onMouseEnter={() => setAdminMenuOpen(true)}
+                    onMouseLeave={() => setAdminMenuOpen(false)}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline nav-admin-trigger"
+                      aria-haspopup="true"
+                      aria-expanded={adminMenuOpen}
+                      onClick={() => setAdminMenuOpen((isOpen) => !isOpen)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') setAdminMenuOpen(false);
+                      }}
+                    >
+                      {panelLink.label} <i className="bi bi-chevron-down"></i>
+                    </button>
+                    <div className="nav-admin-dropdown">
+                      {[
+                        { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
+                        { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
+                        { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
+                        { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
+                      ].map((item) => (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          end={item.end}
+                          className={({ isActive }) => `nav-admin-dropdown-link${isActive ? ' active' : ''}`}
+                          onClick={() => setAdminMenuOpen(false)}
+                        >
+                          <i className={`bi ${item.icon}`}></i>{item.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link to={panelLink.to} className="btn btn-sm btn-outline">
+                    {panelLink.label}
+                  </Link>
+                )}
                 <button className="btn btn-sm btn-dark" onClick={doLogout}>
                   <i className="bi bi-box-arrow-right"></i> Logout
                 </button>
@@ -95,6 +136,27 @@ export default function Navbar() {
                 <i className={`bi ${link.icon}`}></i> {link.label}
               </NavLink>
             ))}
+            {session?.role === 'admin' && (
+              <div className="nav-mobile-admin-links">
+                <span>Admin Panel</span>
+                {[
+                  { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
+                  { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
+                  { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
+                  { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
+                ].map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    className="nav-link"
+                    onClick={() => setOpen(false)}
+                  >
+                    <i className={`bi ${item.icon}`}></i> {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
             <div className="actions">
               {session ? (
                 <>
