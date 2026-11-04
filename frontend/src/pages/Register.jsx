@@ -816,6 +816,18 @@ export default function Register({ readOnly = false, editable = false }) {
           </button>
         </div>
       )}
+      {!recordMode && (
+        <header className="registration-welcome-bar no-print">
+          <span className="registration-welcome-mark" aria-hidden="true">
+            <i className="bi bi-file-earmark-person"></i>
+          </span>
+          <div className="registration-welcome-copy">
+            <span className="registration-welcome-eyebrow">Candidate Registration</span>
+            <h2 className="registration-welcome-title">Job Interview Application Form</h2>
+            <p>Complete the form to submit a manpower application.</p>
+          </div>
+        </header>
+      )}
       {recordMode ? (
         <div className="registration-record-toolbar no-print">
           <div>

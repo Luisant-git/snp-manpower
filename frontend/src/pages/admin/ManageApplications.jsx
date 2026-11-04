@@ -248,25 +248,42 @@ export default function ManageApplications({ mySubmissions = false }) {
   return (
     <div className={`admin-panel ${mySubmissions ? 'my-submissions-neat' : 'manage-apps-neat'}`}>
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
-      <header className="neat-registry-head">
-        <div className="neat-head-icon" aria-hidden="true">
-          <i className={`bi ${mySubmissions ? 'bi-file-earmark-person' : 'bi-clipboard-data'}`}></i>
-        </div>
-        <div className="neat-head-copy">
-          <div className="section-eyebrow">{mySubmissions ? 'My Submissions' : 'Manage Applications'}</div>
-          <h1 className="section-title">
-            {mySubmissions ? 'My Submitted Forms' : 'Manpower Application Registry'}
-          </h1>
-          <p>
-            {mySubmissions
-              ? 'Review and track the registration forms you have submitted.'
-              : 'Review, manage, and track submitted manpower applications.'}
-          </p>
-        </div>
-        <div className="neat-head-chip">
-          <i className="bi bi-files"></i>
-          {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
-        </div>
+      <header className={`neat-registry-head${mySubmissions ? ' my-submissions-welcome' : ''}`}>
+        {mySubmissions ? (
+          <>
+            <span className="admin-welcome-mark" aria-hidden="true">
+              <i className="bi bi-file-earmark-person"></i>
+            </span>
+            <div className="admin-welcome-copy my-submissions-welcome-copy">
+              <span className="section-eyebrow">My Submissions</span>
+              <h1 className="section-title">Welcome, {session.name}</h1>
+              <p>
+                <strong>My Submitted Forms</strong>
+                <span aria-hidden="true"> — </span>
+                Review and track the registration forms you have submitted.
+              </p>
+            </div>
+            <div className="neat-head-chip my-submissions-count">
+              <i className="bi bi-files" aria-hidden="true"></i>
+              {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="neat-head-icon" aria-hidden="true">
+              <i className="bi bi-clipboard-data"></i>
+            </div>
+            <div className="neat-head-copy">
+              <div className="section-eyebrow">Manage Applications</div>
+              <h1 className="section-title">Manpower Application Registry</h1>
+              <p>Review, manage, and track submitted manpower applications.</p>
+            </div>
+            <div className="neat-head-chip">
+              <i className="bi bi-files"></i>
+              {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
+            </div>
+          </>
+        )}
       </header>
 
       {/* ---------- Filters ---------- */}

@@ -3811,6 +3811,60 @@ textarea {
   padding: 20px;
 }
 
+.registration-welcome-bar {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  max-width: 920px;
+  margin: 0 auto 14px;
+  padding: 14px 18px;
+  border: 1px solid #dce4ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.registration-welcome-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf3fb;
+  color: #315b91;
+  font-size: 1rem;
+}
+
+.registration-welcome-copy {
+  min-width: 0;
+}
+
+.registration-welcome-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: #65758b;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+
+.registration-welcome-title {
+  margin: 0;
+  color: #172b4d;
+  font-size: clamp(1.18rem, 2.2vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.registration-welcome-copy p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .session-ribbon {
   background: #f1f5f9;
   border-left: 4px solid var(--navy);
@@ -3963,6 +4017,19 @@ textarea {
   }
   .register-wrap {
     padding: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .registration-welcome-bar {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .registration-welcome-mark {
+    width: 36px;
+    height: 36px;
   }
 }
 
@@ -4852,5 +4919,97 @@ textarea {
   :is(.manage-apps-neat, .my-submissions-neat) .stat-card,
   :is(.manage-apps-neat, .my-submissions-neat) .registry-table tbody tr {
     transition: none;
+  }
+}
+
+.my-submissions-neat .neat-registry-head.my-submissions-welcome {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px 18px;
+  border: 1px solid #dce4ee;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.my-submissions-neat .my-submissions-welcome::before {
+  content: none;
+}
+
+.my-submissions-neat .my-submissions-welcome .admin-welcome-mark {
+  display: grid;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf3fb;
+  color: #315b91;
+  font-size: 1rem;
+}
+
+.my-submissions-neat .my-submissions-welcome-copy {
+  min-width: 0;
+}
+
+.my-submissions-neat .my-submissions-welcome-copy .section-eyebrow {
+  display: block;
+  margin-bottom: 3px;
+  color: #65758b;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+
+.my-submissions-neat .my-submissions-welcome-copy .section-title {
+  margin: 0;
+  color: #172b4d;
+  font-size: clamp(1.18rem, 2.2vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.my-submissions-neat .my-submissions-welcome-copy p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.my-submissions-neat .my-submissions-welcome-copy p strong {
+  color: #475569;
+  font-weight: 600;
+}
+
+.my-submissions-neat .my-submissions-count {
+  justify-self: end;
+  margin-left: 0;
+  padding: 7px 11px;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 640px) {
+  .my-submissions-neat .neat-registry-head.my-submissions-welcome {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px 14px;
+  }
+
+  .my-submissions-neat .my-submissions-welcome .admin-welcome-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .my-submissions-neat .my-submissions-count {
+    grid-column: 2;
+    justify-self: start;
   }
 }
