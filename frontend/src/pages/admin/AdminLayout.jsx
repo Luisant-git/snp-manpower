@@ -56,16 +56,6 @@ export default function AdminLayout() {
     return null;
   }
 
-  const doLogout = async () => {
-    try {
-      await authApi.logout();
-    } catch (error) {
-      console.error('Logout request failed:', error);
-    }
-    clearSession();
-    navigate('/');
-  };
-
   return (
     <div className={`container admin-shell${pathname === '/admin/applications' ? ' admin-applications-wide' : ''}`}>
       {/* ---------- Header ---------- */}
@@ -81,9 +71,6 @@ export default function AdminLayout() {
             </h2>
           </div>
         </div>
-        <button className="btn logout-btn" onClick={doLogout}>
-          <i className="bi bi-box-arrow-right"></i> Logout
-        </button>
       </div>
 
       {/* ---------- Sub navigation ---------- */}
