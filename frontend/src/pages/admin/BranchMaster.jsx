@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
-import {
-  addBranch,
-  listBranches,
-  setBranchActive,
-  updateBranch,
-} from '../../data/mockDb.js';
+import { branchApi } from '../../api/branchApi.js';
 
 export default function BranchMaster() {
-  const [branches, setBranches] = useState(listBranches());
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null);
   const [branchName, setBranchName] = useState('');
   const [formError, setFormError] = useState('');
@@ -21,7 +19,20 @@ export default function BranchMaster() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const refresh = () => setBranches(listBranches());
+  const refresh = async () => {
+    setLoadError('');
+    try {
+      setBranches(await branchApi.listAll());
+    } catch (error) {
+      setLoadError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
   const openAdd = () => {
     setBranchName('');
     setFormError('');
@@ -34,34 +45,41 @@ export default function BranchMaster() {
     setMessage('');
     setModal({ mode: 'edit', branch });
   };
-  const save = () => {
+  const save = async () => {
     const name = branchName.trim();
     if (!name) {
       setFormError('Enter a branch name.');
       return;
     }
 
+    setSaving(true);
     try {
       if (modal.mode === 'add') {
-        addBranch(name);
+        await branchApi.create({ name });
         setMessage(`Branch "${name}" added.`);
       } else {
-        updateBranch(modal.branch.id, name);
+        await branchApi.update(modal.branch.id, { name });
         setMessage(`Branch "${name}" updated.`);
       }
-      refresh();
+      await refresh();
       setModal(null);
     } catch (error) {
       setFormError(error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const toggleBranch = (branch) => {
-    setBranchActive(branch.id, !branch.active);
-    refresh();
-    setMessage(`Branch "${branch.name}" ${branch.active ? 'deactivated' : 'activated'}.`);
+  const toggleBranch = async (branch) => {
+    try {
+      await branchApi.update(branch.id, { isActive: !branch.isActive });
+      await refresh();
+      setMessage(`Branch "${branch.name}" ${branch.isActive ? 'deactivated' : 'activated'}.`);
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
-  const activeCount = branches.filter((branch) => branch.active).length;
+  const activeCount = branches.filter((branch) => branch.isActive).length;
   const isAdd = modal?.mode === 'add';
 
   return (
@@ -72,6 +90,7 @@ export default function BranchMaster() {
           <span>{message}</span>
         </div>
       )}
+      {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
 
       <div className="users-toolbar">
         <div>
@@ -101,8 +120,8 @@ export default function BranchMaster() {
                 <td><span className="sno-chip">#{index + 1}</span></td>
                 <td><strong>{branch.name}</strong></td>
                 <td>
-                  <span className={`badge-role ${branch.active ? 'active' : 'inactive'}`}>
-                    {branch.active ? '● Active' : '○ Inactive'}
+                  <span className={`badge-role ${branch.isActive ? 'active' : 'inactive'}`}>
+                    {branch.isActive ? '● Active' : '○ Inactive'}
                   </span>
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -115,15 +134,17 @@ export default function BranchMaster() {
                     <i className="bi bi-pencil"></i>
                   </button>{' '}
                   <button
-                    className={`branch-status-button${branch.active ? ' deactivate' : ' activate'}`}
+                    className={`branch-status-button${branch.isActive ? ' deactivate' : ' activate'}`}
                     onClick={() => toggleBranch(branch)}
                   >
-                    {branch.active ? 'Deactivate' : 'Activate'}
+                    {branch.isActive ? 'Deactivate' : 'Activate'}
                   </button>
                 </td>
               </tr>
             ))}
-            {branches.length === 0 && (
+            {loading ? (
+              <tr><td colSpan="4" className="branch-master-empty">Loading branches…</td></tr>
+            ) : branches.length === 0 && (
               <tr>
                 <td colSpan="4" className="branch-master-empty">
                   No branches yet. Add a branch to make it available in registration.
@@ -176,9 +197,9 @@ export default function BranchMaster() {
 
             <div className="modal-foot">
               <button className="btn btn-outline" onClick={() => setModal(null)}>Cancel</button>
-              <button className="btn add-user-btn modal-submit" onClick={save}>
+              <button className="btn add-user-btn modal-submit" onClick={save} disabled={saving}>
                 <i className={`bi ${isAdd ? 'bi-plus-lg' : 'bi-check-lg'}`}></i>
-                {isAdd ? 'Add Branch' : 'Save Changes'}
+                {saving ? 'Saving...' : isAdd ? 'Add Branch' : 'Save Changes'}
               </button>
             </div>
           </div>

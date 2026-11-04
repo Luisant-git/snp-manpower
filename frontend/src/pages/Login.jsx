@@ -1,13 +1,11 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { verifyLogin, setSession, listStaff } from '../data/mockDb.js';
+import { authApi } from '../api/authApi.js';
+import { whatsappApi } from '../api/whatsappApi.js';
+import { setSession } from '../data/session.js';
 
 export default function Login() {
   const navigate = useNavigate();
-
-  /* Always show & prefill the REAL admin credential from the DB */
-  const adminUser =
-    listStaff().find((u) => u.role === 'admin') || { mobile: '9876543210', password: 'Admin@SNP2026' };
 
   /* Top tabs — mirrors the original site: WhatsApp OTP | Admin Login */
   const [tab, setTab] = useState('whatsapp');
@@ -16,24 +14,33 @@ export default function Login() {
   const [stage, setStage] = useState('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [simulated, setSimulated] = useState('');
-  const [otpError, setOtpError] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const otpRefs = useRef([]);
 
   /* Admin / staff password login */
-  const [username, setUsername] = useState(adminUser.mobile);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
 
   const digits = otp.join('');
 
-  const sendOtp = (e) => {
+  const sendOtp = async (e) => {
     e.preventDefault();
     if (phone.length !== 10) return;
-    // Demo mode: fixed 1234 OTP (like the original site's evaluation mode).
-    setSimulated('1234');
-    setOtpError(false);
-    setStage('otp');
+    setSendingOtp(true);
+    setOtpError('');
+    try {
+      await whatsappApi.requestOtp(phone, 'LOGIN');
+      setOtp(['', '', '', '', '', '']);
+      setStage('otp');
+    } catch (error) {
+      setOtpError(error.message);
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   const changeOtp = (i, val) => {
@@ -48,37 +55,40 @@ export default function Login() {
     if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
   };
 
-  const verifyOtp = (e) => {
+  const verifyOtp = async (e) => {
     e.preventDefault();
     if (digits.length !== 6) return;
-    if (digits !== simulated) {
-      setOtpError('Incorrect OTP. Please check the code shown in the simulation box.');
-      return;
-    }
     setOtpError('');
-    // Employee registered in the panel → their session; other mobiles → applicant session
-    const found = listStaff().find((u) => u.active && u.mobile === phone);
-    setSession(
-      found
-        ? { id: found.id, name: found.name, mobile: found.mobile, role: found.role }
-        : { id: `g${phone}`, name: `Applicant ${phone}`, mobile: phone, role: 'applicant' }
-    );
-    setStage('done');
+    setVerifyingOtp(true);
+    try {
+      const user = await authApi.loginWithOtp(phone, digits);
+      setSession(user);
+      setStage('done');
+    } catch (error) {
+      setOtpError(error.message);
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   /* Admin — ONLY System Administrator role may use mobile + password */
-  const adminLogin = (e) => {
+  const adminLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
-    const user = verifyLogin(username, password, 'admin');
-    if (!user) {
-      setLoginError(
-        'Invalid credentials. Password login is restricted to System Administrators — Employees & applicants must log in via WhatsApp OTP.'
-      );
-      return;
+    setLoggingIn(true);
+    try {
+      const user = await authApi.login({ mobile: username, password });
+      if (String(user.role).toLowerCase() !== 'admin') {
+        await authApi.logout();
+        throw new Error('This login is restricted to system administrators. Use WhatsApp OTP for employee and applicant access.');
+      }
+      setSession(user);
+      navigate('/admin');
+    } catch (error) {
+      setLoginError(error.message);
+    } finally {
+      setLoggingIn(false);
     }
-    setSession(user);
-    navigate('/admin');
   };
 
   return (
@@ -148,7 +158,10 @@ export default function Login() {
                     autoFocus
                     placeholder="e.g. 9840123456"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                      setOtpError('');
+                    }}
                   />
                 </div>
                 <small style={{ color: 'var(--muted)', fontSize: '.78rem', display: 'block', marginTop: 6 }}>
@@ -158,10 +171,13 @@ export default function Login() {
                   type="submit"
                   className="btn btn-teal btn-block"
                   style={{ marginTop: 18 }}
-                  disabled={phone.length !== 10}
+                  disabled={phone.length !== 10 || sendingOtp}
                 >
-                  <i className="bi bi-send-fill"></i> Send WhatsApp OTP
+                  <i className="bi bi-send-fill"></i> {sendingOtp ? 'Sending...' : 'Send WhatsApp OTP'}
                 </button>
+                {otpError && <div className="alert-error" role="alert" style={{ marginTop: 12 }}>
+                  <i className="bi bi-exclamation-triangle-fill"></i> {otpError}
+                </div>}
               </form>
             </>
           )}
@@ -179,11 +195,6 @@ export default function Login() {
                   <i className="bi bi-exclamation-triangle-fill"></i> {otpError}
                 </div>
               )}
-
-              <div className="otp-hint">
-                <i className="bi bi-chat-left-dots-fill"></i> Simulation mode — your OTP is{' '}
-                <strong style={{ letterSpacing: 2 }}>{simulated}</strong>
-              </div>
 
               <form onSubmit={verifyOtp}>
                 <div className="otp-boxes">
@@ -203,9 +214,9 @@ export default function Login() {
                 <button
                   type="submit"
                   className="btn btn-primary btn-block"
-                  disabled={digits.length !== 6}
+                  disabled={digits.length !== 6 || verifyingOtp}
                 >
-                  <i className="bi bi-box-arrow-in-right"></i> Verify &amp; Login
+                  <i className="bi bi-box-arrow-in-right"></i> {verifyingOtp ? 'Verifying...' : 'Verify &amp; Login'}
                 </button>
                 <button
                   type="button"
@@ -214,6 +225,7 @@ export default function Login() {
                   onClick={() => {
                     setStage('phone');
                     setOtp(['', '', '', '', '', '']);
+                    setOtpError('');
                   }}
                 >
                   Change Number
@@ -281,7 +293,7 @@ export default function Login() {
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. 9876543210 or System Administrator"
+                      placeholder="10-digit admin mobile"
                     />
                   </div>
                 </div>
@@ -311,14 +323,9 @@ export default function Login() {
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-dark btn-block">
-                  <i className="bi bi-box-arrow-in-right"></i> Login to Admin Panel
+                <button type="submit" className="btn btn-dark btn-block" disabled={loggingIn}>
+                  <i className="bi bi-box-arrow-in-right"></i> {loggingIn ? 'Logging in...' : 'Login to Admin Panel'}
                 </button>
-
-                <div className="cred-hint">
-                  <i className="bi bi-info-circle"></i> Demo credentials — Mobile:{' '}
-                  <strong>{adminUser.mobile}</strong> | Password: <strong>{adminUser.password}</strong>
-                </div>
               </form>
             </>
           )}

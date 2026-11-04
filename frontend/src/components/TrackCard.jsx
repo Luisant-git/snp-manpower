@@ -1,46 +1,37 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getApplications } from '../data/mockDb.js';
-
-/* Mock tracker for demo reference numbers — real submitted applications
-   come from mockDb. Replace both with a live API call later. */
-const MOCK_RESULTS = {
-  'SNP-20261103-1042': {
-    status: 'Shortlisted for Interview Drive (Week 2)',
-    detail: 'Direct interview scheduled — report at Venue B, 10:00 AM with ID proof.',
-  },
-  'SNP-20261102-1001': {
-    status: 'Payment Pending',
-    detail: 'Registration fee processed partially. Complete verification to unlock interviews.',
-  },
-};
+import { registrationApi } from '../api/registrationApi.js';
 
 export default function TrackCard() {
   const [ref, setRef] = useState('');
+  const [mobile, setMobile] = useState('');
   const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const track = (e) => {
+  const track = async (e) => {
     e.preventDefault();
     const code = ref.trim().toUpperCase();
-    if (!code) return;
-
-    // Priority 1: real applications stored from the registration form
-    const found = getApplications().find((a) => a.ref === code);
-    if (found) {
-      setResult({
-        status: found.status || 'Under Review',
-        detail: `Candidate: ${found.name} — filled by ${found.submittedBy || 'Direct Registration'}.`,
-      });
+    if (!code || !/^\d{10}$/.test(mobile)) {
+      setError('Enter the application reference and the candidate’s 10-digit mobile number.');
       return;
     }
-
-    // Priority 2: demo lookup (generates a plausible demo response)
-    setResult(
-      MOCK_RESULTS[code] || {
-        status: 'Application Found — Under Review',
-        detail: `${code} has been received and is queued for recruiter verification.`,
-      }
-    );
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const application = await registrationApi.track(code, mobile);
+      const status = String(application.status || 'UNDER_REVIEW').replace(/_/g, ' ');
+      const payment = String(application.paymentStatus || 'PENDING').replace(/_/g, ' ');
+      setResult({
+        status: status[0] + status.slice(1).toLowerCase(),
+        detail: `Payment status: ${payment[0] + payment.slice(1).toLowerCase()}.`,
+      });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,15 +49,33 @@ export default function TrackCard() {
       <form className="track-form" onSubmit={track}>
         <input
           className="track-input"
-          placeholder="e.g. SNP-20261103-1042"
+          placeholder="Enter your application reference"
           value={ref}
-          onChange={(e) => setRef(e.target.value)}
+          onChange={(e) => {
+            setRef(e.target.value);
+            setError('');
+          }}
+          required
         />
-        <button className="btn btn-primary" type="submit">
-          <i className="bi bi-arrow-right"></i> Track
+        <input
+          className="track-input"
+          type="tel"
+          inputMode="numeric"
+          maxLength={10}
+          placeholder="Candidate mobile number"
+          value={mobile}
+          onChange={(e) => {
+            setMobile(e.target.value.replace(/\D/g, '').slice(0, 10));
+            setError('');
+          }}
+          required
+        />
+        <button className="btn btn-primary" type="submit" disabled={loading || !ref.trim() || mobile.length !== 10}>
+          <i className="bi bi-arrow-right"></i> {loading ? 'Checking…' : 'Track'}
         </button>
       </form>
 
+      {error && <div className="track-result track-error" role="alert">{error}</div>}
       {result && (
         <div className="track-result">
           <i className="bi bi-clipboard-check-fill"></i>

@@ -1,15 +1,27 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BRAND, NAV_LINKS } from '../data/site.js';
-import { getSession, clearSession } from '../data/mockDb.js';
+import { authApi } from '../api/authApi.js';
+import { clearSession, getSession } from '../data/session.js';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
-  const session = getSession();
+  const [session, setCurrentSession] = useState(getSession);
 
-  const doLogout = () => {
+  useEffect(() => {
+    const refreshSession = () => setCurrentSession(getSession());
+    window.addEventListener('snp-session-change', refreshSession);
+    return () => window.removeEventListener('snp-session-change', refreshSession);
+  }, []);
+
+  const doLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    }
     clearSession();
     setOpen(false);
     setAdminMenuOpen(false);

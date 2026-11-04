@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  listStaff,
-  addUser,
-  updateUser,
-  setUserActive,
-  deleteUser,
-} from '../../data/mockDb.js';
+import { branchApi } from '../../api/branchApi.js';
+import { userApi } from '../../api/userApi.js';
 
 /* Avatar initials for the users table */
 function initials(name) {
@@ -24,12 +19,16 @@ function fmtDate(iso) {
 }
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(listStaff());
+  const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
   /* Modal state — 'add' | 'edit' */
   const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', user }
-  const [form, setForm] = useState({ name: '', mobile: '', password: '1234', role: 'employee', status: 'active' });
+  const [form, setForm] = useState({ name: '', mobile: '', password: '', role: 'EMPLOYEE', status: 'active', branchId: '' });
   const [formError, setFormError] = useState('');
 
   /* Close modal with Escape key */
@@ -41,13 +40,28 @@ export default function UserManagement() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const refresh = () => setUsers(listStaff());
+  const refresh = async () => {
+    setLoadError('');
+    try {
+      const [userRows, branchRows] = await Promise.all([userApi.list(), branchApi.listAll()]);
+      setUsers(userRows);
+      setBranches(branchRows);
+    } catch (error) {
+      setLoadError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   /* ---------- Actions ---------- */
   const openAdd = () => {
     setMsg('');
     setFormError('');
-    setForm({ name: '', mobile: '', password: '1234', role: 'employee', status: 'active' });
+    setForm({ name: '', mobile: '', password: '', role: 'EMPLOYEE', status: 'active', branchId: '' });
     setModal({ mode: 'add' });
   };
 
@@ -57,53 +71,77 @@ export default function UserManagement() {
     setForm({
       name: u.name,
       mobile: u.mobile,
-      password: u.password,
+      password: '',
       role: u.role,
-      status: u.active ? 'active' : 'inactive',
+      status: u.isActive ? 'active' : 'inactive',
+      branchId: u.branchId || '',
     });
     setModal({ mode: 'edit', user: u });
   };
 
-  const save = () => {
+  const save = async () => {
     setFormError('');
-    if (!form.name.trim() || form.mobile.length !== 10 || form.password.length < 4) {
-      setFormError('Fill name, a 10-digit mobile and a password (min 4 chars).');
+    if (!form.name.trim() || form.mobile.length !== 10 || (modal.mode === 'add' && form.password.length < 12)
+      || (form.password && form.password.length < 12)) {
+      setFormError('Enter a name, 10-digit mobile, and a password of at least 12 characters.');
       return;
     }
+    setSaving(true);
     try {
       if (modal.mode === 'add') {
-        addUser(form);
-        setMsg(`User "${form.name}" created — they can now log in and fill candidate forms.`);
-      } else {
-        updateUser(modal.user.id, {
+        await userApi.create({
           name: form.name.trim(),
           mobile: form.mobile,
           password: form.password,
           role: form.role,
-          active: form.status !== 'inactive',
+          branchId: form.branchId ? Number(form.branchId) : undefined,
         });
+        setMsg(`User "${form.name}" created — they can now log in and fill candidate forms.`);
+      } else {
+        await userApi.update(modal.user.id, {
+          name: form.name.trim(),
+          mobile: form.mobile,
+          ...(form.password ? { password: form.password } : {}),
+          role: form.role,
+          branchId: form.branchId ? Number(form.branchId) : null,
+        });
+        if (modal.user.isActive !== (form.status !== 'inactive')) {
+          await userApi.setActive(modal.user.id, form.status !== 'inactive');
+        }
         setMsg(`User "${form.name}" updated successfully.`);
       }
-      refresh();
+      await refresh();
       setModal(null);
     } catch (err) {
       setFormError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const removeUser = (u) => {
+  const removeUser = async (u) => {
     if (!window.confirm(`Delete user "${u.name}"? This cannot be undone.`)) return;
-    deleteUser(u.id);
-    refresh();
-    setMsg(`User "${u.name}" deleted.`);
+    try {
+      await userApi.remove(u.id);
+      await refresh();
+      setMsg(`User "${u.name}" deleted.`);
+    } catch (error) {
+      setMsg(error.message);
+    }
   };
 
-  const toggleStatus = (id, active) => {
-    setUserActive(id, active);
-    refresh();
+  const toggleStatus = async (id, active) => {
+    try {
+      await userApi.setActive(id, active);
+      await refresh();
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
 
-  const employees = users.filter((u) => u.role === 'employee');
+  const employees = users.filter((u) => u.role === 'EMPLOYEE');
+  const administrators = users.filter((u) => u.role === 'ADMIN');
+  const applicants = users.filter((u) => u.role === 'APPLICANT');
   const isAdd = modal?.mode === 'add';
 
   return (
@@ -123,12 +161,13 @@ export default function UserManagement() {
           <div>{msg}</div>
         </div>
       )}
+      {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
 
       <div className="users-toolbar">
         <div>
           <h4 style={{ fontWeight: 800 }}>User Accounts</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            {employees.length} employee(s) · {users.length - employees.length} administrator(s)
+            {employees.length} employee(s) · {administrators.length} administrator(s) · {applicants.length} applicant(s)
           </small>
         </div>
         <button className="btn add-user-btn" onClick={openAdd}>
@@ -150,7 +189,13 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u, i) => (
+            {loading ? (
+              <tr><td colSpan="7" className="text-center py-4 text-muted">Loading users…</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan="7" className="text-center py-4 text-muted">Users could not be loaded.</td></tr>
+            ) : users.length === 0 ? (
+              <tr><td colSpan="7" className="text-center py-4 text-muted">No user accounts found.</td></tr>
+            ) : users.map((u, i) => (
               <tr key={u.id}>
                 <td>
                   <span className="sno-chip">#{i + 1}</span>
@@ -161,18 +206,18 @@ export default function UserManagement() {
                 </td>
                 <td className="mono-cell">+91 {u.mobile}</td>
                 <td>
-                  <span className={`badge-role ${u.role === 'admin' ? 'admin' : 'employee'}`}>
-                    {u.role === 'admin' ? 'System Administrator' : 'Employee'}
+                  <span className={`badge-role ${u.role === 'ADMIN' ? 'admin' : 'employee'}`}>
+                    {u.role === 'ADMIN' ? 'System Administrator' : u.role === 'APPLICANT' ? 'Applicant' : 'Employee'}
                   </span>
                 </td>
                 <td>
                   <span
-                    className={`badge-role ${u.active ? 'active' : 'inactive'}`}
+                    className={`badge-role ${u.isActive ? 'active' : 'inactive'}`}
                     style={{ cursor: 'pointer' }}
                     title="Click to toggle"
-                    onClick={() => toggleStatus(u.id, !u.active)}
+                    onClick={() => toggleStatus(u.id, !u.isActive)}
                   >
-                    {u.active ? '● Active' : '○ Inactive'}
+                    {u.isActive ? '● Active' : '○ Inactive'}
                   </span>
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
@@ -254,7 +299,7 @@ export default function UserManagement() {
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder="Enter password"
+                    placeholder={isAdd ? 'At least 12 characters' : 'Leave blank to keep current'}
                   />
                 </div>
 
@@ -267,10 +312,25 @@ export default function UserManagement() {
                       value={form.role}
                       onChange={(e) => setForm({ ...form, role: e.target.value })}
                     >
-                      <option value="employee">Employee</option>
-                      <option value="admin">System Administrator</option>
+                      <option value="EMPLOYEE">Employee</option>
+                      <option value="ADMIN">System Administrator</option>
+                      <option value="APPLICANT">Applicant</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="field-block full">
+                  <label className="input-label">Branch</label>
+                  <select
+                    className="auth-input"
+                    value={form.branchId}
+                    onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+                  >
+                    <option value="">No branch assigned</option>
+                    {branches.filter((branch) => branch.isActive).map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="field-block full">
@@ -294,9 +354,9 @@ export default function UserManagement() {
               <button className="btn btn-outline" onClick={() => setModal(null)}>
                 Cancel
               </button>
-              <button className="btn add-user-btn modal-submit" onClick={save}>
+              <button className="btn add-user-btn modal-submit" onClick={save} disabled={saving}>
                 <i className={`bi ${isAdd ? 'bi-person-plus-fill' : 'bi-check-lg'}`}></i>{' '}
-                {isAdd ? 'Add User' : 'Save Changes'}
+                {saving ? 'Saving...' : isAdd ? 'Add User' : 'Save Changes'}
               </button>
             </div>
           </div>

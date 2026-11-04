@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+  APPLICANT
+}
+
+enum ApplicationStatus {
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum OtpPurpose {
+  CANDIDATE
+  EMPLOYEE
+  LOGIN
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  name          String
+  mobile        String         @unique
+  passwordHash  String
+  role          UserRole       @default(EMPLOYEE)
+  isActive      Boolean        @default(true)
+  branchId      Int?
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  registrations Registration[] @relation("SubmittedRegistrations")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([role, isActive])
+  @@index([branchId])
+}
+
+model Branch {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  isActive      Boolean        @default(true)
+  users         User[]
+  registrations Registration[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Registration {
+  id                    Int               @id @default(autoincrement())
+  ref                   String            @unique
+  name                  String
+  mobile                String
+  designation           String?
+  status                ApplicationStatus @default(UNDER_REVIEW)
+  paymentStatus         PaymentStatus     @default(PENDING)
+  feesPaid              Int               @default(0)
+  feesPending           Int               @default(2400)
+  details               Json
+  photoUrl              String?
+  addressProofUrl       String?
+  addressProofName      String?
+  bankProofUrl          String?
+  bankProofName         String?
+  candidateOtpVerified  Boolean           @default(false)
+  employeeOtpVerified   Boolean           @default(false)
+  confirmationStatus    NotificationStatus @default(PENDING)
+  confirmationMessageId String?
+  submittedByUserId     Int?
+  submittedBy           User?             @relation("SubmittedRegistrations", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  submittedByName       String?
+  submittedByMobile     String?
+  branchId              Int?
+  branch                Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([mobile])
+  @@index([submittedByUserId, createdAt])
+  @@index([branchId, createdAt])
+  @@index([status, paymentStatus])
+  @@index([confirmationStatus, createdAt])
+}
+
+model OtpChallenge {
+  id         String     @id @default(cuid())
+  mobile     String
+  purpose    OtpPurpose
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int        @default(0)
+  verifiedAt DateTime?
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([mobile, purpose, createdAt])
+  @@index([expiresAt])
+}

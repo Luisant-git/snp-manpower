@@ -1,14 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import {
-  getApplications,
-  getSession,
-  updateApplicationPayment,
-  updateApplicationFees,
-  seedApplications,
-  deleteApplication,
-} from '../../data/mockDb.js';
-import { RECENT } from '../../data/dashboard.js';
+import { registrationApi } from '../../api/registrationApi.js';
+import { getSession } from '../../data/session.js';
 
 /* 03 Nov 2026 style date */
 function fmtDate(iso) {
@@ -22,55 +15,66 @@ function rupees(str) {
   return isNaN(n) ? 0 : n;
 }
 
-/* Old records may only carry payment/pendingFee — map them to the fee pair */
 function feesOf(a) {
-  if (a.feesPaid !== undefined || a.feesPending !== undefined) {
-    return { paid: a.feesPaid || '₹0', pending: a.feesPending || '₹0' };
-  }
-  if (a.payment === 'Paid') return { paid: 'Cleared', pending: '₹0' };
-  if (a.payment === 'Partial') return { paid: '₹1,200', pending: '₹1,200' };
-  return { paid: '₹0', pending: a.pendingFee || '₹2,400' };
+  return {
+    paid: `₹${Number(a.feesPaid || 0).toLocaleString('en-IN')}`,
+    pending: `₹${Number(a.feesPending || 0).toLocaleString('en-IN')}`,
+  };
 }
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
 
-function normalizeMobile(value) {
-  return String(value || '').replace(/\D/g, '');
-}
-
-function wasSubmittedBy(application, session) {
-  if (application.submittedByUserId) return application.submittedByUserId === session.id;
-  if (application.submittedByLoginMobile) {
-    return normalizeMobile(application.submittedByLoginMobile) === normalizeMobile(session.mobile);
-  }
-
-  if (session.role === 'applicant') {
-    return normalizeMobile(application.mobile) === normalizeMobile(session.mobile);
-  }
-
-  return normalizeMobile(application.submittedByMobile || application.filledByMobile)
-    === normalizeMobile(session.mobile);
+function toApplication(row) {
+  const details = row.details || {};
+  const payment = String(row.paymentStatus || 'PENDING').toLowerCase();
+  return {
+    ...row,
+    payment: payment[0].toUpperCase() + payment.slice(1),
+    mobile: row.mobile ? `+91 ${row.mobile}` : '',
+    meta: details.gender ? `${details.gender}${details.age ? ` | Age: ${details.age}` : ''}` : '',
+    photo: row.photoUrl || details.photoUrl || null,
+    submittedBy: row.submittedByName || row.submittedBy?.name || '',
+    submittedByMobile: row.submittedByMobile || row.submittedBy?.mobile || '',
+    designation: row.designation || details.designation || '',
+    dl: details.hasLicense === 'NO' ? 'NO LICENCE' : details.dlNumber || '—',
+    vehicleNo: details.vehicleRegNo || '—',
+    date: row.createdAt,
+    registrationData: details,
+  };
 }
 
 export default function ManageApplications({ mySubmissions = false }) {
   const navigate = useNavigate();
   const session = getSession();
-  const [apps, setApps] = useState(getApplications);
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [staffFilter, setStaffFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
-  const [feeForm, setFeeForm] = useState({ payment: 'Pending', paid: '0', pending: '0' });
+  const [feeForm, setFeeForm] = useState({ paid: '0' });
 
-  const scopedApps = mySubmissions && session && session.role !== 'admin'
-    ? apps.filter((application) => wasSubmittedBy(application, session))
-    : apps;
+  const refresh = async () => {
+    setLoadError('');
+    try {
+      const rows = mySubmissions
+        ? await registrationApi.listMine()
+        : await registrationApi.listAll();
+      setApps(rows.map(toApplication));
+    } catch (error) {
+      setLoadError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  /* Do not mix demo rows into a user's personal submission list. */
-  const entries = useMemo(() => {
-    if (scopedApps.length || mySubmissions) return scopedApps;
-    return RECENT.map((r) => ({ ...r, demo: true }));
-  }, [apps, mySubmissions, session?.id, session?.mobile, session?.role]);
+  useEffect(() => {
+    refresh();
+  }, [mySubmissions]);
+
+  const entries = apps;
 
   /* Unique list of employee names who filled forms (for the filter) */
   const staffList = useMemo(
@@ -98,45 +102,57 @@ export default function ManageApplications({ mySubmissions = false }) {
 
   if (!session) return <Navigate to="/login" replace />;
 
-  const sync = () => setApps(getApplications());
-
-  const remove = (ref) => {
+  const remove = async (ref) => {
     if (!window.confirm(`Delete application ${ref}? This cannot be undone.`)) return;
-    deleteApplication(ref);
-    sync();
+    try {
+      await registrationApi.remove(ref);
+      await refresh();
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
 
-  const setPayment = (ref, payment) => {
-    updateApplicationPayment(ref, payment);
-    sync();
+  const setPayment = async (ref, payment) => {
+    const paidAmounts = { Pending: 0, Partial: 1200, Paid: 2400 };
+    try {
+      await registrationApi.review(ref, { feesPaid: paidAmounts[payment] });
+      await refresh();
+    } catch (error) {
+      setLoadError(error.message);
+    }
   };
 
   /* ---- Update Fees modal (₹ button) ---- */
   const openFees = (a) => {
     const fees = feesOf(a);
     setFeeForm({
-      payment: a.payment || 'Pending',
       paid: String(rupees(fees.paid)),
-      pending: String(rupees(fees.pending)),
     });
     setFeeModal(a);
   };
 
-  const saveFees = () => {
+  const saveFees = async () => {
     if (!feeModal) return;
-    /* First edit on sample rows → promote the visible list into real storage */
-    if (apps.length === 0) seedApplications(entries);
-    updateApplicationFees(feeModal.ref, {
-      payment: feeForm.payment,
-      paidAmount: feeForm.paid,
-      pendingAmount: feeForm.pending,
-    });
-    sync();
-    setFeeModal(null);
+    const paidAmount = Number(feeForm.paid);
+    if (!Number.isInteger(paidAmount) || paidAmount < 0 || paidAmount > 2400) {
+      setLoadError('Paid amount must be a whole number between ₹0 and ₹2,400.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await registrationApi.review(feeModal.ref, { feesPaid: paidAmount });
+      await refresh();
+      setFeeModal(null);
+    } catch (error) {
+      setLoadError(error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="admin-panel">
+      {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
       {/* ---------- Registry header ---------- */}
       <div className="registry-head">
         <span className="section-eyebrow">
@@ -155,7 +171,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             <i className="bi bi-folder2-open"></i>
           </div>
           <div>
-            <div className="stat-value">{filtered.length}</div>
+            <div className="stat-value">{loadError ? '—' : filtered.length}</div>
             <div className="stat-label">Total Applications</div>
           </div>
         </div>
@@ -164,7 +180,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             <i className="bi bi-check2-circle"></i>
           </div>
           <div>
-            <div className="stat-value">{paidCount}</div>
+            <div className="stat-value">{loadError ? '—' : paidCount}</div>
             <div className="stat-label">Paid / Verified Fees</div>
           </div>
         </div>
@@ -173,7 +189,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             <i className="bi bi-hourglass-split"></i>
           </div>
           <div>
-            <div className="stat-value">{pendingCount}</div>
+            <div className="stat-value">{loadError ? '—' : pendingCount}</div>
             <div className="stat-label">Pending Payments</div>
           </div>
         </div>
@@ -182,7 +198,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             <i className="bi bi-cash-stack"></i>
           </div>
           <div>
-            <div className="stat-value">₹{totalDues.toLocaleString('en-IN')}</div>
+            <div className="stat-value">{loadError ? '—' : `₹${totalDues.toLocaleString('en-IN')}`}</div>
             <div className="stat-label">Pending Processing Dues</div>
           </div>
         </div>
@@ -245,7 +261,9 @@ export default function ManageApplications({ mySubmissions = false }) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan="10" className="text-center py-4 text-muted">
-                  {mySubmissions
+                  {loadError
+                    ? 'Applications could not be loaded.'
+                    : mySubmissions
                     ? 'You have not submitted any registration forms yet.'
                     : 'No applications match the selected filters.'}
                 </td>
@@ -312,7 +330,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                       </small>
                     </div>
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{a.demo ? a.date : fmtDate(a.date)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>                  {fmtDate(a.date)}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button
                       className="icon-btn"
@@ -349,12 +367,8 @@ export default function ManageApplications({ mySubmissions = false }) {
         </table>
       </div>
 
-      {apps.length === 0 && !mySubmissions && (
-        <p className="registry-note">
-          <i className="bi bi-info-circle"></i> Sample records are shown until candidates submit the
-          registration form — real entries will replace them automatically.
-        </p>
-      )}
+      {loading && <p className="registry-note">Loading applications…</p>}
+      {!loading && apps.length === 0 && <p className="registry-note">No application records found.</p>}
 
       {/* ============ UPDATE FEES MODAL (₹ icon) ============ */}
       {feeModal && (
@@ -381,19 +395,6 @@ export default function ManageApplications({ mySubmissions = false }) {
 
             <div className="modal-body">
               <div className="field-block full">
-                <label className="input-label">Payment Status</label>
-                <select
-                  className="auth-input"
-                  value={feeForm.payment}
-                  onChange={(e) => setFeeForm({ ...feeForm, payment: e.target.value })}
-                >
-                  <option>Pending</option>
-                  <option>Partial</option>
-                  <option>Paid</option>
-                </select>
-              </div>
-
-              <div className="field-block full">
                 <label className="input-label">Paid Amount (₹)</label>
                 <input
                   className="auth-input"
@@ -404,26 +405,15 @@ export default function ManageApplications({ mySubmissions = false }) {
                   placeholder="e.g. 2400"
                 />
               </div>
-
-              <div className="field-block full">
-                <label className="input-label">Pending Dues Amount (₹)</label>
-                <input
-                  className="auth-input"
-                  type="number"
-                  min="0"
-                  value={feeForm.pending}
-                  onChange={(e) => setFeeForm({ ...feeForm, pending: e.target.value })}
-                  placeholder="e.g. 0"
-                />
-              </div>
+              <small>Pending dues are calculated from the ₹2,400 registration fee.</small>
             </div>
 
             <div className="modal-foot">
               <button className="btn btn-outline" onClick={() => setFeeModal(null)}>
                 Cancel
               </button>
-              <button className="btn add-user-btn modal-submit" onClick={saveFees}>
-                <i className="bi bi-check-lg"></i> Save
+              <button className="btn add-user-btn modal-submit" onClick={saveFees} disabled={saving}>
+                <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

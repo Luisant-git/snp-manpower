@@ -1,5 +1,7 @@
-import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { getSession, clearSession } from '../../data/mockDb.js';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { authApi } from '../../api/authApi.js';
+import { getSession, setSession, clearSession } from '../../data/session.js';
 
 const LINKS = [
   { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
@@ -10,14 +12,55 @@ const LINKS = [
 
 export default function AdminLayout() {
   const navigate = useNavigate();
-  const session = getSession();
+  const [session, setCurrentSession] = useState(getSession);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [sessionError, setSessionError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    authApi.me()
+      .then((user) => {
+        if (active) {
+          const current = setSession(user);
+          setCurrentSession(current);
+          if (current.role !== 'admin') navigate('/login', { replace: true });
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          clearSession();
+          setCurrentSession(null);
+          setSessionError(error.message);
+        }
+      })
+      .finally(() => {
+        if (active) setCheckingSession(false);
+      });
+    return () => { active = false; };
+  }, [navigate]);
 
   /* Admin-only guard */
+  if (checkingSession) {
+    return <div className="container py-5 text-center">Checking administrator session…</div>;
+  }
+  if (sessionError) {
+    return (
+      <div className="container py-5">
+        <div className="track-result track-error" role="alert">{sessionError}</div>
+        <Link to="/login" className="btn btn-primary">Go to login</Link>
+      </div>
+    );
+  }
   if (!session || session.role !== 'admin') {
-    return <Navigate to="/login" replace />;
+    return null;
   }
 
-  const doLogout = () => {
+  const doLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    }
     clearSession();
     navigate('/');
   };

@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { LANGUAGES, T } from '../data/translations.js';
-import { getSession, getApplications, addApplication, listActiveBranches } from '../data/mockDb.js';
+import { getSession } from '../data/session.js';
+import { registrationApi } from '../api/registrationApi.js';
+import { branchApi } from '../api/branchApi.js';
+import { employeeApi } from '../api/employeeApi.js';
+import { whatsappApi } from '../api/whatsappApi.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
 
@@ -183,50 +187,19 @@ const TAXI_SEATER_OPTIONS = [
   'Other Passenger Car / Taxi',
 ];
 
-const DEFAULT_STAFF = [
-  {
-    name: 'SURESH GOWDA',
-    mobile: '9817508855',
-    role: 'Senior Recruitment Officer',
-    branch: 'BANGALORE - HEAD OFFICE (MAHALAKSHMI LAYOUT)',
-  },
-  {
-    name: 'RAMESH KUMAR',
-    mobile: '9449847768',
-    role: 'Branch Manager & Dispatch Lead',
-    branch: 'BANGALORE - RAJAJINAGAR BRANCH',
-  },
-  {
-    name: 'CHETHAN KUMAR',
-    mobile: '9019655120',
-    role: 'Operations & Field Verification',
-    branch: 'BANGALORE - PEENYA INDUSTRIAL AREA',
-  },
-  {
-    name: 'HARSHITHA M',
-    mobile: '9591971282',
-    role: 'HR & Document Verification Executive',
-    branch: 'MYSORE - CITY BRANCH',
-  },
-  {
-    name: 'KENCHE GOWDA',
-    mobile: '9535847768',
-    role: 'Fleet & Manpower Supervisor',
-    branch: 'BANGALORE - YESHWANTHPUR BRANCH',
-  },
-  {
-    name: 'ANAND MURTHY',
-    mobile: '9876543210',
-    role: 'System Administrator & Central Dispatch',
-    branch: 'BANGALORE - HEAD OFFICE (MAHALAKSHMI LAYOUT)',
-  },
-];
+function makeRegistrationReference() {
+  const suffix = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  return `SNP-${new Date().getFullYear()}-${suffix}`;
+}
 
 const emptyForm = {
   // Page 1 Meta
   formDate: new Date().toISOString().split('T')[0],
   state: 'KARNATAKA',
-  regNo: `SNP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+  regNo: makeRegistrationReference(),
   mobile: '',
   policeCertDate: '',
   policeCertNo: '',
@@ -306,38 +279,31 @@ const emptyForm = {
   confirmed: true,
 };
 
+function readUpload(file, acceptedTypes) {
+  if (!acceptedTypes.includes(file.type)) {
+    return Promise.reject(new Error('Choose a JPG, PNG, or PDF file.'));
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    return Promise.reject(new Error('Each uploaded document must be 2 MB or smaller.'));
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Register({ readOnly = false }) {
   const { ref: applicationRef } = useParams();
-  const location = useLocation();
-  const [branches] = useState(listActiveBranches);
-  const [viewApplication] = useState(() => {
-    if (!readOnly) return null;
-    return getApplications().find((application) => application.ref === applicationRef)
-      || location.state?.application
-      || null;
-  });
-  const [form, setForm] = useState(() => ({
-    ...emptyForm,
-    employeeBranch: branches[0] || emptyForm.employeeBranch,
-    ...(viewApplication ? {
-      fullName: viewApplication.name || '',
-      mobile: (viewApplication.mobile || '').replace(/^\+91\s*/, ''),
-      designation: viewApplication.designation || '',
-      employeeName: viewApplication.submittedBy || viewApplication.filledBy || '',
-      employeeMobile: (viewApplication.submittedByMobile || viewApplication.filledByMobile || '')
-        .replace(/^\+91\s*/, ''),
-      employeeBranch: viewApplication.branch || branches[0] || emptyForm.employeeBranch,
-      dlNumber: viewApplication.dl === '—' ? '' : viewApplication.dl || '',
-      vehicleRegNo: viewApplication.vehicleNo === '—' ? '' : viewApplication.vehicleNo || '',
-      bankProofUrl: viewApplication.bankProofUrl || null,
-      bankProofName: viewApplication.bankProofName || '',
-      registrationFeePaid: String(
-        Number(String(viewApplication.feesPaid || '1300').replace(/[^\d.]/g, '')) || 0
-      ),
-      ...(viewApplication.registrationData || {}),
-    } : {}),
-  }));
+  const [branches, setBranches] = useState([]);
+  const [branchLoadError, setBranchLoadError] = useState('');
+  const [viewApplication, setViewApplication] = useState(null);
+  const [recordLoading, setRecordLoading] = useState(readOnly);
+  const [recordError, setRecordError] = useState('');
+  const [form, setForm] = useState(emptyForm);
   const [refCode, setRefCode] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
   const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'kn'); // Default to Kannada as in physical sheet
   const session = getSession();
@@ -352,8 +318,74 @@ export default function Register({ readOnly = false }) {
   const [employeeInputOtp, setEmployeeInputOtp] = useState('');
   const [candidateOtpError, setCandidateOtpError] = useState('');
   const [employeeOtpError, setEmployeeOtpError] = useState('');
+  const [candidateOtpSending, setCandidateOtpSending] = useState(false);
+  const [employeeOtpSending, setEmployeeOtpSending] = useState(false);
+  const [candidateOtpVerifying, setCandidateOtpVerifying] = useState(false);
+  const [employeeOtpVerifying, setEmployeeOtpVerifying] = useState(false);
   const [candidateVerified, setCandidateVerified] = useState(false);
   const [employeeVerified, setEmployeeVerified] = useState(false);
+  const [employeeLookupError, setEmployeeLookupError] = useState('');
+  const employeeLookupRef = useRef(0);
+
+  useEffect(() => {
+    branchApi.list()
+      .then((rows) => setBranches(rows.map((branch) => branch.name)))
+      .catch((error) => setBranchLoadError(error.message));
+  }, []);
+
+  useEffect(() => {
+    if (!readOnly) return;
+    let active = true;
+    registrationApi.get(applicationRef)
+      .then((row) => {
+        if (!active) return;
+        const details = row.details || {};
+        setViewApplication({
+          ...row,
+          branch: row.branch?.name || '',
+          submittedBy: row.submittedBy?.name || row.submittedByName || '',
+          submittedByMobile: row.submittedBy?.mobile || row.submittedByMobile || '',
+          registrationData: details,
+        });
+      })
+      .catch((error) => {
+        if (active) setRecordError(error.message);
+      })
+      .finally(() => {
+        if (active) setRecordLoading(false);
+      });
+    return () => { active = false; };
+  }, [applicationRef, readOnly]);
+
+  useEffect(() => {
+    if (!viewApplication) {
+      if (branches.length) setForm((current) => ({ ...current, employeeBranch: branches[0] }));
+      return;
+    }
+    const details = viewApplication.registrationData || {};
+    setForm((current) => ({
+      ...current,
+      ...details,
+      fullName: viewApplication.name || details.fullName || '',
+      mobile: String(viewApplication.mobile || details.mobile || '').replace(/^\+91\s*/, ''),
+      designation: viewApplication.designation || details.designation || '',
+      employeeName: viewApplication.submittedBy || details.employeeName || '',
+      employeeMobile: String(viewApplication.submittedByMobile || details.employeeMobile || '').replace(/^\+91\s*/, ''),
+      employeeBranch: viewApplication.branch || details.employeeBranch || branches[0] || '',
+      registrationFeePaid: String(viewApplication.feesPaid ?? details.registrationFeePaid ?? 0),
+      addressProofUrl: viewApplication.addressProofUrl || details.addressProofUrl || null,
+      bankProofUrl: viewApplication.bankProofUrl || details.bankProofUrl || null,
+      photoUrl: viewApplication.photoUrl || details.photoUrl || null,
+    }));
+  }, [viewApplication, branches]);
+
+  useEffect(() => {
+    if (readOnly || !branches.length) return;
+    setForm((current) => ({
+      ...current,
+      employeeBranch: branches.includes(current.employeeBranch) ? current.employeeBranch : branches[0],
+    }));
+  }, [branches, readOnly]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -369,7 +401,6 @@ export default function Register({ readOnly = false }) {
     const mobile = e.target.value.replace(/\D/g, '').slice(0, 10);
     setForm((f) => ({ ...f, mobile }));
     setCandidateOtpSent(false);
-    setCandidateSentOtp('');
     setCandidateInputOtp('');
     setCandidateOtpError('');
     setCandidateVerified(false);
@@ -378,95 +409,126 @@ export default function Register({ readOnly = false }) {
   const handleBankProofUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setForm((f) => ({
-        ...f,
-        bankProofUrl: url,
-        bankProofName: file.name,
-      }));
+      readUpload(file, ['image/jpeg', 'image/png', 'application/pdf'])
+        .then((url) => setForm((f) => ({ ...f, bankProofUrl: url, bankProofName: file.name })))
+        .catch((error) => showToast('error', error.message));
     }
   };
 
-  const handleEmployeeMobileChange = (e) => {
+  const handleEmployeeMobileChange = async (e) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+    const lookupId = ++employeeLookupRef.current;
+    setEmployeeLookupError('');
     setForm((f) => {
-      const found = val.length === 10
-        ? DEFAULT_STAFF.find((staff) => staff.mobile === val)
-        : null;
       const previousEmployeeValue = f.employeeName && f.employeeMobile
         ? `${f.employeeName} - ${f.employeeMobile}`
         : '';
-      const previousCustomerWasEmployee = f.prevCustomer === previousEmployeeValue;
-
       return {
         ...f,
         employeeMobile: val,
-        employeeName: found?.name || '',
-        employeeBranch: found?.branch && branches.includes(found.branch)
-          ? found.branch
-          : (branches.includes(f.employeeBranch) ? f.employeeBranch : branches[0] || ''),
-        employeeRole: found?.role || '',
-        prevCustomer: found
-          ? (!f.prevCustomer || previousCustomerWasEmployee
-            ? `${found.name} - ${found.mobile}`
-            : f.prevCustomer)
-          : (previousCustomerWasEmployee ? '' : f.prevCustomer),
+        employeeName: '',
+        employeeRole: '',
+        prevCustomer: f.prevCustomer === previousEmployeeValue ? '' : f.prevCustomer,
       };
     });
     setEmployeeOtpSent(false);
-    setEmployeeSentOtp('');
     setEmployeeInputOtp('');
     setEmployeeOtpError('');
     setEmployeeVerified(false);
+    if (val.length !== 10) return;
+
+    try {
+      const found = await employeeApi.getByMobile(val);
+      if (lookupId !== employeeLookupRef.current) return;
+      setForm((f) => {
+        const previousEmployeeValue = f.employeeName && f.employeeMobile
+          ? `${f.employeeName} - ${f.employeeMobile}`
+          : '';
+        const previousCustomerWasEmployee = f.prevCustomer === previousEmployeeValue;
+        return {
+          ...f,
+          employeeName: found.name,
+          employeeBranch: found.branch && branches.includes(found.branch) ? found.branch : f.employeeBranch,
+          employeeRole: 'Employee',
+          prevCustomer: !f.prevCustomer || previousCustomerWasEmployee
+            ? `${found.name} - ${found.mobile}`
+            : f.prevCustomer,
+        };
+      });
+    } catch (error) {
+      if (lookupId === employeeLookupRef.current) setEmployeeLookupError(error.message);
+    }
   };
 
-  const sendOtp = (person) => {
-    if (person === 'candidate') {
-      if (!/^\d{10}$/.test(form.mobile)) return;
-      setCandidateSentOtp('1234');
-      setCandidateOtpSent(true);
-      setCandidateInputOtp('');
-      setCandidateOtpError('');
-      setCandidateVerified(false);
+  const sendOtp = async (person) => {
+    const isCandidate = person === 'candidate';
+    const mobile = isCandidate ? form.mobile : form.employeeMobile;
+    const setSending = isCandidate ? setCandidateOtpSending : setEmployeeOtpSending;
+    const setSent = isCandidate ? setCandidateOtpSent : setEmployeeOtpSent;
+    const setInputOtp = isCandidate ? setCandidateInputOtp : setEmployeeInputOtp;
+    const setError = isCandidate ? setCandidateOtpError : setEmployeeOtpError;
+    const setVerified = isCandidate ? setCandidateVerified : setEmployeeVerified;
+
+    if (!/^\d{10}$/.test(mobile)) {
+      setError('Enter a valid 10-digit mobile number first.');
       return;
     }
-    if (!/^\d{10}$/.test(form.employeeMobile)) return;
-    setEmployeeSentOtp('1234');
-    setEmployeeOtpSent(true);
-    setEmployeeInputOtp('');
-    setEmployeeOtpError('');
-    setEmployeeVerified(false);
+    if (!isCandidate && !form.employeeName) {
+      setError(employeeLookupError || 'Enter a registered employee mobile number first.');
+      return;
+    }
+
+    setSending(true);
+    setError('');
+    try {
+      await whatsappApi.requestOtp(mobile, isCandidate ? 'CANDIDATE' : 'EMPLOYEE');
+      setSent(true);
+      setInputOtp('');
+      setVerified(false);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const verifyOtp = (person) => {
-    if (person === 'candidate') {
-      if (!candidateOtpSent || candidateInputOtp !== candidateSentOtp) {
-        setCandidateOtpError('Incorrect OTP. Enter 1234 to verify the candidate mobile.');
-        setCandidateVerified(false);
-        return;
-      }
-      setCandidateOtpError('');
-      setCandidateVerified(true);
+  const verifyOtp = async (person) => {
+    const isCandidate = person === 'candidate';
+    const mobile = isCandidate ? form.mobile : form.employeeMobile;
+    const code = isCandidate ? candidateInputOtp : employeeInputOtp;
+    const otpSent = isCandidate ? candidateOtpSent : employeeOtpSent;
+    const setVerifying = isCandidate ? setCandidateOtpVerifying : setEmployeeOtpVerifying;
+    const setError = isCandidate ? setCandidateOtpError : setEmployeeOtpError;
+    const setVerified = isCandidate ? setCandidateVerified : setEmployeeVerified;
+
+    if (!otpSent) {
+      setError('Send an OTP to this mobile number first.');
       return;
     }
-    if (!employeeOtpSent || employeeInputOtp !== employeeSentOtp) {
-      setEmployeeOtpError('Incorrect OTP. Enter 1234 to verify the employee mobile.');
-      setEmployeeVerified(false);
+    if (!/^\d{6}$/.test(code)) {
+      setError('Enter the 6-digit OTP sent to WhatsApp.');
       return;
     }
-    setEmployeeOtpError('');
-    setEmployeeVerified(true);
+
+    setVerifying(true);
+    setError('');
+    try {
+      await whatsappApi.verifyOtp(mobile, isCandidate ? 'CANDIDATE' : 'EMPLOYEE', code);
+      setVerified(true);
+    } catch (error) {
+      setVerified(false);
+      setError(error.message);
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const handleProofUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setForm((f) => ({
-        ...f,
-        addressProofUrl: url,
-        addressProofName: file.name,
-      }));
+      readUpload(file, ['image/jpeg', 'image/png', 'application/pdf'])
+        .then((url) => setForm((f) => ({ ...f, addressProofUrl: url, addressProofName: file.name })))
+        .catch((error) => showToast('error', error.message));
     }
   };
 
@@ -510,12 +572,13 @@ export default function Register({ readOnly = false }) {
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setForm((f) => ({ ...f, photoUrl: url }));
+      readUpload(file, ['image/jpeg', 'image/png'])
+        .then((url) => setForm((f) => ({ ...f, photoUrl: url })))
+        .catch((error) => showToast('error', error.message));
     }
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
 
     const formElement = e.currentTarget;
@@ -570,50 +633,29 @@ export default function Register({ readOnly = false }) {
       return;
     }
 
-    completeRegistration();
+    await completeRegistration();
   };
 
-  const completeRegistration = () => {
+  const completeRegistration = async () => {
     const paidAmount = Number(form.registrationFeePaid);
-
-    const d = new Date();
-    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(
-      d.getDate()
-    ).padStart(2, '0')}`;
-    const seq = String(Math.floor(1000 + Math.random() * 9000));
-    const code = form.regNo || `SNP-${ymd}-${seq}`;
-
-    // Persist locally so the tracker can find it
-    addApplication({
-      ref: code,
-      name: (form.fullName || 'Unnamed Candidate').trim().toUpperCase(),
-      meta: form.age ? `${form.gender} | Age: ${form.age}` : form.gender,
-      age: form.age,
-      mobile: form.mobile ? `+91 ${form.mobile}` : '',
-      submittedBy: form.employeeName || (session ? session.name : 'Authorized Staff'),
-      submittedByMobile: form.employeeMobile || form.mobile,
-      submittedByUserId: session?.id || '',
-      submittedByLoginMobile: session?.mobile || '',
-      branch: form.employeeBranch,
-      designation: (form.designation || 'General Staff').toUpperCase(),
-      dl: form.hasLicense === 'NO' ? 'NO LICENCE' : (form.dlNumber || '—'),
-      vehicleNo: form.vehicleRegNo || '—',
-      payment: paidAmount === 0 ? 'Pending' : paidAmount >= 2400 ? 'Paid' : 'Partial',
-      feesPaid: `₹${paidAmount.toLocaleString('en-IN')}`,
-      feesPending: `₹${(2400 - paidAmount).toLocaleString('en-IN')}`,
-      status: 'Under Review',
-      date: new Date().toISOString(),
-      candidateOtpVerified: true,
-      employeeOtpVerified: true,
-      registrationData: { ...form },
-      photo: form.photoUrl,
-      bankProofUrl: form.bankProofUrl,
-      bankProofName: form.bankProofName,
-    });
-
-    setRefCode(code);
-    showToast('success', 'Registration submitted successfully.');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSubmitting(true);
+    try {
+      const registration = await registrationApi.create({
+        ref: form.regNo,
+        name: (form.fullName || '').trim().toUpperCase(),
+        mobile: form.mobile,
+        designation: (form.designation || 'General Staff').toUpperCase(),
+        feesPaid: paidAmount,
+        registrationData: { ...form },
+      });
+      setRefCode(registration.ref);
+      showToast('success', 'Registration submitted successfully.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      showToast('error', error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isOwnedByCurrentUser = () => {
@@ -632,6 +674,14 @@ export default function Register({ readOnly = false }) {
     return String(ownerMobile || '').replace(/\D/g, '')
       === String(session.mobile || '').replace(/\D/g, '');
   };
+
+  if (readOnly && recordLoading) {
+    return <div className="container py-5 text-center">Loading application record…</div>;
+  }
+
+  if (readOnly && recordError) {
+    return <div className="container py-5"><div className="track-result track-error" role="alert">{recordError}</div></div>;
+  }
 
   /* Helper component to render bilingual label cells matching the uploaded images */
   const FormLabelCell = ({ k, enSecondary, required = false }) => {
@@ -723,7 +773,7 @@ export default function Register({ readOnly = false }) {
               className="btn btn-teal"
               onClick={() => {
                 setRefCode(null);
-                setForm(emptyForm);
+                setForm({ ...emptyForm, regNo: makeRegistrationReference() });
               }}
             >
               <i className="bi bi-plus-circle"></i> New Application
@@ -800,6 +850,7 @@ export default function Register({ readOnly = false }) {
       </div>}
 
       <form noValidate onSubmit={readOnly ? (event) => event.preventDefault() : submit}>
+        {branchLoadError && <div className="track-result track-error" role="alert">{branchLoadError}</div>}
         <fieldset className="registration-view-fieldset" disabled={readOnly}>
         <div className="physical-form-wrapper">
           {/* ============================================================
@@ -1000,29 +1051,28 @@ export default function Register({ readOnly = false }) {
                             </span>
                           ) : (
                             <div className="mobile-otp-verification">
-                              <button type="button" className="mobile-otp-send" onClick={() => sendOtp('candidate')}>
-                                <i className="bi bi-send"></i> {candidateOtpSent ? 'Resend OTP' : 'Send OTP'}
+                              <button type="button" className="mobile-otp-send" onClick={() => sendOtp('candidate')} disabled={candidateOtpSending}>
+                                <i className="bi bi-send"></i> {candidateOtpSending ? 'Sending...' : candidateOtpSent ? 'Resend OTP' : 'Send OTP'}
                               </button>
                               {candidateOtpSent && (
                                 <div className="mobile-otp-entry">
                                   <input
                                     type="text"
                                     inputMode="numeric"
-                                    maxLength={4}
+                                    maxLength={6}
                                     aria-label="Candidate mobile OTP"
-                                    placeholder="Enter 4-digit OTP"
+                                    placeholder="Enter 6-digit OTP"
                                     value={candidateInputOtp}
                                     onChange={(event) => {
-                                      setCandidateInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4));
+                                      setCandidateInputOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
                                       setCandidateOtpError('');
                                     }}
                                   />
-                                  <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('candidate')}>
-                                    Verify
+                                  <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('candidate')} disabled={candidateOtpVerifying}>
+                                    {candidateOtpVerifying ? 'Verifying...' : 'Verify'}
                                   </button>
                                 </div>
                               )}
-                              {candidateOtpSent && <small className="mobile-otp-demo-hint">Demo OTP: 1234</small>}
                               {candidateOtpError && <small className="mobile-otp-error">{candidateOtpError}</small>}
                             </div>
                           )}
@@ -2475,7 +2525,10 @@ export default function Register({ readOnly = false }) {
                       setForm((f) => ({ ...f, employeeBranch: branch }));
                     }}
                     className="branch-verification-control"
+                    disabled={Boolean(form.employeeName)}
+                    required
                   >
+                    {branches.length === 0 && <option value="">Loading branches…</option>}
                     {branches.map((b) => (
                       <option key={b} value={b}>
                         {b}
@@ -2501,6 +2554,7 @@ export default function Register({ readOnly = false }) {
                       required
                     />
                   </div>
+                  {employeeLookupError && <small className="mobile-otp-error">{employeeLookupError}</small>}
                   {form.employeeMobile.length === 10 && (
                     <div className="mobile-otp-controls">
                       {employeeVerified ? (
@@ -2509,29 +2563,28 @@ export default function Register({ readOnly = false }) {
                         </span>
                       ) : (
                         <div className="mobile-otp-verification">
-                          <button type="button" className="mobile-otp-send" onClick={() => sendOtp('employee')}>
-                            <i className="bi bi-send"></i> {employeeOtpSent ? 'Resend OTP' : 'Send OTP'}
+                          <button type="button" className="mobile-otp-send" onClick={() => sendOtp('employee')} disabled={employeeOtpSending}>
+                            <i className="bi bi-send"></i> {employeeOtpSending ? 'Sending...' : employeeOtpSent ? 'Resend OTP' : 'Send OTP'}
                           </button>
                           {employeeOtpSent && (
                             <div className="mobile-otp-entry">
                               <input
                                 type="text"
                                 inputMode="numeric"
-                                maxLength={4}
+                                maxLength={6}
                                 aria-label="Employee mobile OTP"
-                                placeholder="Enter 4-digit OTP"
+                                placeholder="Enter 6-digit OTP"
                                 value={employeeInputOtp}
                                 onChange={(event) => {
-                                  setEmployeeInputOtp(event.target.value.replace(/\D/g, '').slice(0, 4));
+                                  setEmployeeInputOtp(event.target.value.replace(/\D/g, '').slice(0, 6));
                                   setEmployeeOtpError('');
                                 }}
                               />
-                              <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('employee')}>
-                                Verify
+                              <button type="button" className="mobile-otp-verify" onClick={() => verifyOtp('employee')} disabled={employeeOtpVerifying}>
+                                {employeeOtpVerifying ? 'Verifying...' : 'Verify'}
                               </button>
                             </div>
                           )}
-                          {employeeOtpSent && <small className="mobile-otp-demo-hint">Demo OTP: 1234</small>}
                           {employeeOtpError && <small className="mobile-otp-error">{employeeOtpError}</small>}
                         </div>
                       )}
@@ -2635,9 +2688,9 @@ export default function Register({ readOnly = false }) {
               </label>
             </div>
             <br />
-            <button type="submit" className="btn-submit-app">
+            <button type="submit" className="btn-submit-app" disabled={submitting}>
               <i className="bi bi-cloud-arrow-up-fill" style={{ fontSize: '1.2rem' }}></i>
-              <span>{ts('submitApp')}</span>
+              <span>{submitting ? 'Submitting…' : ts('submitApp')}</span>
             </button>
             <button
               type="button"
