@@ -23,7 +23,6 @@ async function bootstrap() {
     createTableIfMissing: true,
   });
 
-  app.setGlobalPrefix('api');
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
@@ -62,11 +61,8 @@ async function bootstrap() {
       },
     }),
   );
-  app.use('/uploads/registration', (request, _response, next) => {
-    request.url = request.originalUrl.replace(
-      /^\/uploads\/registration(?=\/|$)/,
-      '/api/uploads/registration',
-    );
+  app.use((request, _response, next) => {
+    request.url = request.url.replace(/^\/api(?=\/|\?|$)/, '') || '/';
     next();
   });
   app.enableShutdownHooks();

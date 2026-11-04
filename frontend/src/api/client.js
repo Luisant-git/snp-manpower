@@ -17,7 +17,7 @@ export async function apiRequest(path, { method = 'GET', body, headers = {} } = 
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   let response;
   try {
-    response = await fetch(`${apiOrigin}/api${path.startsWith('/') ? path : `/${path}`}`, {
+    response = await fetch(`${apiOrigin}${path.startsWith('/') ? path : `/${path}`}`, {
       method,
       credentials: 'include',
       headers: {
