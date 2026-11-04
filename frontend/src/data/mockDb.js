@@ -6,6 +6,79 @@
 const USERS_KEY = 'snp_users';
 const APPS_KEY = 'snp_applications';
 const SESSION_KEY = 'snp_session';
+const BRANCHES_KEY = 'snp_branches';
+
+const DEFAULT_BRANCHES = [
+  'BANGALORE - HEAD OFFICE (MAHALAKSHMI LAYOUT)',
+  'BANGALORE - YESHWANTHPUR BRANCH',
+  'BANGALORE - RAJAJINAGAR BRANCH',
+  'BANGALORE - PEENYA INDUSTRIAL AREA',
+  'BANGALORE - ELECTRONIC CITY',
+  'MYSORE - CITY BRANCH',
+  'HUBLI - DHARWAD REGIONAL BRANCH',
+  'MANGALORE - COASTAL BRANCH',
+  'BELGAUM - NORTH KARNATAKA BRANCH',
+];
+
+/* ---------- Branch master ---------- */
+export function listBranches() {
+  const saved = JSON.parse(localStorage.getItem(BRANCHES_KEY) || 'null');
+  if (Array.isArray(saved)) return saved;
+
+  const branches = DEFAULT_BRANCHES.map((name, index) => ({
+    id: `b${index + 1}`,
+    name,
+    active: true,
+    createdAt: new Date().toISOString(),
+  }));
+  localStorage.setItem(BRANCHES_KEY, JSON.stringify(branches));
+  return branches;
+}
+
+export function listActiveBranches() {
+  return listBranches().filter((branch) => branch.active).map((branch) => branch.name);
+}
+
+function saveBranches(branches) {
+  localStorage.setItem(BRANCHES_KEY, JSON.stringify(branches));
+}
+
+export function addBranch(name) {
+  const branches = listBranches();
+  const normalizedName = name.trim();
+  if (branches.some((branch) => branch.name.toLowerCase() === normalizedName.toLowerCase())) {
+    throw new Error('This branch already exists.');
+  }
+  const branch = {
+    id: `b${Date.now()}`,
+    name: normalizedName,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  saveBranches([...branches, branch]);
+  return branch;
+}
+
+export function updateBranch(id, name) {
+  const branches = listBranches();
+  const normalizedName = name.trim();
+  if (branches.some(
+    (branch) => branch.id !== id && branch.name.toLowerCase() === normalizedName.toLowerCase()
+  )) {
+    throw new Error('This branch already exists.');
+  }
+  const updated = branches.map((branch) => (
+    branch.id === id ? { ...branch, name: normalizedName } : branch
+  ));
+  saveBranches(updated);
+  return updated.find((branch) => branch.id === id);
+}
+
+export function setBranchActive(id, active) {
+  saveBranches(listBranches().map((branch) => (
+    branch.id === id ? { ...branch, active } : branch
+  )));
+}
 
 /* ---------- Users ---------- */
 function getUsers() {

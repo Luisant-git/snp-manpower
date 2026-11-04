@@ -9,6 +9,7 @@ import AdminLayout from './pages/admin/AdminLayout.jsx';
 import Dashboard from './pages/admin/Dashboard.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import ManageApplications from './pages/admin/ManageApplications.jsx';
+import BranchMaster from './pages/admin/BranchMaster.jsx';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="branches" element={<BranchMaster />} />
             <Route path="applications" element={<ManageApplications />} />
           </Route>
 
