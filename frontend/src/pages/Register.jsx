@@ -347,7 +347,7 @@ export default function Register({ readOnly = false, editable = false }) {
   const [refCode, setRefCode] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
-  const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'kn'); // Default to Kannada as in physical sheet
+  const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'en');
   const session = getSession();
   const fileInputRef = useRef(null);
   const proofFileInputRef = useRef(null);
