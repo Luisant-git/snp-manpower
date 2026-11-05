@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/authApi.js';
 import { whatsappApi } from '../api/whatsappApi.js';
 import { setSession } from '../data/session.js';
@@ -7,7 +7,7 @@ import { setSession } from '../data/session.js';
 export default function Login() {
   const navigate = useNavigate();
 
-  /* Single flow: phone -> password (admin) or OTP (employee) -> done */
+  /* Single flow: phone -> password (admin) or OTP (employee). */
   const [stage, setStage] = useState('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -19,6 +19,7 @@ export default function Login() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
   const otpRefs = useRef([]);
+  const otpVerificationInProgress = useRef(false);
 
   const digits = otp.join('');
 
@@ -55,11 +56,20 @@ export default function Login() {
   };
 
   const changeOtp = (i, val) => {
-    const clean = val.replace(/\D/g, '').slice(-1);
     const next = [...otp];
-    next[i] = clean;
+    const enteredDigits = val.replace(/\D/g, '');
+    const cleanDigits = enteredDigits.slice(0, 6 - i);
+    cleanDigits.split('').forEach((digit, offset) => {
+      next[i + offset] = digit;
+    });
     setOtp(next);
-    if (clean && i < 5) otpRefs.current[i + 1]?.focus();
+    setError('');
+    const nextDigits = next.join('');
+    if (nextDigits.length === 6) {
+      verifyOtp(null, nextDigits);
+    } else if (cleanDigits && i + cleanDigits.length < 6) {
+      otpRefs.current[i + cleanDigits.length]?.focus();
+    }
   };
 
   const onKeyDown = (i, e) => {
@@ -80,18 +90,20 @@ export default function Login() {
     }
   };
 
-  const verifyOtp = async (e) => {
-    e.preventDefault();
-    if (digits.length !== 6) return;
+  const verifyOtp = async (e, code = digits) => {
+    e?.preventDefault();
+    if (code.length !== 6 || otpVerificationInProgress.current) return;
+    otpVerificationInProgress.current = true;
     setError('');
     setVerifyingOtp(true);
     try {
-      const user = await authApi.loginWithOtp(phone, digits);
+      const user = await authApi.loginWithOtp(phone, code);
       setSession(user);
-      setStage('done');
+      navigate('/register');
     } catch (err) {
       setError(err.message);
     } finally {
+      otpVerificationInProgress.current = false;
       setVerifyingOtp(false);
     }
   };
@@ -228,9 +240,6 @@ export default function Login() {
 
           {stage === 'otp' && (
             <>
-              <div className="auth-icon">
-                <i className="bi bi-whatsapp"></i>
-              </div>
               <h3 className="auth-title">Verify OTP</h3>
               <p className="auth-sub">
                 Enter the 6-digit code sent to WhatsApp for <strong>+91 {phone}</strong>.
@@ -242,7 +251,7 @@ export default function Login() {
                 </div>
               )}
 
-              <form onSubmit={verifyOtp}>
+              <form onSubmit={(e) => verifyOtp(e, digits)}>
                 <div className="otp-boxes">
                   {otp.map((val, i) => (
                     <input
@@ -251,7 +260,6 @@ export default function Login() {
                       className="otp-box"
                       inputMode="numeric"
                       autoComplete="one-time-code"
-                      maxLength={1}
                       value={val}
                       onChange={(e) => changeOtp(i, e.target.value)}
                       onKeyDown={(e) => onKeyDown(i, e)}
@@ -264,14 +272,7 @@ export default function Login() {
                     {resendingOtp ? 'Sending...' : 'Resend OTP'}
                   </button>
                 </div>
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-block"
-                  disabled={digits.length !== 6 || verifyingOtp}
-                >
-                  <i className="bi bi-box-arrow-in-right"></i>{' '}
-                  {verifyingOtp ? 'Verifying...' : 'Login'}
-                </button>
+                {verifyingOtp && <p className="auth-sub" role="status">Verifying code...</p>}
                 <button
                   type="button"
                   className="btn btn-sm btn-block btn-outline"
@@ -282,22 +283,6 @@ export default function Login() {
                 </button>
               </form>
             </>
-          )}
-
-          {stage === 'done' && (
-            <div className="auth-success">
-              <div className="big">
-                <i className="bi bi-check-lg"></i>
-              </div>
-              <h3 className="auth-title" style={{ textAlign: 'center' }}>
-                Login Successful!
-              </h3>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12 }}>
-                <Link to="/register" className="btn btn-primary">
-                  <i className="bi bi-arrow-right-circle"></i> Continue
-                </Link>
-              </div>
-            </div>
           )}
         </div>
       </div>
