@@ -466,6 +466,24 @@ export default function Register({ readOnly = false, editable = false }) {
     setToast({ type, message, id: Date.now() });
   };
 
+  const downloadProof = async (url, name) => {
+    try {
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error(`Download failed (${response.status}).`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = name || 'uploaded-proof';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      showToast('error', error.message || 'Could not download the uploaded proof.');
+    }
+  };
+
   const handleCandidateMobileChange = (e) => {
     const mobile = e.target.value.replace(/\D/g, '').slice(0, 10);
     setForm((f) => ({ ...f, mobile }));
@@ -2452,15 +2470,22 @@ export default function Register({ readOnly = false, editable = false }) {
                                   <i className="bi bi-file-earmark-pdf"></i> View PDF
                                 </a>
                               ) : (
-                                <img
-                                  src={proof.url}
-                                  alt={`Address Proof ${index + 1} Preview`}
-                                  className="address-proof-thumb"
-                                  crossOrigin={proof.url?.startsWith('http') ? 'use-credentials' : undefined}
-                                  onError={(e) => {
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
+                                <a
+                                  href={proof.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  aria-label={`Open address proof ${index + 1} in a new tab`}
+                                >
+                                  <img
+                                    src={proof.url}
+                                    alt={`Address Proof ${index + 1} Preview`}
+                                    className="address-proof-thumb"
+                                    crossOrigin={proof.url?.startsWith('http') ? 'use-credentials' : undefined}
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                </a>
                               )}
                               <div>
                                 <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
@@ -2473,6 +2498,13 @@ export default function Register({ readOnly = false, editable = false }) {
                               </div>
                             </div>
                             <div className="address-proof-actions no-print">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => downloadProof(proof.url, proof.name || `address-proof-${index + 1}`)}
+                              >
+                                <i className="bi bi-download"></i> Download
+                              </button>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline-danger fw-bold"
@@ -2597,13 +2629,20 @@ export default function Register({ readOnly = false, editable = false }) {
                                 <i className="bi bi-file-earmark-pdf"></i> View PDF
                               </a>
                             ) : (
-                              <img
-                                src={form.bankProofUrl}
-                                alt="Bank Document Preview"
-                                className="address-proof-thumb"
-                                crossOrigin={form.bankProofUrl.startsWith('http') ? 'use-credentials' : undefined}
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                              />
+                              <a
+                                href={form.bankProofUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label="Open bank proof in a new tab"
+                              >
+                                <img
+                                  src={form.bankProofUrl}
+                                  alt="Bank Document Preview"
+                                  className="address-proof-thumb"
+                                  crossOrigin={form.bankProofUrl.startsWith('http') ? 'use-credentials' : undefined}
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              </a>
                             )}
                             <div>
                               <div className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
@@ -2616,6 +2655,14 @@ export default function Register({ readOnly = false, editable = false }) {
                             </div>
                           </div>
                           <div className="address-proof-actions no-print">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary py-0 px-2 fw-bold"
+                              style={{ fontSize: '0.72rem' }}
+                              onClick={() => downloadProof(form.bankProofUrl, form.bankProofName || 'bank-proof')}
+                            >
+                              <i className="bi bi-download"></i> Download
+                            </button>
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-primary py-0 px-2 fw-bold"
