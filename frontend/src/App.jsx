@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import NoticeBar from './components/NoticeBar.jsx';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
-import NoticeBar from './components/NoticeBar.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import TrackCard from './components/TrackCard.jsx';

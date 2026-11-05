@@ -1,4 +1,4 @@
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { BRAND, NAV_LINKS } from '../data/site.js';
 import { authApi } from '../api/authApi.js';
@@ -6,6 +6,7 @@ import { clearSession, getSession } from '../data/session.js';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [session, setCurrentSession] = useState(getSession);
@@ -33,8 +34,10 @@ export default function Navbar() {
     ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Driver Registration' }
     : null;
 
+  const hideGuestMenu = location.pathname === '/login' && !session;
+
   return (
-    <header className="navbar">
+    <header className={`navbar${hideGuestMenu ? ' navbar-minimal' : ''}`}>
       <div className="container">
         <div className="navbar-inner">
           <Link
@@ -60,10 +63,7 @@ export default function Navbar() {
                   end
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  <i className={`bi ${link.icon}`}></i> {link.label}
-                  {!session && link.to === '/register' && (
-                    <i className="bi bi-lock-fill" style={{ fontSize: '.75rem', opacity: .7 }}></i>
-                  )}
+                  {link.label}
                 </NavLink>
               </li>
             ))}
@@ -73,7 +73,7 @@ export default function Navbar() {
                   to="/my-submissions"
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  <i className="bi bi-person-lines-fill"></i> My Submissions
+                  My Submissions
                 </NavLink>
               </li>
             )}
@@ -163,7 +163,7 @@ export default function Navbar() {
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                <i className={`bi ${link.icon}`}></i> {link.label}
+                {link.label}
               </NavLink>
             ))}
             {session && (
@@ -172,7 +172,7 @@ export default function Navbar() {
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                <i className="bi bi-person-lines-fill"></i> My Submissions
+                My Submissions
               </NavLink>
             )}
             {session?.role === 'admin' && (

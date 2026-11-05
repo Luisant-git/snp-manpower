@@ -1053,10 +1053,11 @@ export default function Register({ readOnly = false, editable = false }) {
             {/* Company Header */}
             <div className="sheet-main-header">
               <div className="sheet-title-row">
-                <div className="sheet-logo">SNP</div>
-                <div>
-                  <h1 className="sheet-company-name mb-0">{ts('companyName')}</h1>
-                </div>
+                <img
+                  src="/assets/brand-logo.png"
+                  alt={ts('companyName')}
+                  className="sheet-brand-logo"
+                />
               </div>
               <div className="sheet-contact-line">
                 {ts('companySub')}
@@ -1162,31 +1163,13 @@ export default function Register({ readOnly = false, editable = false }) {
                       <small style={{ fontSize: '0.68rem', color: '#1e3a8a' }}>State</small>
                     </td>
                     <td style={{ width: '18%' }}>
-                      <select
+                      <SearchableSelect
                         name="state"
                         value={form.state}
                         onChange={set}
-                        className="form-select"
-                        style={{
-                          border: 'none',
-                          background: 'transparent',
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          textTransform: 'uppercase',
-                          fontSize: '0.85rem',
-                          width: '100%',
-                          padding: '2px 18px 2px 2px',
-                        }}
-                      >
-                        {!INDIAN_STATES.includes(form.state) && form.state && (
-                          <option value={form.state}>{form.state}</option>
-                        )}
-                        {INDIAN_STATES.map((state) => (
-                          <option key={state} value={state}>
-                            {state}
-                          </option>
-                        ))}
-                      </select>
+                        options={INDIAN_STATES}
+                        placeholder="SEARCH STATE"
+                      />
                     </td>
                     <td className="meta-cell-label" style={{ width: '17%' }}>
                       <div>{ts('metaRegNo')}</div>
@@ -2319,10 +2302,11 @@ export default function Register({ readOnly = false, editable = false }) {
             {/* Company Header */}
             <div className="sheet-main-header">
               <div className="sheet-title-row">
-                <div className="sheet-logo">SNP</div>
-                <div>
-                  <h1 className="sheet-company-name mb-0">{ts('companyName')}</h1>
-                </div>
+                <img
+                  src="/assets/brand-logo.png"
+                  alt={ts('companyName')}
+                  className="sheet-brand-logo"
+                />
               </div>
               <div className="sheet-contact-line">
                 MOB : 98175 08855, 9449847768

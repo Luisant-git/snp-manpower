@@ -196,6 +196,13 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.navbar.navbar-minimal .nav-links,
+.navbar.navbar-minimal .nav-actions,
+.navbar.navbar-minimal .nav-toggle,
+.navbar.navbar-minimal .nav-mobile {
+  display: none;
+}
+
 .navbar > .container {
   max-width: 100%;
   padding-left: 23px;
@@ -213,6 +220,7 @@ textarea {
 .navbar-brand {
   display: flex;
   align-items: center;
+  margin-left: clamp(0px, 3vw, 40px);
 }
 
 .navbar-brand-logo {
@@ -236,6 +244,7 @@ textarea {
 }
 
 .nav-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -244,13 +253,38 @@ textarea {
   color: var(--slate);
   padding: 8px 14px;
   border-radius: 8px;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease;
 }
 
-.nav-link:hover,
+.nav-link:hover {
+  color: var(--navy);
+  background: transparent;
+}
+
 .nav-link.active {
   color: var(--navy);
-  background: #f1f5f9;
+  background: transparent;
+  font-weight: 600;
+}
+
+.nav-links .nav-link::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.18s ease;
+}
+
+.nav-links .nav-link:hover::after {
+  background: #cbd5e1;
+}
+
+.nav-links .nav-link.active::after {
+  background: linear-gradient(90deg, var(--teal), var(--royal));
 }
 
 .nav-actions {
@@ -1369,7 +1403,13 @@ textarea {
   .nav-mobile .nav-link {
     display: flex;
     padding: 12px 14px;
+    border-radius: 8px;
     font-size: 0.95rem;
+  }
+
+  .nav-mobile .nav-link.active {
+    background: #eff6ff;
+    font-weight: 600;
   }
 
   .nav-mobile .actions {
@@ -2842,6 +2882,14 @@ textarea {
   justify-content: center;
   align-items: center;
   gap: 12px;
+}
+
+.sheet-brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  object-fit: contain;
 }
 
 .sheet-logo {
