@@ -8,7 +8,7 @@ export const BRAND = {
 };
 
 export const NAV_LINKS = [
-  { label: 'Driver Registration', to: '/register', icon: 'bi-file-earmark-person' },
+  { label: 'Registrations', to: '/register', icon: 'bi-file-earmark-person' },
 ];
 
 export const TRUST_POINTS = [

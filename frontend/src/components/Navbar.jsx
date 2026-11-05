@@ -31,7 +31,7 @@ export default function Navbar() {
   };
 
   const panelLink = session
-    ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Driver Registration' }
+    ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Registrations' }
     : null;
 
   const hideGuestMenu = location.pathname === '/login' && !session;
@@ -74,7 +74,7 @@ export default function Navbar() {
                   to="/my-submissions"
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  My Submissions
+                  Applications
                 </NavLink>
               </li>
             )}
@@ -175,7 +175,7 @@ export default function Navbar() {
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                My Submissions
+                Applications
               </NavLink>
             )}
             {session?.role === 'admin' && (
