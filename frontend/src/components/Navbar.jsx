@@ -147,6 +147,8 @@ export default function Navbar() {
           <button
             className="nav-toggle no-print"
             aria-label="Toggle navigation"
+            aria-expanded={open}
+            aria-controls="primary-navigation"
             onClick={() => setOpen((v) => !v)}
           >
             <i className={`bi ${open ? 'bi-x-lg' : 'bi-list'}`}></i>
@@ -154,7 +156,7 @@ export default function Navbar() {
         </div>
 
         {open && (
-          <div className="nav-mobile open">
+          <div className="nav-mobile open" id="primary-navigation">
             {NAV_LINKS.map((link) => (
               <NavLink
                 key={link.to}

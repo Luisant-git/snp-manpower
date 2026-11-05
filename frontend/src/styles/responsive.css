@@ -108,20 +108,6 @@
     font-size: 1.3rem;
   }
 
-  /* Footer */
-  .footer-grid {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .footer-right {
-    text-align: left;
-  }
-
-  .footer-badges {
-    justify-content: flex-start;
-  }
-
   /* Features grid — 2-col on tablet */
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -134,12 +120,12 @@
 @media (max-width: 768px) {
   /* Navbar height reduction */
   .navbar-inner {
-    height: 60px;
+    height: 64px;
   }
 
   .navbar-brand-logo {
     max-width: 300px;
-    max-height: 46px;
+    max-height: 44px;
   }
 
   /* Section */
@@ -500,15 +486,6 @@
     font-size: 1.15rem;
   }
 
-  /* Footer */
-  .footer {
-    padding: 24px 0 18px;
-  }
-
-  .footer-desc {
-    max-width: 100%;
-  }
-
   /* Auth */
   .auth-wrap {
     margin: 16px auto 32px;
@@ -712,13 +689,13 @@
 
   /* Navbar */
   .navbar-inner {
-    height: 52px;
+    height: 58px;
     gap: 10px;
   }
 
   .navbar-brand-logo {
-    max-width: 260px;
-    max-height: 40px;
+    max-width: 240px;
+    max-height: 38px;
   }
 
   /* Hero */
@@ -944,15 +921,6 @@
     border-radius: 10px;
   }
 
-  /* Footer */
-  .footer {
-    padding: 20px 0 16px;
-  }
-
-  .footer-brand {
-    flex-wrap: wrap;
-  }
-
   /* Session chip */
   .session-chip {
     font-size: 0.72rem;
@@ -969,8 +937,8 @@
   }
 
   .navbar-brand-logo {
-    max-width: 220px;
-    max-height: 34px;
+    max-width: 200px;
+    max-height: 32px;
   }
 
   .hero-title {

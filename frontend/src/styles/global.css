@@ -190,10 +190,10 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.94) 100%);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid #e6ebf2;
+  box-shadow: 0 12px 32px -26px rgba(15, 23, 42, 0.55), inset 0 1px 0 #ffffff;
 }
 
 .navbar.navbar-minimal .nav-links,
@@ -206,20 +206,21 @@ textarea {
 .navbar > .container {
   max-width: 100%;
   padding-left: 23px;
-  padding-right: 20px;
+  padding-right: 24px;
 }
 
 .navbar-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  height: 68px;
+  justify-content: flex-start;
+  gap: 20px;
+  height: 72px;
 }
 
 .navbar-brand {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   margin-left: clamp(0px, 3vw, 40px);
 }
 
@@ -227,8 +228,8 @@ textarea {
   display: none;
   width: auto;
   height: auto;
-  max-width: 420px;
-  max-height: 56px;
+  max-width: 370px;
+  max-height: 48px;
   object-fit: contain;
 }
 
@@ -239,7 +240,8 @@ textarea {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  margin-left: 30px;
   list-style: none;
 }
 
@@ -248,11 +250,12 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 10px 14px;
   font-weight: 500;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.01em;
   color: var(--slate);
-  padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: color 0.2s ease;
 }
 
@@ -272,7 +275,7 @@ textarea {
   position: absolute;
   left: 14px;
   right: 14px;
-  bottom: 2px;
+  bottom: 3px;
   height: 2px;
   border-radius: 999px;
   background: transparent;
@@ -287,10 +290,51 @@ textarea {
   background: linear-gradient(90deg, var(--teal), var(--royal));
 }
 
+.nav-link:focus-visible,
+.nav-toggle:focus-visible,
+.nav-actions a:focus-visible,
+.nav-actions button:focus-visible {
+  outline: 2px solid rgba(13, 148, 136, 0.55);
+  outline-offset: 2px;
+}
+
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.nav-actions .btn-sm {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.nav-actions .btn-outline {
+  background: #ffffff;
+  border: 1px solid #d9e2ee;
+  color: #334155;
+  box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.55);
+}
+
+.nav-actions .btn-outline:hover {
+  background: #f8fafc;
+  border-color: #99f6e4;
+  color: var(--navy);
+  box-shadow: 0 8px 18px -14px rgba(13, 148, 136, 0.6);
+}
+
+.nav-actions .btn-dark {
+  background: linear-gradient(135deg, var(--navy), var(--royal));
+  box-shadow: 0 8px 18px -10px rgba(29, 78, 216, 0.7);
+}
+
+.nav-actions .btn-dark:hover {
+  background: linear-gradient(135deg, var(--navy-dark), #1e40af);
+  box-shadow: 0 10px 22px -10px rgba(29, 78, 216, 0.75);
 }
 
 .nav-admin-menu {
@@ -306,35 +350,53 @@ textarea {
 
 .nav-admin-dropdown {
   position: absolute;
-  top: calc(100% - 2px);
+  top: calc(100% - 4px);
   right: 0;
   z-index: 80;
   display: none;
-  min-width: 220px;
-  padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+  min-width: 230px;
+  padding: 8px;
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 22px 48px -24px rgba(15, 23, 42, 0.45);
 }
 
 .nav-admin-menu.open .nav-admin-dropdown {
   display: grid;
+  gap: 2px;
+  animation: nav-dropdown-in 0.16s ease-out;
+}
+
+@keyframes nav-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .nav-admin-dropdown-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 11px;
-  border-radius: 8px;
-  color: var(--slate);
+  padding: 10px 12px;
+  border-radius: 9px;
+  color: #475569;
   font-size: 0.84rem;
-  font-weight: 650;
+  font-weight: 600;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.nav-admin-dropdown-link:hover,
+.nav-admin-dropdown-link:hover {
+  background: #f8fafc;
+  color: var(--navy);
+}
+
 .nav-admin-dropdown-link.active {
   background: #eff6ff;
   color: var(--navy);
@@ -342,7 +404,7 @@ textarea {
 
 .nav-admin-dropdown-link > i {
   width: 18px;
-  color: #2563eb;
+  color: var(--teal);
   text-align: center;
 }
 
@@ -365,10 +427,24 @@ textarea {
 
 .nav-toggle {
   display: none;
-  background: none;
-  border: none;
-  font-size: 1.4rem;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d9e2ee;
+  border-radius: 12px;
+  background: #ffffff;
   color: var(--navy);
+  font-size: 1.15rem;
+  line-height: 1;
+  box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.5);
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.nav-toggle:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.55);
 }
 
 .nav-mobile {
@@ -896,64 +972,17 @@ textarea {
    FOOTER
    ============================================================ */
 .footer {
-  background: linear-gradient(120deg, var(--navy-dark), var(--navy) 58%, var(--teal-dark));
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  padding: 34px 0 26px;
   margin-top: auto;
-}
-
-.footer-grid {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.footer-brand strong {
-  color: #fff;
-}
-
-.footer-desc {
-  font-size: 0.85rem;
-  color: #cbd5e1;
-  max-width: 420px;
-  line-height: 1.6;
-}
-
-.footer-right {
-  text-align: right;
-}
-
-.footer-badges {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 16px;
-  font-size: 0.82rem;
-  color: #cbd5e1;
-  margin-bottom: 6px;
-}
-
-.footer-badges i {
-  color: var(--success);
-}
-
-.footer-badges a:hover {
-  color: #fff;
+  padding: 22px 0;
+  background: linear-gradient(135deg, #0b1224 0%, #11224b 55%, #0f2c3f 100%);
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 .footer-copy {
+  color: #a9b7cf;
   font-size: 0.8rem;
-  color: #cbd5e1;
   text-align: center;
+  letter-spacing: 0.01em;
 }
 
 /* ============================================================
@@ -1390,21 +1419,39 @@ textarea {
   }
 
   .nav-toggle {
-    display: block;
+    display: inline-flex;
+    margin-left: auto;
   }
 
   .nav-mobile.open {
     display: block;
-    border-top: 1px solid var(--line);
-    background: #fff;
-    padding: 12px 20px 18px;
+    padding: 14px 20px 20px;
+    border-top: 1px solid #e6ebf2;
+    background: #ffffff;
+    box-shadow: 0 24px 44px -30px rgba(15, 23, 42, 0.55);
+    animation: nav-panel-in 0.2s ease-out;
+  }
+
+  @keyframes nav-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .nav-mobile .nav-link {
     display: flex;
     padding: 12px 14px;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 0.95rem;
+  }
+
+  .nav-mobile .nav-link:hover {
+    background: #f8fafc;
   }
 
   .nav-mobile .nav-link.active {
@@ -1416,7 +1463,13 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    margin-top: 10px;
+    margin-top: 12px;
+  }
+
+  .nav-mobile .actions .btn {
+    width: 100%;
+    justify-content: center;
+    border-radius: 999px;
   }
 }
 
@@ -1436,12 +1489,6 @@ textarea {
   .cta-banner {
     text-align: center;
     justify-content: center;
-  }
-
-  .footer-right,
-  .footer-badges {
-    text-align: left;
-    justify-content: flex-start;
   }
 
   .char-box {
@@ -1698,13 +1745,18 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #f8fbff, #eef6ff);
+  border: 1px solid #d6e4f7;
   color: var(--navy);
   font-size: 0.8rem;
   font-weight: 600;
-  padding: 7px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
+  box-shadow: 0 6px 16px -14px rgba(30, 58, 138, 0.55);
+}
+
+.session-chip > i {
+  color: var(--teal);
 }
 
 .session-ribbon {
