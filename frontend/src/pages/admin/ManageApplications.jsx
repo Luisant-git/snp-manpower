@@ -788,21 +788,22 @@ export default function ManageApplications({ mySubmissions = false }) {
               <div className="modal-grid">
                 <div className="field-block status-change-field">
                   <span className="input-label">New status</span>
-                  <select
-                    className={`status-confirmation-select ${statusModal.status
-                      .toLowerCase()
-                      .replace('_', '-')}`}
-                    value={statusModal.status}
-                    onChange={(event) => setStatusModal((current) => (
-                      current ? { ...current, status: event.target.value } : current
-                    ))}
-                    disabled={saving}
-                    aria-label="New application status"
-                  >
-                    <option value="UNDER_REVIEW">Under Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="REJECTED">Rejected</option>
-                  </select>
+                  <div className="status-confirmation-control">
+                    <select
+                      className="status-confirmation-select"
+                      value={statusModal.status}
+                      onChange={(event) => setStatusModal((current) => (
+                        current ? { ...current, status: event.target.value } : current
+                      ))}
+                      disabled={saving}
+                      aria-label="New application status"
+                    >
+                      <option value="UNDER_REVIEW">Under Review</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                    <i className="bi bi-chevron-down status-confirmation-chevron" aria-hidden="true"></i>
+                  </div>
                 </div>
               </div>
             </div>
