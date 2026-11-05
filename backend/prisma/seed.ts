@@ -22,7 +22,7 @@ async function seed() {
     skipDuplicates: true,
   });
 
-  const adminMobile = process.env.ADMIN_MOBILE || '9876543210';
+  const adminMobile = process.env.ADMIN_MOBILE || '9080356538';
   const adminPassword = process.env.ADMIN_PASSWORD
     || (process.env.NODE_ENV === 'production' ? undefined : '1234');
   if (!adminMobile || !adminPassword) {
