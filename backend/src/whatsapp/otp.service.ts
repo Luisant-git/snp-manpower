@@ -3,8 +3,9 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { OtpPurpose, Prisma } from '@prisma/client';
+import { OtpPurpose, Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,6 +25,25 @@ export class OtpService {
   async request(mobileInput: unknown, purposeInput: unknown) {
     const mobile = this.normalizeMobile(mobileInput);
     const purpose = this.normalizePurpose(purposeInput);
+
+    if (purpose === OtpPurpose.LOGIN) {
+      const user = await this.prisma.user.findUnique({
+        where: { mobile },
+        select: { isActive: true, role: true },
+      });
+      if (!user) {
+        throw new UnauthorizedException(
+          'This mobile number is not registered in User Management. Contact an administrator.',
+        );
+      }
+      if (!user.isActive) {
+        throw new UnauthorizedException('This account is inactive. Contact an administrator.');
+      }
+      if (user.role === UserRole.ADMIN) {
+        throw new UnauthorizedException('Administrators must sign in with their password.');
+      }
+    }
+
     const since = new Date(Date.now() - resendCooldownMs);
     const recentChallenge = await this.prisma.otpChallenge.findFirst({
       where: { mobile, purpose, createdAt: { gt: since } },

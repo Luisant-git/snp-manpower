@@ -9,6 +9,11 @@ type SessionRequest = Request & { session: Request['session'] & { user?: Session
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('login/identify')
+  identifyLogin(@Body() body: { mobile: string }) {
+    return this.authService.identifyLogin(body.mobile);
+  }
+
   @Post('login')
   async login(
     @Body() body: { mobile: string; password: string },

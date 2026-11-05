@@ -35,9 +35,10 @@ export default function Navbar() {
     : null;
 
   const hideGuestMenu = location.pathname === '/login' && !session;
+  if (hideGuestMenu) return null;
 
   return (
-    <header className={`navbar${hideGuestMenu ? ' navbar-minimal' : ''}`}>
+    <header className="navbar">
       <div className="container">
         <div className="navbar-inner">
           <Link

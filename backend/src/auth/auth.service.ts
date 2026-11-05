@@ -1,7 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { OtpPurpose, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SessionUser } from '../common/auth.guard';
 import { OtpService } from '../whatsapp/otp.service';
@@ -12,6 +11,29 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly otpService: OtpService,
   ) {}
+
+  async identifyLogin(mobileInput: string): Promise<{ method: 'password' | 'otp' }> {
+    const raw = String(mobileInput || '').replace(/\D/g, '');
+    const mobile = raw.startsWith('91') && raw.length === 12 ? raw.slice(2) : raw;
+    if (!/^\d{10}$/.test(mobile)) {
+      throw new BadRequestException('Enter a valid 10-digit mobile number.');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { mobile },
+      select: { role: true, isActive: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException(
+        'This mobile number is not registered in User Management. Contact an administrator.',
+      );
+    }
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account is inactive. Contact an administrator.');
+    }
+
+    return { method: user.role === UserRole.ADMIN ? 'password' : 'otp' };
+  }
 
   async login(mobile: string, password: string): Promise<SessionUser> {
     const normalizedMobile = String(mobile || '').replace(/\D/g, '');
@@ -42,18 +64,18 @@ export class AuthService {
 
     return this.prisma.$transaction(async (transaction) => {
       await this.otpService.consumeVerified(transaction, mobile, OtpPurpose.LOGIN);
-      const existing = await transaction.user.findUnique({ where: { mobile } });
-      if (existing && !existing.isActive) {
+      const user = await transaction.user.findUnique({ where: { mobile } });
+      if (!user) {
+        throw new UnauthorizedException(
+          'This mobile number is not registered in User Management. Contact an administrator.',
+        );
+      }
+      if (!user.isActive) {
         throw new UnauthorizedException('This account is inactive. Contact an administrator.');
       }
-      const user = existing || await transaction.user.create({
-        data: {
-          mobile,
-          name: `Applicant ${mobile}`,
-          role: UserRole.APPLICANT,
-          passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 12),
-        },
-      });
+      if (user.role === UserRole.ADMIN) {
+        throw new UnauthorizedException('Administrators must sign in with their password.');
+      }
       return this.toSessionUser(user);
     });
   }

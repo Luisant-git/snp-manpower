@@ -993,6 +993,10 @@ textarea {
   margin: 48px auto 64px;
 }
 
+.login-wrap {
+  margin-top: 64px;
+}
+
 .auth-card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1576,7 +1580,7 @@ textarea {
 }
 
 .auth-card-body {
-  padding: 30px 30px 6px;
+  padding: 30px;
 }
 
 .auth-card-foot {
@@ -1594,6 +1598,78 @@ textarea {
 
 .auth-icon-dark {
   background: linear-gradient(135deg, #0f172a, #334155) !important;
+}
+
+.auth-icon-brand {
+  background: linear-gradient(135deg, var(--navy), var(--royal)) !important;
+}
+
+.auth-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-phone-row .auth-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.auth-prefix {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--navy);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.auth-method-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.auth-method-note i {
+  margin-top: 2px;
+  color: var(--teal);
+}
+
+.auth-resend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.auth-resend button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--navy);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.auth-resend button:hover {
+  text-decoration: underline;
+}
+
+.auth-resend button:disabled {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
 }
 
 .tab-pills {

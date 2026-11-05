@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import NoticeBar from './components/NoticeBar.jsx';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
@@ -12,10 +12,13 @@ import ManageApplications from './pages/admin/ManageApplications.jsx';
 import BranchMaster from './pages/admin/BranchMaster.jsx';
 
 export default function App() {
+  const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
+
   return (
     <div className="app-shell">
-      <NoticeBar />
-      <Navbar />
+      {!isLoginPage && <NoticeBar />}
+      {!isLoginPage && <Navbar />}
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Navigate to="/register" replace />} />
@@ -45,7 +48,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>
       </main>
-      <Footer />
+      {!isLoginPage && <Footer />}
     </div>
   );
 }
