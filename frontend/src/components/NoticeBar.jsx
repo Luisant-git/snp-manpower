@@ -2,8 +2,8 @@ export default function NoticeBar() {
   return (
     <div className="notice-bar">
       <i className="bi bi-megaphone-fill"></i>{' '}
-      <strong>Walk-in Interview Drives:</strong> Direct interviews are conducted every week across
-      industrial, manufacturing, corporate and logistics partner sites. Register now to get shortlisted.
+      <strong>Driver Placement Opportunities:</strong> Register your driving experience and licence
+      details to be considered for suitable transport, logistics and fleet roles.
     </div>
   );
 }

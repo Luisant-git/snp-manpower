@@ -13,7 +13,7 @@ export default function TrackCard() {
     e.preventDefault();
     const code = ref.trim().toUpperCase();
     if (!code || !/^\d{10}$/.test(mobile)) {
-      setError('Enter the application reference and the candidate’s 10-digit mobile number.');
+      setError('Enter your driver registration reference and 10-digit mobile number.');
       return;
     }
     setLoading(true);
@@ -41,15 +41,15 @@ export default function TrackCard() {
           <i className="bi bi-search"></i>
         </div>
         <div>
-          <h3>Track Application</h3>
-          <small>Enter your unique reference number</small>
+          <h3>Track Driver Registration</h3>
+          <small>Check your registration and placement updates</small>
         </div>
       </div>
 
       <form className="track-form" onSubmit={track}>
         <input
           className="track-input"
-          placeholder="Enter your application reference"
+          placeholder="Enter your registration reference"
           value={ref}
           onChange={(e) => {
             setRef(e.target.value);
@@ -62,7 +62,7 @@ export default function TrackCard() {
           type="tel"
           inputMode="numeric"
           maxLength={10}
-          placeholder="Candidate mobile number"
+          placeholder="Driver mobile number"
           value={mobile}
           onChange={(e) => {
             setMobile(e.target.value.replace(/\D/g, '').slice(0, 10));

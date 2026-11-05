@@ -13,12 +13,12 @@ export default function FeatureGrid() {
       <div className="container">
         <div className="section-head">
           <span className="section-eyebrow">
-            <i className="bi bi-stars"></i> Why Choose SNP
+            <i className="bi bi-stars"></i> Why Drivers Choose SNP
           </span>
-          <h2 className="section-title">Built for Candidates &amp; Recruiters Alike</h2>
+          <h2 className="section-title">A Clear Path from Driver Registration to Placement</h2>
           <p className="section-sub">
-            One portal for registration, verification, tracking and placement — with WhatsApp at
-            the centre of every step.
+            Register your driving profile, verify your details, track updates and explore suitable
+            placement opportunities.
           </p>
         </div>
         <div className="features-grid">

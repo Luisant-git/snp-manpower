@@ -6,14 +6,14 @@ export default function CtaBanner() {
       <div className="container">
         <div className="cta-banner">
           <div>
-            <h3>Hiring Manpower for Your Unit?</h3>
+            <h3>Ready to Start Your Driving Career?</h3>
             <p>
-              Our recruitment desk can shortlist verified, dossier-complete candidates within 48
-              hours of your requirement brief.
+              Register your driving experience and licence details to be considered for suitable
+              transport, logistics and fleet opportunities.
             </p>
           </div>
-          <Link to="/login" className="btn btn-teal btn-lg">
-            <i className="bi bi-people-fill"></i> Partner With Us
+          <Link to="/register" className="btn btn-teal btn-lg">
+            <i className="bi bi-truck"></i> Register as a Driver
           </Link>
         </div>
       </div>

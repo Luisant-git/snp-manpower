@@ -10,22 +10,23 @@ export default function Hero() {
         <div className="hero-grid">
           <div>
             <span className="hero-badge">
-              <i className="bi bi-patch-check-fill"></i> Trusted Manpower &amp; Recruitment Agency
+              <i className="bi bi-patch-check-fill"></i> Driver Registration &amp; Placement
             </span>
             <h1 className="hero-title">
-              Accelerate Your Career with <span className="grad">{BRAND.fullName}</span>
+              Register as a Driver. Find Your Next Opportunity with{' '}
+              <span className="grad">{BRAND.fullName}</span>
             </h1>
             <p className="hero-lead">
-              Direct job interviews, verified candidate profiles and enterprise manpower placement
-              across industrial, manufacturing, corporate and logistics sectors.
+              Share your driving licence, experience and preferred role through a simple registration.
+              We help connect verified driver profiles with suitable transport, logistics and fleet openings.
             </p>
 
             <div className="hero-ctas">
               <Link to="/register" className="btn btn-primary btn-lg">
-                <i className="bi bi-pencil-square"></i> Fill Manpower Registration Form
+                <i className="bi bi-pencil-square"></i> Register as a Driver
               </Link>
               <Link to="/login" className="btn btn-outline btn-lg">
-                <i className="bi bi-whatsapp text-success"></i> Candidate Login
+                <i className="bi bi-whatsapp text-success"></i> Driver Login
               </Link>
             </div>
 

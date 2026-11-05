@@ -29,7 +29,7 @@ export default function Navbar() {
   };
 
   const panelLink = session
-    ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Candidate Form' }
+    ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Driver Registration' }
     : null;
 
   return (

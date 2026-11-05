@@ -6,10 +6,10 @@ export default function SectorsBar() {
     <div className="sectors-bar">
       <div className="container sectors-inner">
         <span className="section-eyebrow">
-          <i className="bi bi-diagram-3-fill"></i> Industries We Serve
+        <i className="bi bi-diagram-3-fill"></i> Driver Opportunities
         </span>
         <h2 className="section-title" style={{ color: '#fff' }}>
-          Manpower Across Every Major Sector
+        Driving Roles Across Transport &amp; Logistics
         </h2>
         <div className="sectors-list" style={{ marginTop: 24 }}>
           {SECTORS.map((sector) => (
@@ -20,7 +20,7 @@ export default function SectorsBar() {
         </div>
         <div style={{ marginTop: 30 }}>
           <Link to="/register" className="btn btn-teal">
-            <i className="bi bi-person-plus-fill"></i> Register Your Dossier
+            <i className="bi bi-person-plus-fill"></i> Start Driver Registration
           </Link>
         </div>
       </div>

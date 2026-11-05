@@ -14,15 +14,15 @@ export default function Footer() {
               <strong>{BRAND.fullName}</strong>
             </div>
             <p className="footer-desc">
-              Industrial &amp; corporate manpower recruitment, staffing, verification and placement
-              solutions — connecting verified candidates with trusted employers.
+              Driver registration and placement support connecting verified drivers with transport,
+              logistics and fleet employers.
             </p>
           </div>
 
           <div className="footer-right">
             <div className="footer-badges">
               <span>
-                <i className="bi bi-shield-check"></i> Secure Candidate Database
+                <i className="bi bi-shield-check"></i> Verified Driver Profiles
               </span>
               <span>
                 <i className="bi bi-whatsapp"></i> WhatsApp Cloud API Ready

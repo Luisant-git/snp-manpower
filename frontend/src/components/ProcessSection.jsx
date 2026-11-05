@@ -5,12 +5,12 @@ export default function ProcessSection() {
     <section className="section" id="process">
       <div className="container">
         <div className="section-head">
-          <span className="section-eyebrow">
+          <span className="section-eyebrow process-eyebrow">
             <i className="bi bi-signpost-split-fill"></i> How It Works
           </span>
-          <h2 className="section-title">From Registration to Placement in 4 Steps</h2>
+          <h2 className="section-title">Your Driver Placement Journey in 4 Steps</h2>
           <p className="section-sub">
-            A transparent, trackable journey — every stage is visible against your reference code.
+            Follow your driver registration and placement progress using your reference number.
           </p>
         </div>
         <div className="process-grid">
