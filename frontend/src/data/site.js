@@ -8,7 +8,6 @@ export const BRAND = {
 };
 
 export const NAV_LINKS = [
-  { label: 'Home', to: '/', icon: 'bi-house-door' },
   { label: 'Driver Registration', to: '/register', icon: 'bi-file-earmark-person' },
 ];
 

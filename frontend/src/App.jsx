@@ -1,10 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import NoticeBar from './components/NoticeBar.jsx';
-import Home from './pages/Home.jsx';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
+import TrackCard from './components/TrackCard.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import Dashboard from './pages/admin/Dashboard.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
@@ -18,9 +18,17 @@ export default function App() {
       <Navbar />
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/register" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/track"
+            element={
+              <div className="container" style={{ maxWidth: 520, margin: '48px auto 64px', padding: '0 16px' }}>
+                <TrackCard />
+              </div>
+            }
+          />
           <Route path="/my-submissions" element={<div className="container my-submissions-wide"><ManageApplications mySubmissions /></div>} />
           <Route path="/my-submissions/:ref" element={<Register readOnly />} />
 
@@ -34,7 +42,7 @@ export default function App() {
             <Route path="application/:ref/edit" element={<Register editable />} />
           </Route>
 
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<Navigate to="/register" replace />} />
         </Routes>
       </main>
       <Footer />

@@ -246,7 +246,7 @@ export default function Login() {
                 +91 {phone} verified via WhatsApp. Your application dossier is now unlocked.
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <Link to="/" className="btn btn-outline">
+                <Link to="/track" className="btn btn-outline">
                   <i className="bi bi-search"></i> Track Application
                 </Link>
                 <Link to="/register" className="btn btn-primary">

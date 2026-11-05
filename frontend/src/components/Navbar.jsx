@@ -25,7 +25,7 @@ export default function Navbar() {
     clearSession();
     setOpen(false);
     setAdminMenuOpen(false);
-    navigate('/');
+    navigate('/login');
   };
 
   const panelLink = session
@@ -36,7 +36,7 @@ export default function Navbar() {
     <header className="navbar">
       <div className="container">
         <div className="navbar-inner">
-          <Link to="/" className="navbar-brand" onClick={() => setOpen(false)}>
+          <Link to="/register" className="navbar-brand" onClick={() => setOpen(false)}>
             <span className="brand-badge">{BRAND.short}</span>
             <span className="brand-text">
               {BRAND.name}

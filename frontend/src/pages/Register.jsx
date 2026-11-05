@@ -282,6 +282,18 @@ function validateUpload(file, acceptedTypes) {
   }
 }
 
+function normalizeAadhaar(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 12);
+}
+
+function formatAadhaar(value) {
+  return normalizeAadhaar(value).match(/\d{1,4}/g)?.join(' ') || '';
+}
+
+function isValidPan(value) {
+  return /^[A-Z]{5}\d{4}[A-Z]$/.test(String(value || '').trim().toUpperCase());
+}
+
 export default function Register({ readOnly = false, editable = false }) {
   const navigate = useNavigate();
   const { ref: applicationRef } = useParams();
@@ -359,6 +371,8 @@ export default function Register({ readOnly = false, editable = false }) {
     setForm((current) => ({
       ...current,
       ...details,
+      pan: String(details.pan || '').toUpperCase(),
+      aadhaar: formatAadhaar(details.aadhaar),
       fullName: viewApplication.name || details.fullName || '',
       mobile: String(viewApplication.mobile || details.mobile || '').replace(/^\+91\s*/, ''),
       designation: viewApplication.designation || details.designation || '',
@@ -554,6 +568,16 @@ export default function Register({ readOnly = false, editable = false }) {
     }));
   };
 
+  const handlePanChange = (e) => {
+    const pan = e.target.value.replace(/[^a-z\d]/gi, '').slice(0, 10).toUpperCase();
+    setForm((current) => ({ ...current, pan }));
+  };
+
+  const handleAadhaarChange = (e) => {
+    const aadhaar = formatAadhaar(e.target.value);
+    setForm((current) => ({ ...current, aadhaar }));
+  };
+
   const handleDobChange = (e) => {
     const val = e.target.value;
     let calculatedAge = '';
@@ -585,6 +609,20 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const submit = async (e) => {
     e.preventDefault();
+
+    if (form.pan.trim() && !isValidPan(form.pan)) {
+      showToast('error', 'Enter a valid PAN number in the format ABCDE1234F.');
+      document.querySelector('[name="pan"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelector('[name="pan"]')?.focus({ preventScroll: true });
+      return;
+    }
+
+    if (form.aadhaar && normalizeAadhaar(form.aadhaar).length !== 12) {
+      showToast('error', 'Aadhaar number must contain exactly 12 digits.');
+      document.querySelector('[name="aadhaar"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelector('[name="aadhaar"]')?.focus({ preventScroll: true });
+      return;
+    }
 
     const formElement = e.currentTarget;
     if (!formElement.checkValidity()) {
@@ -645,22 +683,25 @@ export default function Register({ readOnly = false, editable = false }) {
     const paidAmount = Number(form.registrationFeePaid);
     setSubmitting(true);
     try {
+      const registrationData = {
+        ...form,
+        pan: form.pan.trim().toUpperCase(),
+        aadhaar: normalizeAadhaar(form.aadhaar),
+        regNo: applicationRef || form.regNo,
+        ...(editable ? { registrationFeePaid: String(viewApplication.feesPaid) } : {}),
+      };
       const payload = {
         name: (form.fullName || '').trim().toUpperCase(),
         mobile: form.mobile,
         designation: (form.designation || 'General Staff').toUpperCase(),
-        registrationData: {
-          ...form,
-          regNo: applicationRef || form.regNo,
-          ...(editable ? { registrationFeePaid: String(viewApplication.feesPaid) } : {}),
-        },
+        registrationData,
       };
       const registration = editable
         ? await registrationApi.update(applicationRef, payload)
         : await registrationApi.create({
           ...payload,
           feesPaid: paidAmount,
-          registrationData: { ...form },
+          registrationData,
         });
       if (editable) {
         navigate('/admin/applications', { replace: true });
@@ -783,7 +824,7 @@ export default function Register({ readOnly = false, editable = false }) {
             <div className="ref-chip">{refCode}</div>
           </div>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 22, flexWrap: 'wrap' }}>
-            <Link to="/" className="btn btn-outline">
+            <Link to="/track" className="btn btn-outline">
               <i className="bi bi-search"></i> {ts('trackApplication')}
             </Link>
             <button type="button" className="btn btn-dark" onClick={() => window.print()}>
@@ -1304,8 +1345,10 @@ export default function Register({ readOnly = false, editable = false }) {
                       name="pan"
                       maxLength={10}
                       value={form.pan}
-                      onChange={set}
-                      placeholder="E.G. CAAPCS211A"
+                      onChange={handlePanChange}
+                      placeholder="E.G. ABCDE1234F"
+                      autoCapitalize="characters"
+                      spellCheck={false}
                     />
                   </td>
                 </tr>
@@ -1455,9 +1498,10 @@ export default function Register({ readOnly = false, editable = false }) {
                     <input
                       name="aadhaar"
                       maxLength={14}
+                      inputMode="numeric"
                       value={form.aadhaar}
-                      onChange={set}
-                      placeholder="12 DIGIT AADHAAR (E.G. 546546201002)"
+                      onChange={handleAadhaarChange}
+                      placeholder="E.G. 1234 5678 9123"
                     />
                   </td>
                 </tr>
