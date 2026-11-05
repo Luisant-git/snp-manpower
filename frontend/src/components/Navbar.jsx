@@ -9,6 +9,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [session, setCurrentSession] = useState(getSession);
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   useEffect(() => {
     const refreshSession = () => setCurrentSession(getSession());
@@ -36,12 +37,19 @@ export default function Navbar() {
     <header className="navbar">
       <div className="container">
         <div className="navbar-inner">
-          <Link to="/register" className="navbar-brand" onClick={() => setOpen(false)}>
-            <span className="brand-badge">{BRAND.short}</span>
-            <span className="brand-text">
-              {BRAND.name}
-              <small>{BRAND.tagline}</small>
-            </span>
+          <Link
+            to="/register"
+            className="navbar-brand"
+            aria-label={`${BRAND.fullName} registration`}
+            onClick={() => setOpen(false)}
+          >
+            <img
+              src="/assets/brand-logo.png"
+              alt=""
+              className={`navbar-brand-logo${logoLoaded ? ' is-loaded' : ''}`}
+              onLoad={() => setLogoLoaded(true)}
+              onError={() => setLogoLoaded(false)}
+            />
           </Link>
 
           <ul className="nav-links">

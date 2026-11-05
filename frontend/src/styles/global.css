@@ -207,34 +207,19 @@ textarea {
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
-.brand-badge {
-  background: linear-gradient(135deg, var(--navy), var(--teal));
-  color: #fff;
-  padding: 7px 13px;
-  border-radius: 9px;
-  font-weight: 800;
-  font-size: 1.05rem;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 8px rgba(30, 58, 138, 0.25);
+.navbar-brand-logo {
+  display: none;
+  width: auto;
+  height: auto;
+  max-width: 320px;
+  max-height: 56px;
+  object-fit: contain;
 }
 
-.brand-text {
-  font-weight: 800;
-  font-size: 1.02rem;
-  color: var(--navy);
-  letter-spacing: -0.3px;
-  line-height: 1.1;
-}
-
-.brand-text small {
+.navbar-brand-logo.is-loaded {
   display: block;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--muted);
-  letter-spacing: 0.2px;
 }
 
 .nav-links {

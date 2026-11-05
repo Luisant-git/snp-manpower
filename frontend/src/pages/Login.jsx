@@ -80,7 +80,7 @@ export default function Login() {
       const user = await authApi.login({ mobile: username, password });
       if (String(user.role).toLowerCase() !== 'admin') {
         await authApi.logout();
-        throw new Error('This login is restricted to system administrators. Use WhatsApp OTP for employee and applicant access.');
+        throw new Error('This login is restricted to system administrators. Use WhatsApp OTP for employee access.');
       }
       setSession(user);
       navigate('/admin');
@@ -125,13 +125,9 @@ export default function Login() {
               <div className="auth-icon auth-icon-green">
                 <i className="bi bi-whatsapp"></i>
               </div>
-              <h3 className="auth-title">Employee / Applicant Login</h3>
-              <p className="auth-sub">
-                Enter your 10-digit registered mobile number to receive a secure WhatsApp
-                verification code.
-              </p>
+              <h3 className="auth-title">Employee Login</h3>
               <form onSubmit={sendOtp}>
-                <label className="field-label">Mobile Number (WhatsApp Enabled)</label>
+                <label className="field-label">Mobile Number</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span
                     style={{
@@ -164,9 +160,6 @@ export default function Login() {
                     }}
                   />
                 </div>
-                <small style={{ color: 'var(--muted)', fontSize: '.78rem', display: 'block', marginTop: 6 }}>
-                  We'll send an official 6-digit OTP code to your WhatsApp.
-                </small>
                 <button
                   type="submit"
                   className="btn btn-teal btn-block"
@@ -242,15 +235,9 @@ export default function Login() {
               <h3 className="auth-title" style={{ textAlign: 'center' }}>
                 Login Successful!
               </h3>
-              <p className="auth-sub" style={{ marginBottom: 20 }}>
-                +91 {phone} verified via WhatsApp. Your application dossier is now unlocked.
-              </p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <Link to="/track" className="btn btn-outline">
-                  <i className="bi bi-search"></i> Track Application
-                </Link>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12 }}>
                 <Link to="/register" className="btn btn-primary">
-                  <i className="bi bi-file-earmark-person"></i> Update Dossier
+                  <i className="bi bi-arrow-right-circle"></i> Continue
                 </Link>
               </div>
             </div>
@@ -262,10 +249,7 @@ export default function Login() {
               <div className="auth-icon auth-icon-dark">
                 <i className="bi bi-shield-lock-fill"></i>
               </div>
-              <h3 className="auth-title">Admin Control Login</h3>
-              <p className="auth-sub">
-                Restricted access for recruitment officers &amp; system administrators.
-              </p>
+              <h3 className="auth-title">Admin Login</h3>
 
               {loginError && (
                 <div className="alert-error">
@@ -275,7 +259,7 @@ export default function Login() {
 
               <form onSubmit={adminLogin}>
                 <div style={{ marginBottom: 14 }}>
-                  <label className="field-label">Admin Username / Registered Mobile</label>
+                  <label className="field-label">Mobile Number</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span
                       style={{
@@ -293,7 +277,7 @@ export default function Login() {
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="10-digit admin mobile"
+                      placeholder="Enter mobile number"
                     />
                   </div>
                 </div>
@@ -324,17 +308,11 @@ export default function Login() {
                 </div>
 
                 <button type="submit" className="btn btn-dark btn-block" disabled={loggingIn}>
-                  <i className="bi bi-box-arrow-in-right"></i> {loggingIn ? 'Logging in...' : 'Login to Admin Panel'}
+                  <i className="bi bi-box-arrow-in-right"></i> {loggingIn ? 'Logging in...' : 'Login'}
                 </button>
               </form>
             </>
           )}
-        </div>
-
-        <div className="auth-card-foot">
-          <small>
-            <i className="bi bi-shield-check text-success"></i> End-to-end encrypted session.
-          </small>
         </div>
       </div>
     </div>
