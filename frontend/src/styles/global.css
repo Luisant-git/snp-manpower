@@ -3112,6 +3112,69 @@ textarea {
   z-index: 5;
 }
 
+.camera-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.76);
+}
+
+.camera-dialog {
+  width: min(100%, 560px);
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.camera-dialog-head,
+.camera-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+.camera-dialog-head {
+  border-bottom: 1px solid var(--line);
+}
+
+.camera-dialog-head h2 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.camera-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: var(--slate);
+}
+
+.camera-preview {
+  display: block;
+  width: 100%;
+  max-height: min(65vh, 560px);
+  aspect-ratio: 4 / 3;
+  background: #0f172a;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.camera-dialog-actions {
+  justify-content: flex-end;
+}
+
 .btn-change-photo {
   background: #ffffff;
   color: #881337;

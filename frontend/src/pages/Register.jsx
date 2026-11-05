@@ -350,7 +350,6 @@ export default function Register({ readOnly = false, editable = false }) {
   const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'kn'); // Default to Kannada as in physical sheet
   const session = getSession();
   const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
   const proofFileInputRef = useRef(null);
   const bankProofFileRef = useRef(null);
 
@@ -367,7 +366,21 @@ export default function Register({ readOnly = false, editable = false }) {
   const [candidateVerified, setCandidateVerified] = useState(false);
   const [employeeVerified, setEmployeeVerified] = useState(false);
   const [employeeLookupError, setEmployeeLookupError] = useState('');
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const employeeLookupRef = useRef(0);
+
+  useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream, cameraOpen]);
+
+  useEffect(() => () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   useEffect(() => {
     branchApi.list()
@@ -693,14 +706,71 @@ export default function Register({ readOnly = false, editable = false }) {
     setForm((f) => ({ ...f, dob: val, age: calculatedAge }));
   };
 
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files?.[0];
+  const uploadPhoto = (file) => {
     if (!file) return;
     try {
       validateUpload(file, ['image/jpeg', 'image/png']);
       uploadRegistrationFile('photo', file)
         .then((uploaded) => setForm((f) => ({ ...f, photoUrl: uploaded.url })))
         .catch((error) => showToast('error', error.message));
+    } catch (error) {
+      showToast('error', error.message);
+    }
+  };
+
+  const handlePhotoUpload = (e) => {
+    uploadPhoto(e.target.files?.[0]);
+    e.target.value = '';
+  };
+
+  const openCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast('error', 'Camera access requires a supported browser and a secure HTTPS connection. Use Browse File instead.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: 'user' },
+      });
+      cameraStreamRef.current = stream;
+      setCameraStream(stream);
+      setCameraOpen(true);
+    } catch (error) {
+      showToast('error', error.name === 'NotAllowedError'
+        ? 'Camera permission was denied. Allow camera access in your browser settings and try again.'
+        : `Unable to open the camera: ${error.message}`);
+    }
+  };
+
+  const closeCamera = () => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraStream(null);
+    setCameraOpen(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video.videoHeight) {
+      showToast('error', 'Camera is not ready yet. Please try again.');
+      return;
+    }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Could not prepare the photo capture.');
+      context.drawImage(video, 0, 0);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          showToast('error', 'Could not capture the photo. Please try again.');
+          return;
+        }
+        uploadPhoto(new File([blob], `candidate-photo-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        closeCamera();
+      }, 'image/jpeg', 0.9);
     } catch (error) {
       showToast('error', error.message);
     }
@@ -1106,7 +1176,7 @@ export default function Register({ readOnly = false, editable = false }) {
                         type="button"
                         className="btn-photo-action"
                         title="Take photo from camera"
-                        onClick={() => cameraInputRef.current?.click()}
+                        onClick={openCamera}
                       >
                         <i className="bi bi-camera-fill"></i> {ts('openCamera')}
                       </button>
@@ -1127,14 +1197,6 @@ export default function Register({ readOnly = false, editable = false }) {
                   ref={fileInputRef}
                   onChange={handlePhotoUpload}
                   accept="image/*"
-                  style={{ display: 'none' }}
-                />
-                <input
-                  type="file"
-                  ref={cameraInputRef}
-                  onChange={handlePhotoUpload}
-                  accept="image/*"
-                  capture="user"
                   style={{ display: 'none' }}
                 />
               </div>
@@ -2936,7 +2998,25 @@ export default function Register({ readOnly = false, editable = false }) {
         </div>
         </fieldset>
       </form>
-
+      {cameraOpen && (
+        <div className="camera-overlay" role="dialog" aria-modal="true" aria-label="Take candidate photo">
+          <div className="camera-dialog">
+            <div className="camera-dialog-head">
+              <h2>Take Candidate Photo</h2>
+              <button type="button" className="camera-close" onClick={closeCamera} aria-label="Close camera">
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <video ref={videoRef} className="camera-preview" autoPlay playsInline muted />
+            <div className="camera-dialog-actions">
+              <button type="button" className="btn btn-outline" onClick={closeCamera}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={capturePhoto}>
+                <i className="bi bi-camera-fill"></i> Capture Photo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
