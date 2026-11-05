@@ -120,16 +120,14 @@ export default function Login() {
     <div className="auth-wrap login-wrap">
       <div className="auth-card p-0">
         <div className="auth-card-body">
+          <img
+            src="/assets/brand-logo.png"
+            alt="SNP Consultant and Services"
+            className="login-brand-logo"
+          />
           {stage === 'phone' && (
             <>
-              <div className="auth-icon auth-icon-brand">
-                <i className="bi bi-person-badge-fill"></i>
-              </div>
               <h3 className="auth-title">Employee &amp; Admin Login</h3>
-              <p className="auth-sub">
-                Enter the mobile number registered in User Management. We&apos;ll check your account
-                and ask for the right sign-in method.
-              </p>
 
               {error && (
                 <div className="alert-error" role="alert">
@@ -172,19 +170,11 @@ export default function Login() {
                   <i className="bi bi-arrow-right-circle"></i> {checking ? 'Checking...' : 'Continue'}
                 </button>
               </form>
-
-              <p className="auth-method-note">
-                <i className="bi bi-info-circle"></i>
-                <span>Only numbers registered in User Management can sign in. Admins use a password; employees use a WhatsApp OTP.</span>
-              </p>
             </>
           )}
 
           {stage === 'password' && (
             <>
-              <div className="auth-icon auth-icon-dark">
-                <i className="bi bi-shield-lock-fill"></i>
-              </div>
               <h3 className="auth-title">Admin Login</h3>
               <p className="auth-sub">
                 Admin account found for <strong>+91 {phone}</strong>. Enter your password to

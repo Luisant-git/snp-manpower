@@ -994,7 +994,16 @@ textarea {
 }
 
 .login-wrap {
-  margin-top: 64px;
+  margin-top: 206px;
+}
+
+.login-brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 380px;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 28px;
 }
 
 .auth-card {
@@ -1628,20 +1637,7 @@ textarea {
   white-space: nowrap;
 }
 
-.auth-method-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  margin-top: 16px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.5;
-}
 
-.auth-method-note i {
-  margin-top: 2px;
-  color: var(--teal);
-}
 
 .auth-resend {
   display: flex;
