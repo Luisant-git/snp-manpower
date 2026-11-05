@@ -57,6 +57,8 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [exportError, setExportError] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -84,8 +86,6 @@ export default function ManageApplications({ mySubmissions = false }) {
     feeCurrentPaid + feePaidNow <= REGISTRATION_FEE;
   const feeTotalAfter = feeAmountValid ? feeCurrentPaid + feePaidNow : feeCurrentPaid;
   const feePendingAfter = Math.max(0, REGISTRATION_FEE - feeTotalAfter);
-  const feeStatusAfter =
-    feeTotalAfter === 0 ? 'Pending' : feeTotalAfter >= REGISTRATION_FEE ? 'Paid' : 'Partial';
   const feeValidationError = feeAttempted || feeForm.paid !== ''
     ? !Number.isInteger(feePaidNow) || feePaidNow <= 0
       ? 'Enter a whole-rupee amount greater than ₹0.'
@@ -181,6 +181,75 @@ export default function ManageApplications({ mySubmissions = false }) {
     setFilterValues(clearedFilters);
   };
 
+  const exportFilteredApplications = async () => {
+    setExportError('');
+    setExporting(true);
+    try {
+      const { default: ExcelJS } = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Applications');
+      worksheet.columns = [
+        { header: 'Reference No', key: 'ref', width: 22 },
+        { header: 'Candidate Name', key: 'candidateName', width: 28 },
+        { header: 'Mobile', key: 'mobile', width: 18 },
+        { header: 'Applied Role', key: 'designation', width: 24 },
+        { header: 'Gender', key: 'gender', width: 14 },
+        { header: 'Age', key: 'age', width: 10 },
+        { header: 'Filled By (Employee)', key: 'filledBy', width: 26 },
+        { header: 'Employee Mobile', key: 'employeeMobile', width: 18 },
+        { header: 'Driving Licence', key: 'drivingLicense', width: 22 },
+        { header: 'Vehicle No', key: 'vehicleNo', width: 20 },
+        { header: 'Application Status', key: 'applicationStatus', width: 20 },
+        { header: 'Fees Status', key: 'feesStatus', width: 14 },
+        { header: 'Fees Paid (INR)', key: 'feesPaid', width: 16 },
+        { header: 'Fees Pending (INR)', key: 'feesPending', width: 18 },
+        { header: 'Submitted Date', key: 'submittedDate', width: 18 },
+        { header: 'Branch', key: 'branch', width: 22 },
+      ];
+      worksheet.addRows(filtered.map((application) => ({
+        ref: application.ref || '',
+        candidateName: application.name || '',
+        mobile: application.mobile || '',
+        designation: application.designation || '',
+        gender: application.registrationData?.gender || '',
+        age: application.registrationData?.age || '',
+        filledBy: application.submittedBy || application.filledBy || 'Direct / Admin',
+        employeeMobile: application.submittedByMobile || application.filledByMobile || '',
+        drivingLicense: application.dl === 'NO LICENCE' ? 'No Licence' : application.dl === '—' ? '' : application.dl,
+        vehicleNo: application.vehicleNo === '—' ? '' : application.vehicleNo,
+        applicationStatus: applicationStatusLabel(application.status || 'UNDER_REVIEW'),
+        feesStatus: application.payment || 'Pending',
+        feesPaid: Number(application.feesPaid || 0),
+        feesPending: Number(application.feesPending || 0),
+        submittedDate: fmtDate(application.date),
+        branch: application.branch?.name || application.registrationData?.employeeBranch || '',
+      })));
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF17365D' },
+      };
+      worksheet.autoFilter = { from: 'A1', to: 'P1' };
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `applications-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setExportError(`Could not export applications: ${error.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const remove = async (ref) => {
     if (!window.confirm(`Delete application ${ref}? This cannot be undone.`)) return;
     try {
@@ -192,7 +261,6 @@ export default function ManageApplications({ mySubmissions = false }) {
   };
 
   const stageApplicationStatus = (application, status) => {
-    if (status === (application.status || 'UNDER_REVIEW')) return;
     setStatusSaveError('');
     setStatusModal({ application, status });
   };
@@ -200,6 +268,7 @@ export default function ManageApplications({ mySubmissions = false }) {
   const saveApplicationStatus = async () => {
     if (!statusModal || saving) return;
     const { application, status } = statusModal;
+    if (status === (application.status || 'UNDER_REVIEW')) return;
     const confirmationFailure = 'Application status was updated, but WhatsApp confirmation failed. Check the approved template configuration and retry by changing status away from Approved and approving again.';
     setSaving(true);
     setStatusSaveError('');
@@ -248,43 +317,66 @@ export default function ManageApplications({ mySubmissions = false }) {
   return (
     <div className={`admin-panel ${mySubmissions ? 'my-submissions-neat' : 'manage-apps-neat'}`}>
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
-      <header className={`neat-registry-head${mySubmissions ? ' my-submissions-welcome' : ''}`}>
-        {mySubmissions ? (
-          <>
-            <span className="admin-welcome-mark" aria-hidden="true">
-              <i className="bi bi-file-earmark-person"></i>
-            </span>
-            <div className="admin-welcome-copy my-submissions-welcome-copy">
-              <span className="section-eyebrow">My Submissions</span>
-              <h1 className="section-title">Welcome, {session.name}</h1>
-              <p>
-                <strong>My Submitted Forms</strong>
-                <span aria-hidden="true"> — </span>
-                Review and track the registration forms you have submitted.
-              </p>
-            </div>
-            <div className="neat-head-chip my-submissions-count">
-              <i className="bi bi-files" aria-hidden="true"></i>
-              {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="neat-head-icon" aria-hidden="true">
-              <i className="bi bi-clipboard-data"></i>
-            </div>
-            <div className="neat-head-copy">
-              <div className="section-eyebrow">Manage Applications</div>
-              <h1 className="section-title">Manpower Application Registry</h1>
-              <p>Review, manage, and track submitted manpower applications.</p>
-            </div>
-            <div className="neat-head-chip">
-              <i className="bi bi-files"></i>
-              {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
-            </div>
-          </>
-        )}
-      </header>
+      {mySubmissions && (
+        <header className="neat-registry-head my-submissions-welcome">
+          <span className="admin-welcome-mark" aria-hidden="true">
+            <i className="bi bi-file-earmark-person"></i>
+          </span>
+          <div className="admin-welcome-copy my-submissions-welcome-copy">
+            <span className="section-eyebrow">My Submissions</span>
+            <h1 className="section-title">Welcome, {session.name}</h1>
+            <p>
+              <strong>My Submitted Forms</strong>
+              <span aria-hidden="true"> — </span>
+              Review and track the registration forms you have submitted.
+            </p>
+          </div>
+          <div className="neat-head-chip my-submissions-count">
+            <i className="bi bi-files" aria-hidden="true"></i>
+            {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
+          </div>
+        </header>
+      )}
+
+      {/* ---------- Stat cards ---------- */}
+      <div className="stats-grid registry-stats">
+        <div className="stat-card">
+          <div className="stat-icon blue">
+            <i className="bi bi-folder2-open"></i>
+          </div>
+          <div>
+            <div className="stat-value">{loadError ? '—' : filtered.length}</div>
+            <div className="stat-label">Total Applications</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon green">
+            <i className="bi bi-check2-circle"></i>
+          </div>
+          <div>
+            <div className="stat-value">{loadError ? '—' : paidCount}</div>
+            <div className="stat-label">Paid / Verified Fees</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon amber">
+            <i className="bi bi-hourglass-split"></i>
+          </div>
+          <div>
+            <div className="stat-value">{loadError ? '—' : pendingCount}</div>
+            <div className="stat-label">Pending Payments</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon purple">
+            <i className="bi bi-cash-stack"></i>
+          </div>
+          <div>
+            <div className="stat-value">{loadError ? '—' : `₹${totalDues.toLocaleString('en-IN')}`}</div>
+            <div className="stat-label">Pending Processing Dues</div>
+          </div>
+        </div>
+      </div>
 
       {/* ---------- Filters ---------- */}
       <form
@@ -348,6 +440,17 @@ export default function ManageApplications({ mySubmissions = false }) {
           <button type="submit" className="btn btn-primary registry-filter-apply">
             <i className="bi bi-funnel"></i> Filter
           </button>
+          {!mySubmissions && session.role === 'admin' && (
+            <button
+              type="button"
+              className="btn btn-outline registry-filter-apply registry-export-excel"
+              onClick={exportFilteredApplications}
+              disabled={loading || exporting || filtered.length === 0}
+            >
+              <i className="bi bi-file-earmark-spreadsheet"></i>{' '}
+              {exporting ? 'Exporting...' : 'Export Excel'}
+            </button>
+          )}
           <button
             type="button"
             className="registry-filter-reset"
@@ -359,46 +462,7 @@ export default function ManageApplications({ mySubmissions = false }) {
           </button>
         </div>
       </form>
-
-      {/* ---------- Stat cards ---------- */}
-      <div className="stats-grid registry-stats">
-        <div className="stat-card">
-          <div className="stat-icon blue">
-            <i className="bi bi-folder2-open"></i>
-          </div>
-          <div>
-            <div className="stat-value">{loadError ? '—' : filtered.length}</div>
-            <div className="stat-label">Total Applications</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon green">
-            <i className="bi bi-check2-circle"></i>
-          </div>
-          <div>
-            <div className="stat-value">{loadError ? '—' : paidCount}</div>
-            <div className="stat-label">Paid / Verified Fees</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon amber">
-            <i className="bi bi-hourglass-split"></i>
-          </div>
-          <div>
-            <div className="stat-value">{loadError ? '—' : pendingCount}</div>
-            <div className="stat-label">Pending Payments</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon purple">
-            <i className="bi bi-cash-stack"></i>
-          </div>
-          <div>
-            <div className="stat-value">{loadError ? '—' : `₹${totalDues.toLocaleString('en-IN')}`}</div>
-            <div className="stat-label">Pending Processing Dues</div>
-          </div>
-        </div>
-      </div>
+      {exportError && <div className="track-result track-error" role="alert">{exportError}</div>}
 
       {/* ---------- Registry table ---------- */}
       <div className="admin-table-wrap">
@@ -410,7 +474,7 @@ export default function ManageApplications({ mySubmissions = false }) {
               <th>Candidate Name</th>
               <th>Mobile</th>
               <th>Applied Role</th>
-              <th>Filled By (Employee)</th>
+              <th className="registry-filled-by-heading">Filled By (Employee)</th>
               <th>DL &amp; Vehicle</th>
               <th>Application Status</th>
               <th>Fees Status</th>
@@ -478,18 +542,18 @@ export default function ManageApplications({ mySubmissions = false }) {
                   </td>
                   <td>
                     {session.role === 'admin' ? (
-                      <select
-                        className={`status-select app-status-select ${String(
+                      <button
+                        type="button"
+                        className={`status-select app-status-select app-status-trigger ${String(
                           a.status || 'UNDER_REVIEW'
                         ).toLowerCase().replace('_', '-')}`}
-                        value={a.status || 'UNDER_REVIEW'}
-                        onChange={(e) => stageApplicationStatus(a, e.target.value)}
+                        onClick={() => stageApplicationStatus(a, a.status || 'UNDER_REVIEW')}
                         aria-label={`Application status for ${a.ref}`}
+                        aria-haspopup="dialog"
+                        title="Click to change application status"
                       >
-                        <option value="UNDER_REVIEW">Under Review</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
-                      </select>
+                        {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
+                      </button>
                     ) : (
                       <span>{String(a.status || 'UNDER_REVIEW').replace(/_/g, ' ')}</span>
                     )}
@@ -497,15 +561,14 @@ export default function ManageApplications({ mySubmissions = false }) {
                   <td>
                     <div className="fees-cell">
                       <span className={`badge-pay ${payClass[pay] || ''}`}>{pay}</span>
-                      <small>
-                        {fees.paid} paid / {fees.pending} pending
-                      </small>
+                      <small>{fees.paid} paid</small>
+                      <small>{fees.pending} pending</small>
                     </div>
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>                  {fmtDate(a.date)}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button
-                      className="icon-btn"
+                      className="icon-btn view"
                       title="View application"
                       onClick={() => navigate(
                         `${session.role === 'admin' ? '/admin/application' : '/my-submissions'}/${encodeURIComponent(a.ref)}`,
@@ -523,7 +586,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                       <i className="bi bi-pencil"></i>
                     </button>{' '}
                     <button
-                      className="icon-btn"
+                      className="icon-btn fees"
                       title="Update fees"
                       onClick={() => openFees(a)}
                     >
@@ -613,7 +676,7 @@ export default function ManageApplications({ mySubmissions = false }) {
               <p id="fees-modal-description">
                 Enter the amount received now. The payment status and remaining balance are calculated from the total paid.
               </p>
-              <div className="modal-grid">
+              <div className="modal-grid fee-payment-summary">
                 <div className="field-block full">
                   <label className="input-label" htmlFor="fee-amount-paid">Amount paid now (₹)</label>
                   <input
@@ -636,20 +699,6 @@ export default function ManageApplications({ mySubmissions = false }) {
                   />
                 </div>
                 <div className="field-block">
-                  <label className="input-label" htmlFor="fee-payment-status">Payment status</label>
-                  <select
-                    id="fee-payment-status"
-                    className={`auth-input fee-status-select fee-status-${payClass[feeStatusAfter] || 'pending'}`}
-                    value={feeStatusAfter}
-                    disabled
-                    aria-label="Payment status (calculated)"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Partial">Partial</option>
-                    <option value="Paid">Paid</option>
-                  </select>
-                </div>
-                <div className="field-block">
                   <span className="input-label">Total paid after</span>
                   <strong>₹{feeTotalAfter.toLocaleString('en-IN')}</strong>
                 </div>
@@ -658,9 +707,10 @@ export default function ManageApplications({ mySubmissions = false }) {
                   <strong>₹{feePendingAfter.toLocaleString('en-IN')}</strong>
                 </div>
               </div>
-              <small>
-                Current paid: ₹{feeCurrentPaid.toLocaleString('en-IN')} · Current pending: ₹{feePendingAmount.toLocaleString('en-IN')}
-              </small>
+              <div className="fee-current-summary">
+                <small>Current paid: ₹{feeCurrentPaid.toLocaleString('en-IN')}</small>
+                <small>Current pending: ₹{feePendingAmount.toLocaleString('en-IN')}</small>
+              </div>
               {(feeSaveError || feeValidationError) && (
                 <div id="fee-payment-error" className="track-result track-error" role="alert">
                   {feeSaveError || feeValidationError}
@@ -736,15 +786,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                 Confirm the application status update for {statusModal.application.name || 'this candidate'}.
               </p>
               <div className="modal-grid">
-                <div className="field-block">
-                  <span className="input-label">Current status</span>
-                  <span className={`status-select app-status-select ${String(
-                    statusModal.application.status || 'UNDER_REVIEW'
-                  ).toLowerCase().replace('_', '-')}`} style={{ display: 'inline-block' }}>
-                    {applicationStatusLabel(statusModal.application.status || 'UNDER_REVIEW')}
-                  </span>
-                </div>
-                <div className="field-block">
+                <div className="field-block status-change-field">
                   <span className="input-label">New status</span>
                   <select
                     className={`status-confirmation-select ${statusModal.status
@@ -778,7 +820,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                 type="button"
                 className="btn add-user-btn modal-submit"
                 onClick={saveApplicationStatus}
-                disabled={saving}
+                disabled={saving || statusModal.status === (statusModal.application.status || 'UNDER_REVIEW')}
               >
                 <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Confirm Update'}
               </button>

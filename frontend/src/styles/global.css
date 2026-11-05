@@ -1995,6 +1995,17 @@ textarea {
   cursor: pointer;
 }
 
+.status-change-field {
+  grid-column: 1 / -1;
+  width: min(100%, 320px);
+  margin-inline: auto;
+  text-align: center;
+}
+
+.status-change-field .status-confirmation-select {
+  text-align: center;
+}
+
 .status-confirmation-select:focus {
   border-color: var(--royal);
   outline: 3px solid rgba(37, 99, 235, 0.15);
@@ -2031,6 +2042,24 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.fee-payment-summary {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.fee-payment-summary .field-block:not(.full) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.fee-current-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* ---- modern field blocks ---- */
@@ -4658,6 +4687,11 @@ textarea {
   box-shadow: 0 6px 14px -6px rgba(30, 58, 138, 0.55);
 }
 
+:is(.manage-apps-neat, .my-submissions-neat) .registry-export-excel,
+:is(.manage-apps-neat, .my-submissions-neat) .registry-export-excel:hover {
+  color: #fff;
+}
+
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-apply:hover {
   background: linear-gradient(135deg, var(--navy-dark), #1e40af);
   transform: translateY(-1px);
@@ -4703,6 +4737,11 @@ textarea {
   font-size: 0.67rem;
   letter-spacing: 0.6px;
   white-space: nowrap;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table th.registry-filled-by-heading {
+  white-space: normal;
+  min-width: 105px;
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-table td {
@@ -4757,7 +4796,9 @@ textarea {
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .fees-cell small {
+  margin-top: 2px;
   font-size: 0.7rem;
+  white-space: normal;
 }
 
 /* ---------- Inline status pills ---------- */
@@ -4769,6 +4810,21 @@ textarea {
   border-radius: 999px;
   font-size: 0.71rem;
   font-weight: 700;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) button.status-select.app-status-trigger {
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) button.status-select.app-status-trigger:hover {
+  filter: brightness(0.97);
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) button.status-select.app-status-trigger:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 2px;
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .status-select.app-status-select.under-review {
@@ -4828,6 +4884,39 @@ textarea {
 :is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.primary:hover {
   border-color: #bfdbfe;
   background: #dbeafe;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.view {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.view:hover {
+  border-color: #93c5fd;
+  background: #dbeafe;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.fees {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #059669;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.fees:hover {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:last-child .icon-btn.danger:hover {
+  border-color: #fca5a5;
+  background: #fee2e2;
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-table td[colspan] {
@@ -4891,6 +4980,7 @@ textarea {
   :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-field {
     font-size: 0.65rem;
   }
+
 }
 
 @media (max-width: 480px) {
