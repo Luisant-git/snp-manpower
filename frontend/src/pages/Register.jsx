@@ -188,6 +188,45 @@ const TAXI_SEATER_OPTIONS = [
   'Other Passenger Car / Taxi',
 ];
 
+const INDIAN_STATES = [
+  'ANDHRA PRADESH',
+  'ARUNACHAL PRADESH',
+  'ASSAM',
+  'BIHAR',
+  'CHHATTISGARH',
+  'GOA',
+  'GUJARAT',
+  'HARYANA',
+  'HIMACHAL PRADESH',
+  'JHARKHAND',
+  'KARNATAKA',
+  'KERALA',
+  'MADHYA PRADESH',
+  'MAHARASHTRA',
+  'MANIPUR',
+  'MEGHALAYA',
+  'MIZORAM',
+  'NAGALAND',
+  'ODISHA',
+  'PUNJAB',
+  'RAJASTHAN',
+  'SIKKIM',
+  'TAMIL NADU',
+  'TELANGANA',
+  'TRIPURA',
+  'UTTAR PRADESH',
+  'UTTARAKHAND',
+  'WEST BENGAL',
+  'ANDAMAN AND NICOBAR ISLANDS',
+  'CHANDIGARH',
+  'DADRA AND NAGAR HAVELI AND DAMAN AND DIU',
+  'DELHI',
+  'JAMMU AND KASHMIR',
+  'LADAKH',
+  'LAKSHADWEEP',
+  'PUDUCHERRY',
+];
+
 const emptyForm = {
   // Page 1 Meta
   formDate: new Date().toISOString().split('T')[0],
@@ -250,6 +289,7 @@ const emptyForm = {
   sameAddress: false,
   addressProofUrl: null,
   addressProofName: '',
+  addressProofs: [],
   bankProofUrl: null,
   bankProofName: '',
   employeeBranch: '',
@@ -368,9 +408,18 @@ export default function Register({ readOnly = false, editable = false }) {
       return;
     }
     const details = viewApplication.registrationData || {};
+    const storedProofs = Array.isArray(details.addressProofs) ? details.addressProofs : [];
+    const primaryProofUrl = viewApplication.addressProofUrl || details.addressProofUrl || null;
+    const primaryProofName = viewApplication.addressProofName || details.addressProofName || '';
+    const addressProofs = storedProofs.length
+      ? storedProofs
+      : primaryProofUrl
+        ? [{ url: primaryProofUrl, name: primaryProofName }]
+        : [];
     setForm((current) => ({
       ...current,
       ...details,
+      addressProofs,
       pan: String(details.pan || '').toUpperCase(),
       aadhaar: formatAadhaar(details.aadhaar),
       fullName: viewApplication.name || details.fullName || '',
@@ -534,17 +583,67 @@ export default function Register({ readOnly = false, editable = false }) {
     }
   };
 
-  const handleProofUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleProofUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const currentProofs = form.addressProofs?.length
+      ? form.addressProofs
+      : form.addressProofUrl
+        ? [{ url: form.addressProofUrl, name: form.addressProofName }]
+        : [];
+    const remaining = 3 - currentProofs.length;
+    if (remaining <= 0) {
+      showToast('error', 'You can upload a maximum of 3 address proof documents.');
+      return;
+    }
+
+    const selected = files.slice(0, remaining);
+    if (files.length > remaining) {
+      showToast('error', `Only ${remaining} more address proof document(s) can be added.`);
+    }
+
     try {
-      validateUpload(file, ['image/jpeg', 'image/png', 'application/pdf']);
-      uploadRegistrationFile('address-proof', file)
-        .then((uploaded) => setForm((f) => ({ ...f, addressProofUrl: uploaded.url, addressProofName: uploaded.name })))
-        .catch((error) => showToast('error', error.message));
+      selected.forEach((file) => validateUpload(file, ['image/jpeg', 'image/png', 'application/pdf']));
+      for (const file of selected) {
+        const uploaded = await uploadRegistrationFile('address-proof', file);
+        setForm((f) => {
+          const existing = f.addressProofs?.length
+            ? f.addressProofs
+            : f.addressProofUrl
+              ? [{ url: f.addressProofUrl, name: f.addressProofName }]
+              : [];
+          if (existing.length >= 3) return f;
+          const next = [...existing, { url: uploaded.url, name: uploaded.name }];
+          return {
+            ...f,
+            addressProofs: next,
+            addressProofUrl: next[0]?.url || null,
+            addressProofName: next[0]?.name || '',
+          };
+        });
+      }
     } catch (error) {
       showToast('error', error.message);
     }
+  };
+
+  const removeAddressProof = (index) => {
+    setForm((f) => {
+      const existing = f.addressProofs?.length
+        ? f.addressProofs
+        : f.addressProofUrl
+          ? [{ url: f.addressProofUrl, name: f.addressProofName }]
+          : [];
+      const next = existing.filter((_, i) => i !== index);
+      return {
+        ...f,
+        addressProofs: next,
+        addressProofUrl: next[0]?.url || null,
+        addressProofName: next[0]?.name || '',
+      };
+    });
   };
 
   const pickLang = (e) => {
@@ -663,8 +762,8 @@ export default function Register({ readOnly = false, editable = false }) {
       return;
     }
 
-    if (!form.addressProofUrl) {
-      showToast('error', 'Upload an address proof document before submitting.');
+    if (!form.addressProofs?.length && !form.addressProofUrl) {
+      showToast('error', 'Upload at least one address proof document before submitting.');
       document.querySelector('.address-proof-upload-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -845,6 +944,12 @@ export default function Register({ readOnly = false, editable = false }) {
       </div>
     );
   }
+
+  const addressProofDocs = form.addressProofs?.length
+    ? form.addressProofs
+    : form.addressProofUrl
+      ? [{ url: form.addressProofUrl, name: form.addressProofName }]
+      : [];
 
   return (
     <div className={`register-wrap${readOnly ? ' registration-view-mode' : ''}`}>
@@ -1057,11 +1162,11 @@ export default function Register({ readOnly = false, editable = false }) {
                       <small style={{ fontSize: '0.68rem', color: '#1e3a8a' }}>State</small>
                     </td>
                     <td style={{ width: '18%' }}>
-                      <input
-                        type="text"
+                      <select
                         name="state"
                         value={form.state}
                         onChange={set}
+                        className="form-select"
                         style={{
                           border: 'none',
                           background: 'transparent',
@@ -1070,8 +1175,18 @@ export default function Register({ readOnly = false, editable = false }) {
                           textTransform: 'uppercase',
                           fontSize: '0.85rem',
                           width: '100%',
+                          padding: '2px 18px 2px 2px',
                         }}
-                      />
+                      >
+                        {!INDIAN_STATES.includes(form.state) && form.state && (
+                          <option value={form.state}>{form.state}</option>
+                        )}
+                        {INDIAN_STATES.map((state) => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="meta-cell-label" style={{ width: '17%' }}>
                       <div>{ts('metaRegNo')}</div>
@@ -1863,6 +1978,21 @@ export default function Register({ readOnly = false, editable = false }) {
                       </td>
                     </tr>
 
+                    {/* Vehicle Name */}
+                    <tr>
+                      <FormLabelCell k="vehicleName" enSecondary="Vehicle Name *" required />
+                      <td className="field-input-cell">
+                        <input
+                          name="vehicleName"
+                          required
+                          value={form.vehicleName}
+                          onChange={set}
+                          placeholder="VEHICLE NAME (E.G. TOYOTA INNOVA CRYSTA)"
+                          style={{ fontWeight: 700, textTransform: 'uppercase' }}
+                        />
+                      </td>
+                    </tr>
+
                     <tr>
                       <FormLabelCell k="taxiPermitType" enSecondary="Taxi Permit Type *" required />
                       <td className="field-input-cell">
@@ -2167,16 +2297,9 @@ export default function Register({ readOnly = false, editable = false }) {
               </tbody>
             </table>
 
-            {/* Bottom Yellow Fee Strip (Page 1) */}
+            {/* Bottom Yellow Strip (Page 1) */}
             <div className="fee-yellow-bar">
-              <div className="registration-fee-summary">
-                <i className="bi bi-receipt-cutoff me-1"></i>
-                <span>
-                  {ts('registrationFeePaidLabel')}: ₹{Number(form.registrationFeePaid || 0).toLocaleString('en-IN')}
-                  {' | '}{ts('registrationFeePendingLabel')}: ₹{Math.max(0, 2400 - Number(form.registrationFeePaid || 0)).toLocaleString('en-IN')}
-                </span>
-              </div>
-              <div style={{ color: '#78350f' }}>{ts('page1Of2')}</div>
+              <div style={{ color: '#78350f', width: '100%', textAlign: 'center' }}>{ts('page1Of2')}</div>
             </div>
           </div>
 
@@ -2261,68 +2384,75 @@ export default function Register({ readOnly = false, editable = false }) {
                   </td>
                 </tr>
 
-                {/* 3. Address Proof Document Upload (Image / PDF Upload) */}
+                {/* 3. Address Proof Documents Upload (up to 3, multiple browse) */}
                 <tr>
-                  <FormLabelCell k="addressProofDoc" enSecondary="Address Proof Document *" required />
+                  <FormLabelCell k="addressProofDoc" enSecondary="Address Proof Documents * (Up to 3)" required />
                   <td className="field-input-cell">
                     <input
                       type="file"
                       ref={proofFileInputRef}
                       style={{ display: 'none' }}
                       accept="image/*,.pdf"
+                      multiple
                       onChange={handleProofUpload}
                     />
-                    {form.addressProofUrl ? (
-                      <div className="address-proof-preview-card">
-                        <div className="d-flex align-items-center gap-3">
-                          {form.addressProofName?.toLowerCase().endsWith('.pdf') ? (
-                            <a href={form.addressProofUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
-                              <i className="bi bi-file-earmark-pdf"></i> View PDF
-                            </a>
-                          ) : (
-                            <img
-                              src={form.addressProofUrl}
-                              alt="Address Proof Preview"
-                              className="address-proof-thumb"
-                              crossOrigin={form.addressProofUrl.startsWith('http') ? 'use-credentials' : undefined}
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div>
-                            <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
-                              <i className="bi bi-file-earmark-check-fill text-success me-1"></i>
-                              {form.addressProofName || 'Address_Proof_Document'}
+                    {addressProofDocs.length ? (
+                      <div className="address-proof-list">
+                        {addressProofDocs.map((proof, index) => (
+                          <div className="address-proof-preview-card" key={`${proof.url}-${index}`}>
+                            <div className="d-flex align-items-center gap-3">
+                              {proof.name?.toLowerCase().endsWith('.pdf') ? (
+                                <a href={proof.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
+                                  <i className="bi bi-file-earmark-pdf"></i> View PDF
+                                </a>
+                              ) : (
+                                <img
+                                  src={proof.url}
+                                  alt={`Address Proof ${index + 1} Preview`}
+                                  className="address-proof-thumb"
+                                  crossOrigin={proof.url?.startsWith('http') ? 'use-credentials' : undefined}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <div>
+                                <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
+                                  <i className="bi bi-file-earmark-check-fill text-success me-1"></i>
+                                  {proof.name || `Address_Proof_Document_${index + 1}`}
+                                </div>
+                                <span className="badge bg-success-subtle text-success border border-success px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
+                                  ✓ Document {index + 1} uploaded
+                                </span>
+                              </div>
                             </div>
-                            <span className="badge bg-success-subtle text-success border border-success px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
-                              ✓ Address Proof Uploaded
-                            </span>
+                            <div className="address-proof-actions no-print">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger fw-bold"
+                                style={{ fontSize: '0.75rem' }}
+                                onClick={() => removeAddressProof(index)}
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="address-proof-actions no-print">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary fw-bold"
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() => proofFileInputRef.current?.click()}
-                          >
-                            <i className="bi bi-arrow-repeat me-1"></i> {ts('changeDoc')}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger fw-bold"
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() =>
-                              setForm((f) => ({
-                                ...f,
-                                addressProofUrl: null,
-                                addressProofName: '',
-                              }))
-                            }
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
+                        ))}
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                          <small className="address-proof-hint">
+                            {addressProofDocs.length < 3
+                              ? `You can add ${3 - addressProofDocs.length} more document(s). JPG, PNG or PDF, max 2 MB each.`
+                              : 'Maximum of 3 address proof documents added.'}
+                          </small>
+                          {addressProofDocs.length < 3 && (
+                            <button
+                              type="button"
+                              className="upload-browse-button no-print"
+                              onClick={() => proofFileInputRef.current?.click()}
+                            >
+                              <i className="bi bi-plus-lg"></i> Add More
+                            </button>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -2335,7 +2465,7 @@ export default function Register({ readOnly = false, editable = false }) {
                                 {ts('uploadAddressProof')}
                               </div>
                               <small className="address-proof-hint">
-                                Aadhaar Card, Voter ID, Rental Agreement, Gas Bill or Electricity Bill (JPG, PNG, PDF)
+                                Aadhaar Card, Voter ID, Rental Agreement, Gas Bill or Electricity Bill. Browse up to 3 documents (JPG, PNG, PDF, max 2 MB each).
                               </small>
                             </div>
                           </div>
@@ -2345,7 +2475,7 @@ export default function Register({ readOnly = false, editable = false }) {
                               className="upload-browse-button"
                               onClick={() => proofFileInputRef.current?.click()}
                             >
-                              <i className="bi bi-folder-fill"></i> {ts('browseFile')}
+                              <i className="bi bi-folder-fill"></i> Browse Documents
                             </button>
                           </div>
                         </div>

@@ -398,6 +398,13 @@ export const T = {
     te: 'వాహనం పేరు / సంఖ్య',
     ta: 'வாகன பெயர் / எண்',
   },
+  vehicleName: {
+    en: 'Vehicle Name *',
+    kn: 'ವಾಹನದ ಹೆಸರು *',
+    hi: 'वाहन का नाम *',
+    te: 'వాహనం పేరు *',
+    ta: 'வாகன பெயர் *',
+  },
 
   /* ---- Page 1 Bottom Yellow Strip ---- */
   registrationFeeNote: {

@@ -196,6 +196,12 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.navbar > .container {
+  max-width: 100%;
+  padding-left: 23px;
+  padding-right: 20px;
+}
+
 .navbar-inner {
   display: flex;
   align-items: center;
@@ -213,7 +219,7 @@ textarea {
   display: none;
   width: auto;
   height: auto;
-  max-width: 320px;
+  max-width: 420px;
   max-height: 56px;
   object-fit: contain;
 }
@@ -4210,6 +4216,11 @@ textarea {
   font-weight: 750;
 }
 
+.address-proof-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .address-proof-preview-card {
   display: flex;
   align-items: center;

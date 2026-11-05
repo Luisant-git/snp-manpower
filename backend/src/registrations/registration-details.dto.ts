@@ -57,6 +57,7 @@ export interface RegistrationDetails {
   sameAddress?: boolean;
   addressProofUrl?: string | null;
   addressProofName?: string;
+  addressProofs?: Array<{ url: string; name?: string }>;
   bankProofUrl?: string | null;
   bankProofName?: string;
   employeeBranch?: string;
