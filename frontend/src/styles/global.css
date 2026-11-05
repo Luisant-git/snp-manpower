@@ -4995,6 +4995,11 @@ textarea {
   min-width: 105px;
 }
 
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table th:nth-child(9),
+:is(.manage-apps-neat, .my-submissions-neat) .registry-table td:nth-child(9) {
+  min-width: 150px;
+}
+
 :is(.manage-apps-neat, .my-submissions-neat) .registry-table td {
   padding: 12px 13px;
   border-bottom: 1px solid #f1f5f9;
@@ -5047,9 +5052,32 @@ textarea {
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .fees-cell small {
-  margin-top: 2px;
+  margin-top: 0;
+  padding-left: 10px;
   font-size: 0.7rem;
-  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
+  white-space: nowrap;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .fees-cell {
+  display: flex;
+  width: max-content;
+  min-width: 132px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .fees-cell .badge-pay {
+  align-self: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  text-align: left;
 }
 
 /* ---------- Inline status pills ---------- */
@@ -5335,6 +5363,33 @@ textarea {
   background: #f8fafc;
   color: #475569;
   font-size: 0.76rem;
+}
+
+.my-submissions-neat .employee-application-status {
+  display: inline-block;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.71rem;
+  font-weight: 700;
+}
+
+.my-submissions-neat .employee-application-status.under-review {
+  border-color: #fde68a;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.my-submissions-neat .employee-application-status.approved {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.my-submissions-neat .employee-application-status.rejected {
+  border-color: #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 @media (max-width: 640px) {

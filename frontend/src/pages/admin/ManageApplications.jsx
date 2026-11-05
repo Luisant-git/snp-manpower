@@ -555,7 +555,14 @@ export default function ManageApplications({ mySubmissions = false }) {
                         {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
                       </button>
                     ) : (
-                      <span>{String(a.status || 'UNDER_REVIEW').replace(/_/g, ' ')}</span>
+                      <span className={mySubmissions
+                        ? `employee-application-status ${String(a.status || 'UNDER_REVIEW')
+                          .toLowerCase()
+                          .replace(/_/g, '-')}`
+                        : undefined}
+                      >
+                        {String(a.status || 'UNDER_REVIEW').replace(/_/g, ' ')}
+                      </span>
                     )}
                   </td>
                   <td>
