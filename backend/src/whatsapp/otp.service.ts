@@ -31,16 +31,23 @@ export class OtpService {
         where: { mobile },
         select: { isActive: true, role: true },
       });
-      if (!user) {
-        throw new UnauthorizedException(
-          'This mobile number is not registered in User Management. Contact an administrator.',
-        );
-      }
-      if (!user.isActive) {
-        throw new UnauthorizedException('This account is inactive. Contact an administrator.');
-      }
-      if (user.role === UserRole.ADMIN) {
-        throw new UnauthorizedException('Administrators must sign in with their password.');
+      if (user) {
+        if (!user.isActive) {
+          throw new UnauthorizedException('This account is inactive. Contact an administrator.');
+        }
+        if (user.role === UserRole.ADMIN) {
+          throw new UnauthorizedException('Administrators must sign in with their password.');
+        }
+      } else {
+        const registration = await this.prisma.registration.findFirst({
+          where: { mobile },
+          select: { id: true },
+        });
+        if (!registration) {
+          throw new UnauthorizedException(
+            'This mobile number is not registered. Please register first or contact an administrator.',
+          );
+        }
       }
     }
 

@@ -61,7 +61,7 @@ export class RegistrationsService {
         const ref = await this.generateReference(transaction);
         await this.otpService.consumeVerified(transaction, mobile, OtpPurpose.CANDIDATE);
         await this.otpService.consumeVerified(transaction, employeeMobile, OtpPurpose.EMPLOYEE);
-        return transaction.registration.create({
+        const created = await transaction.registration.create({
           data: {
             ref,
             name,
@@ -85,6 +85,22 @@ export class RegistrationsService {
             branchId: branch?.id ?? user.branchId,
           },
         });
+
+        const candidateUser = await transaction.user.findUnique({ where: { mobile } });
+        if (!candidateUser) {
+          await transaction.user.create({
+            data: {
+              mobile,
+              name,
+              passwordHash: '',
+              role: UserRole.APPLICANT,
+              isActive: true,
+              branchId: branch?.id ?? user.branchId,
+            },
+          });
+        }
+
+        return created;
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) throw new BadRequestException('This registration reference already exists.');

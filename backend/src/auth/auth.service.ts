@@ -23,16 +23,24 @@ export class AuthService {
       where: { mobile },
       select: { role: true, isActive: true },
     });
-    if (!user) {
-      throw new UnauthorizedException(
-        'This mobile number is not registered in User Management. Contact an administrator.',
-      );
-    }
-    if (!user.isActive) {
-      throw new UnauthorizedException('This account is inactive. Contact an administrator.');
+    if (user) {
+      if (!user.isActive) {
+        throw new UnauthorizedException('This account is inactive. Contact an administrator.');
+      }
+      return { method: user.role === UserRole.ADMIN ? 'password' : 'otp' };
     }
 
-    return { method: user.role === UserRole.ADMIN ? 'password' : 'otp' };
+    const registration = await this.prisma.registration.findFirst({
+      where: { mobile },
+      select: { id: true, name: true },
+    });
+    if (registration) {
+      return { method: 'otp' };
+    }
+
+    throw new UnauthorizedException(
+      'This mobile number is not registered. Please register first or contact an administrator.',
+    );
   }
 
   async login(mobile: string, password: string): Promise<SessionUser> {
@@ -64,11 +72,27 @@ export class AuthService {
 
     return this.prisma.$transaction(async (transaction) => {
       await this.otpService.consumeVerified(transaction, mobile, OtpPurpose.LOGIN);
-      const user = await transaction.user.findUnique({ where: { mobile } });
+      let user = await transaction.user.findUnique({ where: { mobile } });
       if (!user) {
-        throw new UnauthorizedException(
-          'This mobile number is not registered in User Management. Contact an administrator.',
-        );
+        const registration = await transaction.registration.findFirst({
+          where: { mobile },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (!registration) {
+          throw new UnauthorizedException(
+            'This mobile number is not registered. Please register first or contact an administrator.',
+          );
+        }
+        user = await transaction.user.create({
+          data: {
+            mobile,
+            name: registration.name || 'Job Seeker',
+            passwordHash: '',
+            role: UserRole.APPLICANT,
+            isActive: true,
+            branchId: registration.branchId,
+          },
+        });
       }
       if (!user.isActive) {
         throw new UnauthorizedException('This account is inactive. Contact an administrator.');
