@@ -6,6 +6,7 @@ import { registrationApi } from '../api/registrationApi.js';
 import { branchApi } from '../api/branchApi.js';
 import { employeeApi } from '../api/employeeApi.js';
 import { uploadRegistrationFile } from '../api/uploadApi.js';
+import feeMasterApi from '../api/feeMasterApi.js';
 import { whatsappApi } from '../api/whatsappApi.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
@@ -246,7 +247,10 @@ const emptyForm = {
   motherName: '',
   dob: '',
   age: '',
+  idDocType: 'PAN',
   pan: '',
+  voterId: '',
+  idDocNumber: '',
   bloodGroup: 'B+',
   gender: 'MALE',
   nationality: 'INDIAN',
@@ -258,7 +262,8 @@ const emptyForm = {
   hobbies: '',
   otherSkills: '',
   jobType: 'DRIVER',
-  designation: 'DRIVER',
+  driverType: 'Monthly Driver',
+  designation: 'DRIVER - MONTHLY DRIVER',
   workExperience: '',
   hasLicense: 'YES',
   dlNumber: '',
@@ -335,6 +340,10 @@ function isValidPan(value) {
   return /^[A-Z]{5}\d{4}[A-Z]$/.test(String(value || '').trim().toUpperCase());
 }
 
+function isValidVoterId(value) {
+  return /^[A-Z0-9/-]{5,20}$/i.test(String(value || '').trim());
+}
+
 export default function Register({ readOnly = false, editable = false }) {
   const navigate = useNavigate();
   const { ref: applicationRef } = useParams();
@@ -344,6 +353,7 @@ export default function Register({ readOnly = false, editable = false }) {
   const [viewApplication, setViewApplication] = useState(null);
   const [recordLoading, setRecordLoading] = useState(recordMode);
   const [recordError, setRecordError] = useState('');
+  const [masterFee, setMasterFee] = useState(2400);
   const [form, setForm] = useState(emptyForm);
   const [refCode, setRefCode] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -387,6 +397,11 @@ export default function Register({ readOnly = false, editable = false }) {
     branchApi.list()
       .then((rows) => setBranches(rows.map((branch) => branch.name)))
       .catch((error) => setBranchLoadError(error.message));
+    feeMasterApi.getRegistrationFee()
+      .then((data) => {
+        if (data?.amount) setMasterFee(Number(data.amount));
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -437,7 +452,11 @@ export default function Register({ readOnly = false, editable = false }) {
         details.hasPoliceCert ||
         (details.policeCertNo || details.policeCertDate ? 'YES' : 'NO'),
       addressProofs,
-      pan: String(details.pan || '').toUpperCase(),
+      idDocType: details.idDocType || (details.voterId ? 'VOTER_ID' : 'PAN'),
+      pan: String(details.pan || (details.idDocType !== 'VOTER_ID' ? details.idDocNumber : '') || '').toUpperCase(),
+      voterId: String(details.voterId || (details.idDocType === 'VOTER_ID' ? details.idDocNumber : '') || '').toUpperCase(),
+      idDocNumber: String(details.idDocNumber || details.pan || details.voterId || '').toUpperCase(),
+      driverType: details.driverType || 'Monthly Driver',
       aadhaar: formatAadhaar(details.aadhaar),
       fullName: viewApplication.name || details.fullName || '',
       mobile: String(viewApplication.mobile || details.mobile || '').replace(/^\+91\s*/, ''),
@@ -704,7 +723,12 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const handlePanChange = (e) => {
     const pan = e.target.value.replace(/[^a-z\d]/gi, '').slice(0, 10).toUpperCase();
-    setForm((current) => ({ ...current, pan }));
+    setForm((current) => ({ ...current, pan, idDocNumber: pan }));
+  };
+
+  const handleVoterIdChange = (e) => {
+    const voterId = e.target.value.replace(/[^a-z0-9/-]/gi, '').slice(0, 20).toUpperCase();
+    setForm((current) => ({ ...current, voterId, idDocNumber: voterId }));
   };
 
   const handleAadhaarChange = (e) => {
@@ -801,11 +825,20 @@ export default function Register({ readOnly = false, editable = false }) {
   const submit = async (e) => {
     e.preventDefault();
 
-    if (form.pan.trim() && !isValidPan(form.pan)) {
-      showToast('error', 'Enter a valid PAN number in the format ABCDE1234F.');
-      document.querySelector('[name="pan"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      document.querySelector('[name="pan"]')?.focus({ preventScroll: true });
-      return;
+    if ((form.idDocType || 'PAN') === 'VOTER_ID') {
+      if (form.voterId.trim() && !isValidVoterId(form.voterId)) {
+        showToast('error', 'Enter a valid Voter ID number (e.g. ABC1234567).');
+        document.querySelector('[name="voterId"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.querySelector('[name="voterId"]')?.focus({ preventScroll: true });
+        return;
+      }
+    } else {
+      if (form.pan.trim() && !isValidPan(form.pan)) {
+        showToast('error', 'Enter a valid PAN number in the format ABCDE1234F.');
+        document.querySelector('[name="pan"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.querySelector('[name="pan"]')?.focus({ preventScroll: true });
+        return;
+      }
     }
 
     if (form.aadhaar && normalizeAadhaar(form.aadhaar).length !== 12) {
@@ -861,8 +894,8 @@ export default function Register({ readOnly = false, editable = false }) {
     }
 
     const paidAmount = Number(form.registrationFeePaid);
-    if (!Number.isInteger(paidAmount) || paidAmount < 0 || paidAmount > 2400) {
-      showToast('error', 'Enter a whole-rupee paid amount between ₹0 and ₹2,400.');
+    if (!Number.isInteger(paidAmount) || paidAmount < 0 || paidAmount > masterFee) {
+      showToast('error', `Enter a whole-rupee paid amount between ₹0 and ₹${masterFee.toLocaleString('en-IN')}.`);
       document.querySelector('[name="registrationFeePaid"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -874,9 +907,19 @@ export default function Register({ readOnly = false, editable = false }) {
     const paidAmount = Number(form.registrationFeePaid);
     setSubmitting(true);
     try {
+      const idDocType = form.idDocType || (form.voterId ? 'VOTER_ID' : 'PAN');
+      const cleanPan = form.pan.trim().toUpperCase();
+      const cleanVoterId = (form.voterId || '').trim().toUpperCase();
+      const idDocNumber = idDocType === 'VOTER_ID' ? cleanVoterId : cleanPan;
+      const driverType = form.jobType === 'DRIVER' ? (form.driverType || 'Monthly Driver') : '';
+
       const registrationData = {
         ...form,
-        pan: form.pan.trim().toUpperCase(),
+        idDocType,
+        idDocNumber,
+        pan: idDocType === 'PAN' ? cleanPan : '',
+        voterId: idDocType === 'VOTER_ID' ? cleanVoterId : '',
+        driverType,
         aadhaar: normalizeAadhaar(form.aadhaar),
         regNo: applicationRef || form.regNo,
         ...(editable ? { registrationFeePaid: String(viewApplication.feesPaid) } : {}),
@@ -910,19 +953,17 @@ export default function Register({ readOnly = false, editable = false }) {
 
   const isOwnedByCurrentUser = () => {
     if (!viewApplication || !session) return false;
-    if (session.role === 'admin') return true;
-    if (viewApplication.submittedByUserId) {
-      return viewApplication.submittedByUserId === session.id;
+    if (String(session.role).toLowerCase() === 'admin') return true;
+    const cleanSessionMobile = String(session.mobile || '').replace(/\D/g, '');
+    const cleanCandidateMobile = String(viewApplication.mobile || '').replace(/\D/g, '');
+    if (String(session.role).toUpperCase() === 'APPLICANT') {
+      return cleanCandidateMobile === cleanSessionMobile || viewApplication.submittedByUserId === session.id;
     }
-    if (viewApplication.submittedByLoginMobile) {
-      return viewApplication.submittedByLoginMobile.replace(/\D/g, '')
-        === String(session.mobile || '').replace(/\D/g, '');
+    if (viewApplication.submittedByUserId && viewApplication.submittedByUserId === session.id) {
+      return true;
     }
-    const ownerMobile = session.role === 'applicant'
-      ? viewApplication.mobile
-      : viewApplication.submittedByMobile || viewApplication.filledByMobile;
-    return String(ownerMobile || '').replace(/\D/g, '')
-      === String(session.mobile || '').replace(/\D/g, '');
+    const cleanSubmitterMobile = String(viewApplication.submittedByMobile || viewApplication.filledByMobile || '').replace(/\D/g, '');
+    return cleanSubmitterMobile === cleanSessionMobile || cleanCandidateMobile === cleanSessionMobile;
   };
 
   if (recordMode && recordLoading) {
@@ -1559,19 +1600,66 @@ export default function Register({ readOnly = false, editable = false }) {
                   </td>
                 </tr>
 
-                {/* 6. Pan Card */}
+                {/* 6. Identity Document (PAN / Voter ID) */}
                 <tr>
-                  <FormLabelCell k="panCard" enSecondary="Pan Card" />
+                  <FormLabelCell k="idDocType" enSecondary="ID Document (PAN / Voter ID)" />
                   <td className="field-input-cell">
-                    <input
-                      name="pan"
-                      maxLength={10}
-                      value={form.pan}
-                      onChange={handlePanChange}
-                      placeholder="E.G. ABCDE1234F"
-                      autoCapitalize="characters"
-                      spellCheck={false}
-                    />
+                    <div className="id-document-selector-container">
+                      <div className="radio-options-row mb-2" style={{ gap: '16px' }}>
+                        <label className="radio-option-item">
+                          <input
+                            type="radio"
+                            name="idDocType"
+                            value="PAN"
+                            checked={(form.idDocType || 'PAN') === 'PAN'}
+                            onChange={() => setForm((f) => ({ ...f, idDocType: 'PAN' }))}
+                          />
+                          <span>PAN Card (ಪ್ಯಾನ್ ಕಾರ್ಡ್)</span>
+                        </label>
+                        <label className="radio-option-item">
+                          <input
+                            type="radio"
+                            name="idDocType"
+                            value="VOTER_ID"
+                            checked={form.idDocType === 'VOTER_ID'}
+                            onChange={() => setForm((f) => ({ ...f, idDocType: 'VOTER_ID' }))}
+                          />
+                          <span>Voter ID (ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ)</span>
+                        </label>
+                      </div>
+
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        {(form.idDocType || 'PAN') === 'PAN' ? (
+                          <input
+                            name="pan"
+                            maxLength={10}
+                            value={form.pan}
+                            onChange={handlePanChange}
+                            placeholder="E.G. ABCDE1234F (PAN Number)"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                            style={{ maxWidth: '320px', flex: '1 1 200px' }}
+                          />
+                        ) : (
+                          <input
+                            name="voterId"
+                            maxLength={20}
+                            value={form.voterId || ''}
+                            onChange={handleVoterIdChange}
+                            placeholder="E.G. ABC1234567 (Voter ID Number)"
+                            autoCapitalize="characters"
+                            spellCheck={false}
+                            style={{ maxWidth: '320px', flex: '1 1 200px' }}
+                          />
+                        )}
+                        <span
+                          className="badge bg-light text-primary border px-2 py-1"
+                          style={{ fontSize: '0.74rem', fontWeight: 600 }}
+                        >
+                          {(form.idDocType || 'PAN') === 'PAN' ? 'Selected: PAN Card' : 'Selected: Voter ID'}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                 </tr>
 
@@ -1788,7 +1876,8 @@ export default function Register({ readOnly = false, editable = false }) {
                             setForm((f) => ({
                               ...f,
                               jobType: 'DRIVER',
-                              designation: 'DRIVER',
+                              driverType: f.driverType || 'Monthly Driver',
+                              designation: `DRIVER - ${(f.driverType || 'Monthly Driver').toUpperCase()}`,
                               hasLicense: 'YES',
                               taxiPermitType: '',
                             }));
@@ -1817,6 +1906,46 @@ export default function Register({ readOnly = false, editable = false }) {
                         <span>{ts('others')}</span>
                       </label>
                     </div>
+
+                    {form.jobType === 'DRIVER' && (
+                      <div
+                        className="driver-category-selector mt-2 p-2"
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '6px' }}>
+                          <i className="bi bi-person-badge me-1"></i>
+                          Select Driver Category / ಡ್ರೈವರ್ ಆಯ್ಕೆ (Select Any One):
+                        </div>
+                        <div className="radio-options-row" style={{ gap: '14px', flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'Spare Driver', label: 'Spare Driver (ಸ್ಪೇರ್ ಡ್ರೈವರ್)' },
+                            { id: 'Monthly Driver', label: 'Monthly Driver (ತಿಂಗಳ ಡ್ರೈವರ್)' },
+                            { id: 'Acting Driver', label: 'Acting Driver (ಆಕ್ಟಿಂಗ್ ಡ್ರೈವರ್)' },
+                          ].map((opt) => (
+                            <label key={opt.id} className="radio-option-item" style={{ fontSize: '0.82rem' }}>
+                              <input
+                                type="radio"
+                                name="driverType"
+                                value={opt.id}
+                                checked={(form.driverType || 'Monthly Driver').toLowerCase() === opt.id.toLowerCase()}
+                                onChange={() => {
+                                  setForm((f) => ({
+                                    ...f,
+                                    driverType: opt.id,
+                                    designation: `DRIVER - ${opt.id.toUpperCase()}`,
+                                  }));
+                                }}
+                              />
+                              <span>{opt.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </td>
                 </tr>
 
@@ -1863,7 +1992,7 @@ export default function Register({ readOnly = false, editable = false }) {
                           className="badge bg-light text-secondary border px-2 py-1"
                           style={{ fontSize: '0.74rem', fontWeight: 600 }}
                         >
-                          (Selected from Types of Jobs: {form.jobType})
+                          (Selected: {form.jobType === 'DRIVER' ? `DRIVER · ${form.driverType || 'Monthly Driver'}` : form.jobType})
                         </span>
                       </div>
                     )}
@@ -2763,7 +2892,7 @@ export default function Register({ readOnly = false, editable = false }) {
                         type="number"
                         name="registrationFeePaid"
                         min="0"
-                        max="2400"
+                        max={masterFee}
                         step="1"
                         inputMode="numeric"
                         value={form.registrationFeePaid}
@@ -2771,7 +2900,7 @@ export default function Register({ readOnly = false, editable = false }) {
                         aria-label="Registration fee paid in rupees"
                         required
                       />
-                      <small>Enter the amount received (maximum ₹2,400).</small>
+                      <small>Enter the amount received (System Fee: ₹{masterFee.toLocaleString('en-IN')}).</small>
                     </div>
                   </td>
                 </tr>

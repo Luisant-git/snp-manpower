@@ -17,6 +17,9 @@ export interface RegistrationDetails {
   dob?: string;
   age?: string;
   pan?: string;
+  idDocType?: string;
+  idDocNumber?: string;
+  voterId?: string;
   bloodGroup?: string;
   gender?: string;
   nationality?: string;
@@ -28,6 +31,7 @@ export interface RegistrationDetails {
   hobbies?: string;
   otherSkills?: string;
   jobType?: string;
+  driverType?: string;
   designation?: string;
   workExperience?: string;
   hasLicense?: string;
@@ -85,9 +89,9 @@ export interface RegistrationDetails {
 const stringFields: Array<keyof RegistrationDetails> = [
   'formDate', 'state', 'regNo', 'mobile', 'hasPoliceCert', 'policeCertDate', 'policeCertNo',
   'refCandidate', 'refOtherDetail', 'fullName', 'fatherName', 'motherName',
-  'dob', 'age', 'pan', 'bloodGroup', 'gender', 'nationality', 'religion',
+  'dob', 'age', 'pan', 'idDocType', 'idDocNumber', 'voterId', 'bloodGroup', 'gender', 'nationality', 'religion',
   'languages', 'maritalStatus', 'qualification', 'aadhaar', 'hobbies',
-  'otherSkills', 'jobType', 'designation', 'workExperience', 'hasLicense',
+  'otherSkills', 'jobType', 'driverType', 'designation', 'workExperience', 'hasLicense',
   'dlNumber', 'dlValidityDate', 'dlExperience', 'hasBadge', 'badgeNumber',
   'badgeDate', 'altMobile1', 'altMobile2', 'altMobile3', 'hasSangha',
   'sangha', 'vehicleName', 'vehicleRegNo', 'taxiSeaterType', 'vehicleModel',

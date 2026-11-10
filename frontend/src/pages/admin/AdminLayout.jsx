@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
   { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
   { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
+  { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
 ];
 

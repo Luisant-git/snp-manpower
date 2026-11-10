@@ -171,7 +171,7 @@ export default function UserManagement() {
         <div>
           <h4 style={{ fontWeight: 800 }}>User Accounts</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            {employees.length} employee(s) · {administrators.length} administrator(s) · {applicants.length} applicant(s)
+            {employees.length} employee(s) · {administrators.length} administrator(s) · {applicants.length} job seeker(s)
           </small>
         </div>
         <button className="btn add-user-btn" onClick={openAdd}>
@@ -210,8 +210,8 @@ export default function UserManagement() {
                 </td>
                 <td className="mono-cell">+91 {u.mobile}</td>
                 <td>
-                  <span className={`badge-role ${u.role === 'ADMIN' ? 'admin' : 'employee'}`}>
-                    {u.role === 'ADMIN' ? 'System Administrator' : u.role === 'APPLICANT' ? 'Applicant' : 'Employee'}
+                  <span className={`badge-role ${u.role === 'ADMIN' ? 'admin' : u.role === 'APPLICANT' ? 'applicant' : 'employee'}`}>
+                    {u.role === 'ADMIN' ? 'System Administrator' : u.role === 'APPLICANT' ? 'Job Seeker' : 'Employee'}
                   </span>
                 </td>
                 <td>
@@ -307,7 +307,7 @@ export default function UserManagement() {
                     >
                       <option value="EMPLOYEE">Employee</option>
                       <option value="ADMIN">System Administrator</option>
-                      <option value="APPLICANT">Applicant</option>
+                      <option value="APPLICANT">Job Seeker</option>
                     </select>
                   </div>
                 </div>

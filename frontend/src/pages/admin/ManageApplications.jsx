@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { registrationApi } from '../../api/registrationApi.js';
+import { feeMasterApi } from '../../api/feeMasterApi.js';
 import { getSession } from '../../data/session.js';
 
 /* 03 Nov 2026 style date */
@@ -65,6 +66,7 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [exporting, setExporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [masterFee, setMasterFee] = useState(2400);
   const pageSize = 10;
   const [filterValues, setFilterValues] = useState({
     keyword: '',
@@ -72,6 +74,8 @@ export default function ManageApplications({ mySubmissions = false }) {
     paymentStatus: 'All',
     designation: 'All',
     policeCert: 'All',
+    fromDate: '',
+    toDate: '',
   });
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
   const [feeForm, setFeeForm] = useState({ paid: '' });
@@ -81,23 +85,31 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [statusSaveError, setStatusSaveError] = useState('');
   const feeCurrentPaid = feeModal ? Number(feeModal.feesPaid || 0) : 0;
   const feePendingAmount = feeModal
-    ? Number(feeModal.feesPending ?? Math.max(0, REGISTRATION_FEE - feeCurrentPaid))
+    ? Number(feeModal.feesPending ?? Math.max(0, masterFee - feeCurrentPaid))
     : 0;
   const feePaidNow = feeForm.paid === '' ? NaN : Number(feeForm.paid);
   const feeAmountValid =
     Number.isInteger(feePaidNow) &&
     feePaidNow > 0 &&
     feePaidNow <= feePendingAmount &&
-    feeCurrentPaid + feePaidNow <= REGISTRATION_FEE;
+    feeCurrentPaid + feePaidNow <= masterFee;
   const feeTotalAfter = feeAmountValid ? feeCurrentPaid + feePaidNow : feeCurrentPaid;
-  const feePendingAfter = Math.max(0, REGISTRATION_FEE - feeTotalAfter);
+  const feePendingAfter = Math.max(0, masterFee - feeTotalAfter);
   const feeValidationError = feeAttempted || feeForm.paid !== ''
     ? !Number.isInteger(feePaidNow) || feePaidNow <= 0
       ? 'Enter a whole-rupee amount greater than ₹0.'
-      : feePaidNow > feePendingAmount || feeCurrentPaid + feePaidNow > REGISTRATION_FEE
+      : feePaidNow > feePendingAmount || feeCurrentPaid + feePaidNow > masterFee
         ? `Amount cannot exceed the current pending balance of ₹${feePendingAmount.toLocaleString('en-IN')}.`
         : ''
     : '';
+
+  useEffect(() => {
+    feeMasterApi.getRegistrationFee()
+      .then((data) => {
+        if (data?.amount) setMasterFee(Number(data.amount));
+      })
+      .catch(() => {});
+  }, []);
 
   const refresh = async () => {
     setLoadError('');
@@ -148,15 +160,34 @@ export default function ManageApplications({ mySubmissions = false }) {
         .filter((a) => {
           const q = filterValues.keyword.trim().toLowerCase();
           const staff = a.submittedBy || a.filledBy || 'Direct / Admin';
+          const pan = a.registrationData?.pan || '';
+          const voterId = a.registrationData?.voterId || '';
+          const idDocNumber = a.registrationData?.idDocNumber || '';
+
+          let dateMatches = true;
+          if (filterValues.fromDate || filterValues.toDate) {
+            const rawDate = a.date || a.createdAt;
+            if (rawDate) {
+              const dStr = new Date(rawDate).toISOString().slice(0, 10);
+              if (filterValues.fromDate && dStr < filterValues.fromDate) dateMatches = false;
+              if (filterValues.toDate && dStr > filterValues.toDate) dateMatches = false;
+            } else {
+              dateMatches = false;
+            }
+          }
+
           return (
             ((a.ref || '').toLowerCase().includes(q) ||
               (a.name || '').toLowerCase().includes(q) ||
               (a.mobile || '').toLowerCase().includes(q) ||
-              (a.registrationData?.pan || '').toLowerCase().includes(q)) &&
+              pan.toLowerCase().includes(q) ||
+              voterId.toLowerCase().includes(q) ||
+              idDocNumber.toLowerCase().includes(q)) &&
             (filterValues.staff === 'All' || staff === filterValues.staff) &&
             (filterValues.paymentStatus === 'All' || (a.payment || 'Pending') === filterValues.paymentStatus) &&
             (filterValues.designation === 'All' || a.designation === filterValues.designation) &&
-            (filterValues.policeCert === 'All' || a.policeCertStatus === filterValues.policeCert)
+            (filterValues.policeCert === 'All' || a.policeCertStatus === filterValues.policeCert) &&
+            dateMatches
           );
         })
         .sort((a, b) => {
@@ -190,6 +221,8 @@ export default function ManageApplications({ mySubmissions = false }) {
       paymentStatus: 'All',
       designation: 'All',
       policeCert: 'All',
+      fromDate: '',
+      toDate: '',
     };
     setCurrentPage(1);
     setFilterValues(clearedFilters);
@@ -463,6 +496,26 @@ export default function ManageApplications({ mySubmissions = false }) {
             <option value="Pending">Pending / Not available</option>
             <option value="Available">Certificate available</option>
           </select>
+        </label>
+        <label className="registry-filter-field">
+          <span>From Date</span>
+          <input
+            type="date"
+            className="auth-input"
+            value={filterValues.fromDate}
+            onChange={(e) => updateFilter('fromDate', e.target.value)}
+            title="Filter applications submitted on or after this date"
+          />
+        </label>
+        <label className="registry-filter-field">
+          <span>To Date</span>
+          <input
+            type="date"
+            className="auth-input"
+            value={filterValues.toDate}
+            onChange={(e) => updateFilter('toDate', e.target.value)}
+            title="Filter applications submitted on or before this date"
+          />
         </label>
         <div className="registry-filter-actions">
           <button type="submit" className="btn btn-primary registry-filter-apply">

@@ -180,8 +180,22 @@ export const T = {
     en: 'Pan Card',
     kn: 'ಪಾನ್ ಕಾರ್ಡ್',
     hi: 'पैन कार्ड',
-    te: 'పాన్ కార్డ్',
+    te: 'పాన్ ಕಾರ್ಡ್',
     ta: 'பான் கார்டு',
+  },
+  voterId: {
+    en: 'Voter ID',
+    kn: 'ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ',
+    hi: 'मतदाता पहचान पत्र',
+    te: 'ఓటరు గుర్తింపు కార్డు',
+    ta: 'வாக்காளர் அடையாள அட்டை',
+  },
+  idDocType: {
+    en: 'PAN / Voter ID',
+    kn: 'ಪ್ಯಾನ್ / ವೋಟರ್ ಐಡಿ',
+    hi: 'पैन / वोटर आईडी',
+    te: 'పాన్ / ఓటర్ ఐడి',
+    ta: 'பான் / வாக்காளர் அட்டை',
   },
   bloodGroup: {
     en: 'Blood Group',
@@ -262,6 +276,9 @@ export const T = {
   },
   taxi: { en: 'Taxi', kn: 'ಟ್ಯಾಕ್ಸಿ (Taxi)', hi: 'टैक्सी (Taxi)', te: 'టాక్సీ (Taxi)', ta: 'டாக்ஸி (Taxi)' },
   driver: { en: 'Driver', kn: 'ಡ್ರೈವರ್ (Driver)', hi: 'ड्राइवर (Driver)', te: 'డ್ರೈವರ್ (Driver)', ta: 'டிரைவர் (Driver)' },
+  spareDriver: { en: 'Spare Driver', kn: 'ಸ್ಪೇರ್ ಡ್ರೈವರ್ (Spare Driver)', hi: 'स्पेयर ड्राइवर (Spare Driver)', te: 'స్పేర్ డ్రైవర్ (Spare Driver)', ta: 'స్పேர் டிரைவர் (Spare Driver)' },
+  monthlyDriver: { en: 'Monthly Driver', kn: 'ತಿಂಗಳ ಡ್ರೈವರ್ (Monthly Driver)', hi: 'मंथली ड्राइवर (Monthly Driver)', te: 'మంత్లీ డ్రైవర్ (Monthly Driver)', ta: 'மாத டிரைவர் (Monthly Driver)' },
+  actingDriver: { en: 'Acting Driver', kn: 'ಆಕ್ಟಿಂಗ್ ಡ್ರೈವರ್ (Acting Driver)', hi: 'एक्टिंग ड्राइवर (Acting Driver)', te: 'యాక్టింగ్ డ్రైవర్ (Acting Driver)', ta: 'ஆக்டிங் டிரைவர் (Acting Driver)' },
   others: { en: 'Others', kn: 'ಇತರ (Others)', hi: 'अन्य (Others)', te: 'ఇతర (Others)', ta: 'மற்றவை (Others)' },
   specifyDesignationPlaceholder: {
     en: 'TYPE YOUR APPLIED DESIGNATION (E.G. SUPERVISOR / ELECTRICIAN / OPERATOR)',

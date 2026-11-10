@@ -2492,6 +2492,11 @@ textarea {
   color: #1d4ed8;
 }
 
+.badge-role.applicant {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .badge-role.active {
   background: #dcfce7;
   color: #166534;
@@ -4890,7 +4895,9 @@ textarea {
 
 /* ---------- Filters ---------- */
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-toolbar {
-  grid-template-columns: minmax(170px, 1.35fr) repeat(4, minmax(130px, 1fr)) auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 10px;
   padding: 12px 14px;
   margin-bottom: 16px;
@@ -4899,11 +4906,18 @@ textarea {
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-field {
+  flex: 1 1 125px;
+  min-width: 120px;
   gap: 5px;
   color: #64748b;
   font-size: 0.68rem;
   letter-spacing: 0.4px;
   text-transform: uppercase;
+}
+
+:is(.manage-apps-neat, .my-submissions-neat) .registry-filter-keyword {
+  flex: 1.6 1 180px;
+  min-width: 160px;
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-toolbar .auth-input {
@@ -4924,8 +4938,11 @@ textarea {
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-actions {
-  grid-column: -2 / -1;
-  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  align-self: flex-end;
 }
 
 :is(.manage-apps-neat, .my-submissions-neat) .registry-filter-keyword .auth-input {

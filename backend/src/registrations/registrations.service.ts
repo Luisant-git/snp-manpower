@@ -2,11 +2,12 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { ApplicationStatus, NotificationStatus, OtpPurpose, PaymentStatus, Prisma, UserRole } from '@prisma/client';
 import { SessionUser } from '../common/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
+import { FeeMasterService } from '../fee-master/fee-master.service';
 import { OtpService } from '../whatsapp/otp.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseRegistrationDetails } from './registration-details.dto';
 
-const maxRegistrationFee = 2400;
+const defaultRegistrationFee = 2400;
 const applicationStatuses = new Set<string>(Object.values(ApplicationStatus));
 
 @Injectable()
@@ -17,12 +18,15 @@ export class RegistrationsService {
     private readonly prisma: PrismaService,
     private readonly otpService: OtpService,
     private readonly whatsApp: WhatsAppService,
+    private readonly feeMasterService: FeeMasterService,
   ) {}
 
   async create(body: Record<string, unknown>, user: SessionUser) {
     const details = parseRegistrationDetails(body.registrationData ?? body);
     const name = String(body.name ?? details.fullName ?? '').trim();
     const mobile = this.normalizeMobile(body.mobile ?? details.mobile);
+    const feeConfig = await this.feeMasterService.getRegistrationFee();
+    const maxRegistrationFee = feeConfig?.amount ?? defaultRegistrationFee;
     const feesPaid = this.parseFeesPaid(body.feesPaid ?? details.registrationFeePaid ?? 0);
     if (!name || name.length > 160) throw new BadRequestException('Candidate name is required.');
     if (!Number.isInteger(feesPaid) || feesPaid < 0 || feesPaid > maxRegistrationFee) {
@@ -64,9 +68,9 @@ export class RegistrationsService {
             mobile,
             designation: String(body.designation ?? details.designation ?? '').trim() || null,
             status: ApplicationStatus.UNDER_REVIEW,
-            paymentStatus: this.paymentStatus(feesPaid),
+            paymentStatus: this.paymentStatus(feesPaid, maxRegistrationFee),
             feesPaid,
-            feesPending: maxRegistrationFee - feesPaid,
+            feesPending: Math.max(0, maxRegistrationFee - feesPaid),
             details: { ...details, regNo: ref } as Prisma.InputJsonValue,
             photoUrl: this.optionalString(body.photoUrl ?? details.photoUrl),
             addressProofUrl: this.optionalString(body.addressProofUrl ?? details.addressProofUrl),
@@ -92,10 +96,24 @@ export class RegistrationsService {
 
   listMySubmissions(user: SessionUser) {
     if (user.role === UserRole.ADMIN) return this.listAll();
+    const cleanMobile = this.normalizeMobile(user.mobile);
+    if (user.role === UserRole.APPLICANT) {
+      return this.prisma.registration.findMany({
+        where: { mobile: cleanMobile },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          branch: { select: { id: true, name: true } },
+          submittedBy: { select: { id: true, name: true, mobile: true } },
+        },
+      });
+    }
     return this.prisma.registration.findMany({
       where: { submittedByUserId: user.id },
       orderBy: { createdAt: 'desc' },
-      include: { branch: { select: { id: true, name: true } } },
+      include: {
+        branch: { select: { id: true, name: true } },
+        submittedBy: { select: { id: true, name: true, mobile: true } },
+      },
     });
   }
 
@@ -122,10 +140,18 @@ export class RegistrationsService {
   async getOne(ref: string, user: SessionUser) {
     const registration = await this.prisma.registration.findUnique({
       where: { ref },
-      include: { branch: { select: { id: true, name: true } } },
+      include: {
+        branch: { select: { id: true, name: true } },
+        submittedBy: { select: { id: true, name: true, mobile: true } },
+      },
     });
     if (!registration) throw new NotFoundException('Registration not found.');
-    if (user.role !== UserRole.ADMIN && registration.submittedByUserId !== user.id) {
+    const cleanUserMobile = String(user.mobile || '').replace(/\D/g, '');
+    const cleanRegMobile = String(registration.mobile || '').replace(/\D/g, '');
+    const isOwner =
+      registration.submittedByUserId === user.id ||
+      cleanRegMobile === cleanUserMobile;
+    if (user.role !== UserRole.ADMIN && !isOwner) {
       throw new ForbiddenException('You can only view your own registrations.');
     }
     return registration;
@@ -188,12 +214,14 @@ export class RegistrationsService {
       data.status = status as ApplicationStatus;
     }
     if (body.feesPaid !== undefined) {
+      const feeConfig = await this.feeMasterService.getRegistrationFee();
+      const maxRegistrationFee = feeConfig?.amount ?? defaultRegistrationFee;
       if (!Number.isInteger(body.feesPaid) || body.feesPaid < 0 || body.feesPaid > maxRegistrationFee) {
         throw new BadRequestException(`feesPaid must be a whole amount from 0 to ${maxRegistrationFee}.`);
       }
       data.feesPaid = body.feesPaid;
-      data.feesPending = maxRegistrationFee - body.feesPaid;
-      data.paymentStatus = this.paymentStatus(body.feesPaid);
+      data.feesPending = Math.max(0, maxRegistrationFee - body.feesPaid);
+      data.paymentStatus = this.paymentStatus(body.feesPaid, maxRegistrationFee);
     }
     if (!Object.keys(data).length) throw new BadRequestException('Provide a review status or feesPaid amount.');
     const registration = await this.prisma.registration.update({ where: { ref }, data });
@@ -243,9 +271,9 @@ export class RegistrationsService {
     return value.trim();
   }
 
-  private paymentStatus(paid: number) {
+  private paymentStatus(paid: number, maxFee = defaultRegistrationFee) {
     if (paid === 0) return PaymentStatus.PENDING;
-    return paid >= maxRegistrationFee ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
+    return paid >= maxFee ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
   }
 
   private async generateReference(transaction: Prisma.TransactionClient) {

@@ -10,6 +10,7 @@ import Dashboard from './pages/admin/Dashboard.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import ManageApplications from './pages/admin/ManageApplications.jsx';
 import BranchMaster from './pages/admin/BranchMaster.jsx';
+import FeeMaster from './pages/admin/FeeMaster.jsx';
 
 export default function App() {
   const location = useLocation();
@@ -40,6 +41,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="branches" element={<BranchMaster />} />
+            <Route path="fee-master" element={<FeeMaster />} />
             <Route path="applications" element={<ManageApplications />} />
             <Route path="application/:ref" element={<Register readOnly />} />
             <Route path="application/:ref/edit" element={<Register editable />} />

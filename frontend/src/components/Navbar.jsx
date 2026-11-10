@@ -31,7 +31,10 @@ export default function Navbar() {
   };
 
   const panelLink = session
-    ? { to: session.role === 'admin' ? '/admin' : '/register', label: session.role === 'admin' ? 'Admin Panel' : 'Registrations' }
+    ? {
+        to: session.role === 'admin' ? '/admin' : (String(session.role).toUpperCase() === 'APPLICANT' ? '/my-submissions' : '/register'),
+        label: session.role === 'admin' ? 'Admin Panel' : (String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Registrations'),
+      }
     : null;
 
   const hideGuestMenu = location.pathname === '/login' && !session;
@@ -42,7 +45,7 @@ export default function Navbar() {
       <div className="container">
         <div className="navbar-inner">
           <Link
-            to="/register"
+            to={session && String(session.role).toUpperCase() === 'APPLICANT' ? '/my-submissions' : '/register'}
             className="navbar-brand"
             aria-label={`${BRAND.fullName} registration`}
             onClick={() => setOpen(false)}
@@ -57,7 +60,7 @@ export default function Navbar() {
           </Link>
 
           <ul className="nav-links">
-            {NAV_LINKS.map((link) => (
+            {(!session || String(session.role).toUpperCase() !== 'APPLICANT') && NAV_LINKS.map((link) => (
               <li key={link.to}>
                 <NavLink
                   to={link.to}
@@ -74,7 +77,7 @@ export default function Navbar() {
                   to="/my-submissions"
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  Applications
+                  {String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Applications'}
                 </NavLink>
               </li>
             )}
@@ -110,6 +113,7 @@ export default function Navbar() {
                         { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
                         { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                         { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
+                        { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
                         { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                       ].map((item) => (
                         <NavLink
@@ -158,7 +162,7 @@ export default function Navbar() {
 
         {open && (
           <div className="nav-mobile open" id="primary-navigation">
-            {NAV_LINKS.map((link) => (
+            {(!session || String(session.role).toUpperCase() !== 'APPLICANT') && NAV_LINKS.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -175,7 +179,7 @@ export default function Navbar() {
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                Applications
+                {String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Applications'}
               </NavLink>
             )}
             {session?.role === 'admin' && (
@@ -185,6 +189,7 @@ export default function Navbar() {
                   { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
                   { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                   { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
+                  { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
                   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                 ].map((item) => (
                   <NavLink

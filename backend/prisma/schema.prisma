@@ -114,3 +114,15 @@ model OtpChallenge {
   @@index([mobile, purpose, createdAt])
   @@index([expiresAt])
 }
+
+model FeeMaster {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @default("Registration Fee")
+  amount      Int      @default(2400)
+  description String?  @default("Driver and Candidate Registration Processing Fee")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
