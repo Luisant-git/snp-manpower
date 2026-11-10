@@ -9,6 +9,7 @@ import { parseRegistrationDetails } from './registration-details.dto';
 
 const defaultRegistrationFee = 2400;
 const applicationStatuses = new Set<string>(Object.values(ApplicationStatus));
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
 
 @Injectable()
 export class RegistrationsService {
@@ -111,7 +112,7 @@ export class RegistrationsService {
   }
 
   listMySubmissions(user: SessionUser) {
-    if (user.role === UserRole.ADMIN) return this.listAll();
+    if (adminRoles.includes(user.role)) return this.listAll();
     const cleanMobile = this.normalizeMobile(user.mobile);
     if (user.role === UserRole.APPLICANT) {
       return this.prisma.registration.findMany({
@@ -124,7 +125,12 @@ export class RegistrationsService {
       });
     }
     return this.prisma.registration.findMany({
-      where: { submittedByUserId: user.id },
+      where: {
+        OR: [
+          { submittedByUserId: user.id },
+          { submittedByMobile: cleanMobile },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         branch: { select: { id: true, name: true } },
@@ -164,18 +170,40 @@ export class RegistrationsService {
     if (!registration) throw new NotFoundException('Registration not found.');
     const cleanUserMobile = String(user.mobile || '').replace(/\D/g, '');
     const cleanRegMobile = String(registration.mobile || '').replace(/\D/g, '');
+    const cleanSubmitterMobile = String(registration.submittedByMobile || '').replace(/\D/g, '');
     const isOwner =
       registration.submittedByUserId === user.id ||
+      cleanSubmitterMobile === cleanUserMobile ||
       cleanRegMobile === cleanUserMobile;
-    if (user.role !== UserRole.ADMIN && !isOwner) {
+    if (!adminRoles.includes(user.role) && !isOwner) {
       throw new ForbiddenException('You can only view your own registrations.');
     }
     return registration;
   }
 
-  async update(ref: string, body: Record<string, unknown>) {
+  async update(ref: string, body: Record<string, unknown>, user: SessionUser) {
     const registration = await this.prisma.registration.findUnique({ where: { ref } });
     if (!registration) throw new NotFoundException('Registration not found.');
+
+    const isAdmin = adminRoles.includes(user.role);
+
+    if (!isAdmin) {
+      const cleanUserMobile = String(user.mobile || '').replace(/\D/g, '');
+      const cleanRegMobile = String(registration.mobile || '').replace(/\D/g, '');
+      const cleanSubmitterMobile = String(registration.submittedByMobile || '').replace(/\D/g, '');
+      const isOwner =
+        registration.submittedByUserId === user.id ||
+        cleanSubmitterMobile === cleanUserMobile ||
+        cleanRegMobile === cleanUserMobile;
+
+      if (!isOwner) {
+        throw new ForbiddenException('You can only edit your own registrations.');
+      }
+
+      if (registration.status !== ApplicationStatus.APPROVED) {
+        throw new ForbiddenException('You can only edit this application after both Admin 1 and Admin 2 have approved it.');
+      }
+    }
 
     const details = parseRegistrationDetails(body.registrationData);
     const name = String(body.name ?? details.fullName ?? '').trim();
@@ -218,17 +246,71 @@ export class RegistrationsService {
     }
   }
 
-  async review(ref: string, body: { status?: string; feesPaid?: number }) {
+  async review(ref: string, body: { status?: string; feesPaid?: number }, user: SessionUser) {
     const existing = await this.prisma.registration.findUnique({ where: { ref } });
     if (!existing) throw new NotFoundException('Registration not found.');
-    const data: { status?: ApplicationStatus; feesPaid?: number; feesPending?: number; paymentStatus?: PaymentStatus } = {};
+    const data: {
+      status?: ApplicationStatus;
+      feesPaid?: number;
+      feesPending?: number;
+      paymentStatus?: PaymentStatus;
+      admin1ApprovedById?: number | null;
+      admin1ApprovedByName?: string | null;
+      admin1ApprovedAt?: Date | null;
+      admin2ApprovedById?: number | null;
+      admin2ApprovedByName?: string | null;
+      admin2ApprovedAt?: Date | null;
+    } = {};
+
     if (body.status !== undefined) {
       const status = String(body.status).toUpperCase();
       if (!applicationStatuses.has(status)) {
-        throw new BadRequestException('Status must be UNDER_REVIEW, APPROVED, or REJECTED.');
+        throw new BadRequestException('Status must be UNDER_REVIEW, ADMIN_1_APPROVED, APPROVED, or REJECTED.');
       }
+
+      if (user.role === UserRole.ADMIN_1) {
+        if (status === ApplicationStatus.APPROVED) {
+          throw new BadRequestException('Admin 1 cannot give final approval. Admin 1 can only approve to Level 1 (ADMIN_1_APPROVED).');
+        }
+        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
+          data.admin1ApprovedById = user.id;
+          data.admin1ApprovedByName = user.name;
+          data.admin1ApprovedAt = new Date();
+        }
+      } else if (user.role === UserRole.ADMIN_2) {
+        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
+          throw new BadRequestException('Admin 2 cannot give Level 1 approval.');
+        }
+        if (status === ApplicationStatus.APPROVED) {
+          if (existing.status !== ApplicationStatus.ADMIN_1_APPROVED) {
+            throw new BadRequestException('Admin 1 must review and approve this application first before Admin 2 can approve.');
+          }
+          data.admin2ApprovedById = user.id;
+          data.admin2ApprovedByName = user.name;
+          data.admin2ApprovedAt = new Date();
+        }
+      } else if (user.role === UserRole.ADMIN) {
+        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
+          data.admin1ApprovedById = user.id;
+          data.admin1ApprovedByName = user.name;
+          data.admin1ApprovedAt = new Date();
+        } else if (status === ApplicationStatus.APPROVED) {
+          if (!existing.admin1ApprovedAt) {
+            data.admin1ApprovedById = user.id;
+            data.admin1ApprovedByName = user.name;
+            data.admin1ApprovedAt = new Date();
+          }
+          data.admin2ApprovedById = user.id;
+          data.admin2ApprovedByName = user.name;
+          data.admin2ApprovedAt = new Date();
+        }
+      } else {
+        throw new ForbiddenException('You do not have permission to review applications.');
+      }
+
       data.status = status as ApplicationStatus;
     }
+
     if (body.feesPaid !== undefined) {
       const feeConfig = await this.feeMasterService.getRegistrationFee();
       const maxRegistrationFee = feeConfig?.amount ?? defaultRegistrationFee;

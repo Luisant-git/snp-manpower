@@ -30,10 +30,14 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+  const isAdmin = session && isAdminRole(session.role);
+  const isApplicant = session && String(session.role).toUpperCase() === 'APPLICANT';
+
   const panelLink = session
     ? {
-        to: session.role === 'admin' ? '/admin' : (String(session.role).toUpperCase() === 'APPLICANT' ? '/my-submissions' : '/register'),
-        label: session.role === 'admin' ? 'Admin Panel' : (String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Registrations'),
+        to: isAdmin ? '/admin' : (isApplicant ? '/my-submissions' : '/register'),
+        label: isAdmin ? 'Admin Panel' : (isApplicant ? 'My Applications' : 'Registrations'),
       }
     : null;
 
@@ -87,10 +91,10 @@ export default function Navbar() {
             {session ? (
               <>
                 <span className="session-chip">
-                  <i className={`bi ${session.role === 'admin' ? 'bi-shield-lock-fill' : 'bi-person-badge-fill'}`}></i>
+                  <i className={`bi ${isAdmin ? 'bi-shield-lock-fill' : 'bi-person-badge-fill'}`}></i>
                   {session.name}
                 </span>
-                {session.role === 'admin' ? (
+                {isAdmin ? (
                   <div
                     className={`nav-admin-menu${adminMenuOpen ? ' open' : ''}`}
                     onMouseEnter={() => setAdminMenuOpen(true)}
@@ -182,7 +186,7 @@ export default function Navbar() {
                 {String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Applications'}
               </NavLink>
             )}
-            {session?.role === 'admin' && (
+            {isAdmin && (
               <div className="nav-mobile-admin-links">
                 <span>Admin Panel</span>
                 {[

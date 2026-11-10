@@ -26,9 +26,12 @@ function feesOf(a) {
 }
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
+export const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+
 const applicationStatusLabel = (status) =>
   ({
     UNDER_REVIEW: 'Under Review',
+    ADMIN_1_APPROVED: 'Admin 1 Approved',
     APPROVED: 'Approved',
     REJECTED: 'Rejected',
   }[status] || String(status || '—').replace(/_/g, ' '));
@@ -309,9 +312,16 @@ export default function ManageApplications({ mySubmissions = false }) {
     }
   };
 
-  const stageApplicationStatus = (application, status) => {
+  const stageApplicationStatus = (application, initialStatus) => {
     setStatusSaveError('');
-    setStatusModal({ application, status });
+    const userRole = String(session?.role || '').toLowerCase();
+    let nextStatus = initialStatus || application.status || 'UNDER_REVIEW';
+    if (userRole === 'admin_1' && application.status === 'UNDER_REVIEW') {
+      nextStatus = 'ADMIN_1_APPROVED';
+    } else if (userRole === 'admin_2' && application.status === 'ADMIN_1_APPROVED') {
+      nextStatus = 'APPROVED';
+    }
+    setStatusModal({ application, status: nextStatus });
   };
 
   const saveApplicationStatus = async () => {
@@ -444,7 +454,7 @@ export default function ManageApplications({ mySubmissions = false }) {
             onChange={(e) => updateFilter('keyword', e.target.value)}
           />
         </label>
-        {(!mySubmissions || session.role === 'admin') && (
+        {(!mySubmissions || isAdminRole(session.role)) && (
           <label className="registry-filter-field">
             <span>Filled By Employee / Staff</span>
             <select
@@ -521,7 +531,7 @@ export default function ManageApplications({ mySubmissions = false }) {
           <button type="submit" className="btn btn-primary registry-filter-apply">
             <i className="bi bi-funnel"></i> Filter
           </button>
-          {!mySubmissions && session.role === 'admin' && (
+          {!mySubmissions && isAdminRole(session.role) && (
             <button
               type="button"
               className="btn btn-outline registry-filter-apply registry-export-excel"
@@ -623,16 +633,16 @@ export default function ManageApplications({ mySubmissions = false }) {
                     </div>
                   </td>
                   <td>
-                    {session.role === 'admin' ? (
+                    {isAdminRole(session.role) ? (
                       <button
                         type="button"
                         className={`status-select app-status-select app-status-trigger ${String(
                           a.status || 'UNDER_REVIEW'
-                        ).toLowerCase().replace('_', '-')}`}
+                        ).toLowerCase().replace(/_/g, '-')}`}
                         onClick={() => stageApplicationStatus(a, a.status || 'UNDER_REVIEW')}
                         aria-label={`Application status for ${a.ref}`}
                         aria-haspopup="dialog"
-                        title="Click to change application status"
+                        title="Click to review / update application status"
                       >
                         {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
                       </button>
@@ -643,7 +653,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                           .replace(/_/g, '-')}`
                         : undefined}
                       >
-                        {String(a.status || 'UNDER_REVIEW').replace(/_/g, ' ')}
+                        {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
                       </span>
                     )}
                   </td>
@@ -665,13 +675,33 @@ export default function ManageApplications({ mySubmissions = false }) {
                       className="icon-btn view"
                       title="View application"
                       onClick={() => navigate(
-                        `${session.role === 'admin' ? '/admin/application' : '/my-submissions'}/${encodeURIComponent(a.ref)}`,
+                        `${isAdminRole(session.role) ? '/admin/application' : '/my-submissions'}/${encodeURIComponent(a.ref)}`,
                         { state: { application: a } }
                       )}
                     >
                       <i className="bi bi-eye"></i>
                     </button>{' '}
-                    {session.role === 'admin' && <>
+                    {mySubmissions && (
+                      a.status === 'APPROVED' ? (
+                        <button
+                          className="icon-btn primary"
+                          title="Edit application (Approved by Admin 1 & Admin 2)"
+                          onClick={() => navigate(`/my-submissions/${encodeURIComponent(a.ref)}/edit`)}
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                      ) : (
+                        <button
+                          className="icon-btn disabled"
+                          disabled
+                          title="Editing locked: Available after Admin 1 and Admin 2 approval"
+                          style={{ opacity: 0.45, cursor: 'not-allowed' }}
+                        >
+                          <i className="bi bi-lock-fill"></i>
+                        </button>
+                      )
+                    )}{' '}
+                    {isAdminRole(session.role) && <>
                     <button
                       className="icon-btn primary"
                       title="Edit application"
@@ -837,92 +867,182 @@ export default function ManageApplications({ mySubmissions = false }) {
         </div>
       )}
 
-      {statusModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            if (!saving) setStatusModal(null);
-          }}
-        >
-          <div
-            className="modal-card"
-            style={{ maxWidth: 480 }}
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="status-confirmation-title"
-            aria-describedby="status-confirmation-description"
-          >
-            <div className="modal-head">
-              <div className="add-user-icon" aria-hidden="true">
-                <i className="bi bi-arrow-left-right"></i>
-              </div>
-              <div>
-                <h4 id="status-confirmation-title">Confirm status change</h4>
-                <small>
-                  {statusModal.application.name || 'Candidate'} · Ref: {statusModal.application.ref}
-                </small>
-              </div>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setStatusModal(null)}
-                aria-label="Close"
-                disabled={saving}
-              >
-                <i className="bi bi-x-lg"></i>
-              </button>
-            </div>
+      {statusModal && (() => {
+        const userRole = String(session.role || '').toLowerCase();
+        const isSuperAdmin = userRole === 'admin';
+        const isAdmin1 = userRole === 'admin_1';
+        const isAdmin2 = userRole === 'admin_2';
+        const currentAppStatus = statusModal.application.status || 'UNDER_REVIEW';
 
-            <div className="modal-body">
-              {statusSaveError && <div className="track-result track-error" role="alert">{statusSaveError}</div>}
-              <p id="status-confirmation-description">
-                Confirm the application status update for {statusModal.application.name || 'this candidate'}.
-              </p>
-              <div className="modal-grid">
-                <div className="field-block status-change-field">
-                  <span className="input-label">New status</span>
-                  <div className="status-confirmation-control">
-                    <select
-                      className="status-confirmation-select"
-                      value={statusModal.status}
-                      onChange={(event) => setStatusModal((current) => (
-                        current ? { ...current, status: event.target.value } : current
-                      ))}
-                      disabled={saving}
-                      aria-label="New application status"
-                    >
-                      <option value="UNDER_REVIEW">Under Review</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="REJECTED">Rejected</option>
-                    </select>
-                    <i className="bi bi-chevron-down status-confirmation-chevron" aria-hidden="true"></i>
+        let statusOptions = [];
+        let roleGuidance = '';
+        let cannotApproveNotice = '';
+
+        if (isSuperAdmin) {
+          statusOptions = [
+            { value: 'UNDER_REVIEW', label: 'Under Review' },
+            { value: 'ADMIN_1_APPROVED', label: 'Admin 1 Approved (Level 1)' },
+            { value: 'APPROVED', label: 'Approved (Admin 1 & 2 Approved)' },
+            { value: 'REJECTED', label: 'Rejected' },
+          ];
+          roleGuidance = 'As Super Administrator, you can grant Level 1 or Level 2 approval, or reject.';
+        } else if (isAdmin1) {
+          statusOptions = [
+            { value: 'UNDER_REVIEW', label: 'Under Review' },
+            { value: 'ADMIN_1_APPROVED', label: 'Approve (Admin 1 - Level 1)' },
+            { value: 'REJECTED', label: 'Reject' },
+          ];
+          if (currentAppStatus === 'APPROVED') {
+            statusOptions.unshift({ value: 'APPROVED', label: 'Approved (Both Approved)' });
+          }
+          roleGuidance = 'Admin 1 Review: Approving advances this application to Admin 1 Approved. Admin 2 will then review for final approval.';
+        } else if (isAdmin2) {
+          if (currentAppStatus === 'UNDER_REVIEW') {
+            cannotApproveNotice = 'Admin 1 must review and approve this application first before Admin 2 can approve.';
+            statusOptions = [
+              { value: 'UNDER_REVIEW', label: 'Under Review (Awaiting Admin 1)' },
+              { value: 'REJECTED', label: 'Reject' },
+            ];
+          } else {
+            statusOptions = [
+              { value: 'ADMIN_1_APPROVED', label: 'Admin 1 Approved' },
+              { value: 'APPROVED', label: 'Approve (Admin 2 Final Approval)' },
+              { value: 'REJECTED', label: 'Reject' },
+            ];
+            roleGuidance = 'Admin 2 Final Review: Admin 1 has approved this application. Granting final approval will unlock editing for the employee.';
+          }
+        }
+
+        const isSubmitDisabled = saving ||
+          statusModal.status === currentAppStatus ||
+          (isAdmin2 && currentAppStatus === 'UNDER_REVIEW' && statusModal.status === 'APPROVED') ||
+          (isAdmin1 && statusModal.status === 'APPROVED' && currentAppStatus !== 'APPROVED');
+
+        return (
+          <div
+            className="modal-overlay"
+            onClick={() => {
+              if (!saving) setStatusModal(null);
+            }}
+          >
+            <div
+              className="modal-card"
+              style={{ maxWidth: 500 }}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="status-confirmation-title"
+              aria-describedby="status-confirmation-description"
+            >
+              <div className="modal-head">
+                <div className="add-user-icon" aria-hidden="true">
+                  <i className="bi bi-shield-check"></i>
+                </div>
+                <div>
+                  <h4 id="status-confirmation-title">Review Application Status</h4>
+                  <small>
+                    {statusModal.application.name || 'Candidate'} · Ref: {statusModal.application.ref}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => setStatusModal(null)}
+                  aria-label="Close"
+                  disabled={saving}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {statusSaveError && <div className="track-result track-error" role="alert">{statusSaveError}</div>}
+
+                {/* Audit trail / 2-level status display */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  marginBottom: 14,
+                  fontSize: '0.84rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ color: '#475569', fontWeight: 600 }}>1. Admin 1 Approval:</span>
+                    <span style={{ fontWeight: 600, color: statusModal.application.admin1ApprovedAt ? '#16a34a' : '#d97706' }}>
+                      {statusModal.application.admin1ApprovedAt
+                        ? `✓ Approved by ${statusModal.application.admin1ApprovedByName || 'Admin 1'} (${fmtDate(statusModal.application.admin1ApprovedAt)})`
+                        : '○ Pending Review'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#475569', fontWeight: 600 }}>2. Admin 2 Approval:</span>
+                    <span style={{ fontWeight: 600, color: statusModal.application.admin2ApprovedAt ? '#16a34a' : '#d97706' }}>
+                      {statusModal.application.admin2ApprovedAt
+                        ? `✓ Approved by ${statusModal.application.admin2ApprovedByName || 'Admin 2'} (${fmtDate(statusModal.application.admin2ApprovedAt)})`
+                        : '○ Pending Review'}
+                    </span>
+                  </div>
+                </div>
+
+                {cannotApproveNotice && (
+                  <div className="track-result track-error" style={{ marginBottom: 12 }}>
+                    <i className="bi bi-exclamation-octagon-fill"></i>
+                    <div>{cannotApproveNotice}</div>
+                  </div>
+                )}
+
+                {roleGuidance && (
+                  <p id="status-confirmation-description" style={{ fontSize: '0.86rem', color: 'var(--muted)', marginBottom: 12 }}>
+                    {roleGuidance}
+                  </p>
+                )}
+
+                <div className="modal-grid">
+                  <div className="field-block status-change-field">
+                    <span className="input-label">Select Action / Status</span>
+                    <div className="status-confirmation-control">
+                      <select
+                        className="status-confirmation-select"
+                        value={statusModal.status}
+                        onChange={(event) => setStatusModal((current) => (
+                          current ? { ...current, status: event.target.value } : current
+                        ))}
+                        disabled={saving}
+                        aria-label="New application status"
+                      >
+                        {statusOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <i className="bi bi-chevron-down status-confirmation-chevron" aria-hidden="true"></i>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="modal-foot">
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => setStatusModal(null)}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn add-user-btn modal-submit"
-                onClick={saveApplicationStatus}
-                disabled={saving || statusModal.status === (statusModal.application.status || 'UNDER_REVIEW')}
-              >
-                <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Confirm Update'}
-              </button>
+              <div className="modal-foot">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setStatusModal(null)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn add-user-btn modal-submit"
+                  onClick={saveApplicationStatus}
+                  disabled={isSubmitDisabled}
+                >
+                  <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Confirm Status'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );

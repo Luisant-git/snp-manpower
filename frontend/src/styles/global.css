@@ -2487,6 +2487,16 @@ textarea {
   color: #6d28d9;
 }
 
+.badge-role.admin-1 {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.badge-role.admin-2 {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
 .badge-role.employee {
   background: #dbeafe;
   color: #1d4ed8;
@@ -5134,6 +5144,12 @@ textarea {
   color: #92400e;
 }
 
+:is(.manage-apps-neat, .my-submissions-neat) .status-select.app-status-select.admin-1-approved {
+  border-color: #bae6fd;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
 :is(.manage-apps-neat, .my-submissions-neat) .status-select.app-status-select.approved {
   border-color: #bbf7d0;
   background: #dcfce7;
@@ -5400,6 +5416,12 @@ textarea {
   border-color: #fde68a;
   background: #fef3c7;
   color: #92400e;
+}
+
+.my-submissions-neat .employee-application-status.admin-1-approved {
+  border-color: #bae6fd;
+  background: #e0f2fe;
+  color: #0369a1;
 }
 
 .my-submissions-neat .employee-application-status.approved {

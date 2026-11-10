@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SessionUser } from '../common/auth.guard';
 import { OtpService } from '../whatsapp/otp.service';
 
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -27,7 +29,8 @@ export class AuthService {
       if (!user.isActive) {
         throw new UnauthorizedException('This account is inactive. Contact an administrator.');
       }
-      return { method: user.role === UserRole.ADMIN ? 'password' : 'otp' };
+      const isAdmin = adminRoles.includes(user.role);
+      return { method: isAdmin ? 'password' : 'otp' };
     }
 
     const registration = await this.prisma.registration.findFirst({
@@ -97,7 +100,7 @@ export class AuthService {
       if (!user.isActive) {
         throw new UnauthorizedException('This account is inactive. Contact an administrator.');
       }
-      if (user.role === UserRole.ADMIN) {
+      if (adminRoles.includes(user.role)) {
         throw new UnauthorizedException('Administrators must sign in with their password.');
       }
       return this.toSessionUser(user);

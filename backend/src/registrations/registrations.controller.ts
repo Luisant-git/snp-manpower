@@ -44,14 +44,19 @@ export class RegistrationsController {
   review(
     @Param('ref') ref: string,
     @Body() body: { status?: string; feesPaid?: number },
+    @Req() request: SessionRequest,
   ) {
-    return this.registrationsService.review(ref, body);
+    return this.registrationsService.review(ref, body, getSessionUser(request));
   }
 
   @Patch(':ref')
-  @UseGuards(AuthGuard, AdminGuard)
-  update(@Param('ref') ref: string, @Body() body: Record<string, unknown>) {
-    return this.registrationsService.update(ref, body);
+  @UseGuards(AuthGuard)
+  update(
+    @Param('ref') ref: string,
+    @Body() body: Record<string, unknown>,
+    @Req() request: SessionRequest,
+  ) {
+    return this.registrationsService.update(ref, body, getSessionUser(request));
   }
 
   @Delete(':ref')

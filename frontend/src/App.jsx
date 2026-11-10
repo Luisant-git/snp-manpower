@@ -35,6 +35,7 @@ export default function App() {
           />
           <Route path="/my-submissions" element={<div className="container my-submissions-wide"><ManageApplications mySubmissions /></div>} />
           <Route path="/my-submissions/:ref" element={<Register readOnly />} />
+          <Route path="/my-submissions/:ref/edit" element={<Register editable />} />
 
           {/* Admin area — shared layout with sub navigation */}
           <Route path="/admin" element={<AdminLayout />}>

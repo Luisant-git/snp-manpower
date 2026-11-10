@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const roles = new Set<string>(Object.values(UserRole));
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
 
 @Injectable()
 export class UsersService {
@@ -57,7 +58,7 @@ export class UsersService {
     const name = this.requiredName(body.name);
     const mobile = this.normalizeMobile(body.mobile);
     const role = this.parseRole(body.role || UserRole.EMPLOYEE);
-    if (role === UserRole.ADMIN && !body.password) {
+    if (adminRoles.includes(role) && !body.password) {
       throw new BadRequestException('An administrator password is required.');
     }
     const passwordHash = body.password
@@ -85,7 +86,7 @@ export class UsersService {
     });
     if (!existing) throw new NotFoundException('User not found.');
     const nextRole = body.role === undefined ? existing.role : this.parseRole(body.role);
-    if (nextRole === UserRole.ADMIN && existing.role !== UserRole.ADMIN && !body.password) {
+    if (adminRoles.includes(nextRole) && !adminRoles.includes(existing.role) && !body.password) {
       throw new BadRequestException('Set an administrator password when changing a user to administrator.');
     }
     const data: {
@@ -160,7 +161,7 @@ export class UsersService {
 
   private parseRole(value: string) {
     const role = String(value).toUpperCase();
-    if (!roles.has(role)) throw new BadRequestException('Role must be ADMIN, EMPLOYEE, or APPLICANT.');
+    if (!roles.has(role)) throw new BadRequestException('Role must be ADMIN, ADMIN_1, ADMIN_2, EMPLOYEE, or APPLICANT.');
     return role as UserRole;
   }
 

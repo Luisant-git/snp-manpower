@@ -949,7 +949,7 @@ export default function Register({ readOnly = false, editable = false }) {
           registrationData,
         });
       if (editable) {
-        navigate('/admin/applications', { replace: true });
+        navigate(isAdminRole(session?.role) ? '/admin/applications' : '/my-submissions', { replace: true });
         return;
       }
       setRefCode(registration.ref);
@@ -962,9 +962,11 @@ export default function Register({ readOnly = false, editable = false }) {
     }
   };
 
+  const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+
   const isOwnedByCurrentUser = () => {
     if (!viewApplication || !session) return false;
-    if (String(session.role).toLowerCase() === 'admin') return true;
+    if (isAdminRole(session.role)) return true;
     const cleanSessionMobile = String(session.mobile || '').replace(/\D/g, '');
     const cleanCandidateMobile = String(viewApplication.mobile || '').replace(/\D/g, '');
     if (String(session.role).toUpperCase() === 'APPLICANT') {
@@ -975,6 +977,13 @@ export default function Register({ readOnly = false, editable = false }) {
     }
     const cleanSubmitterMobile = String(viewApplication.submittedByMobile || viewApplication.filledByMobile || '').replace(/\D/g, '');
     return cleanSubmitterMobile === cleanSessionMobile || cleanCandidateMobile === cleanSessionMobile;
+  };
+
+  const canEdit = () => {
+    if (!viewApplication || !session) return false;
+    if (isAdminRole(session.role)) return true;
+    // Employee can edit ONLY IF the application has been approved (by both Admin 1 and Admin 2)
+    return isOwnedByCurrentUser() && viewApplication.status === 'APPROVED';
   };
 
   if (recordMode && recordLoading) {
@@ -1012,10 +1021,10 @@ export default function Register({ readOnly = false, editable = false }) {
   };
 
   if (readOnly && (!viewApplication || !isOwnedByCurrentUser())) {
-    return <Navigate to={session?.role === 'admin' ? '/admin/applications' : '/my-submissions'} replace />;
+    return <Navigate to={isAdminRole(session?.role) ? '/admin/applications' : '/my-submissions'} replace />;
   }
-  if (editable && (!viewApplication || session?.role !== 'admin')) {
-    return <Navigate to="/admin/applications" replace />;
+  if (editable && (!viewApplication || !canEdit())) {
+    return <Navigate to={isAdminRole(session?.role) ? '/admin/applications' : '/my-submissions'} replace />;
   }
 
   /* ---------- Login Guard ---------- */
@@ -1126,12 +1135,17 @@ export default function Register({ readOnly = false, editable = false }) {
             <small>Reference: {viewApplication.ref}</small>
           </div>
           <div className="registration-record-actions">
-            <Link to="/admin/applications" className="btn btn-outline">
-              <i className="bi bi-arrow-left"></i> Back to Applications
+            <Link to={isAdminRole(session?.role) ? '/admin/applications' : '/my-submissions'} className="btn btn-outline">
+              <i className="bi bi-arrow-left"></i> {isAdminRole(session?.role) ? 'Back to Applications' : 'Back to My Applications'}
             </Link>
-            {readOnly && session?.role === 'admin' && (
-              <Link to={`/admin/application/${encodeURIComponent(viewApplication.ref)}/edit`} className="btn btn-primary">
-                <i className="bi bi-pencil"></i> Edit
+            {readOnly && canEdit() && (
+              <Link
+                to={isAdminRole(session?.role)
+                  ? `/admin/application/${encodeURIComponent(viewApplication.ref)}/edit`
+                  : `/my-submissions/${encodeURIComponent(viewApplication.ref)}/edit`}
+                className="btn btn-primary"
+              >
+                <i className="bi bi-pencil"></i> Edit Application
               </Link>
             )}
             <button type="button" className="btn btn-primary" onClick={() => window.print()}>
@@ -1142,7 +1156,38 @@ export default function Register({ readOnly = false, editable = false }) {
       ) : session && (
         <div className="session-ribbon no-print">
           <i className="bi bi-person-badge-fill"></i> Filling as: <strong>{session.name}</strong>
-          {session.role === 'admin' ? ' (System Administrator)' : ' (Employee)'}
+          {isAdminRole(session.role) ? ' (Administrator)' : ' (Employee)'}
+        </div>
+      )}
+
+      {readOnly && !isAdminRole(session?.role) && viewApplication && viewApplication.status !== 'APPROVED' && (
+        <div
+          className="no-print"
+          style={{
+            background: '#f8fafc',
+            border: '1px solid #cbd5e1',
+            borderRadius: 8,
+            padding: '12px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: '0.9rem',
+            color: '#475569',
+          }}
+        >
+          <i className="bi bi-shield-lock" style={{ fontSize: '1.25rem', color: '#64748b' }}></i>
+          <div>
+            <strong>Editing Locked:</strong> You can edit this registered form only after <strong>Admin 1</strong> and <strong>Admin 2</strong> have approved it.
+            <div style={{ marginTop: 2, fontSize: '0.84rem' }}>
+              Current Status:{' '}
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                {viewApplication.status === 'ADMIN_1_APPROVED'
+                  ? 'Admin 1 Approved (Awaiting Admin 2 Approval)'
+                  : 'Under Review (Awaiting Admin 1 & 2 Approval)'}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

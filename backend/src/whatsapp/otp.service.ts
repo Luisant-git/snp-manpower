@@ -15,6 +15,8 @@ const codeLifetimeMs = 5 * 60 * 1000;
 const resendCooldownMs = 60 * 1000;
 const maxVerificationAttempts = 5;
 
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+
 @Injectable()
 export class OtpService {
   constructor(
@@ -35,7 +37,7 @@ export class OtpService {
         if (!user.isActive) {
           throw new UnauthorizedException('This account is inactive. Contact an administrator.');
         }
-        if (user.role === UserRole.ADMIN) {
+        if (adminRoles.includes(user.role)) {
           throw new UnauthorizedException('Administrators must sign in with their password.');
         }
       } else {

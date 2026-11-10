@@ -11,6 +11,8 @@ const LINKS = [
   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
 ];
 
+export const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+
 export default function AdminLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -25,7 +27,7 @@ export default function AdminLayout() {
         if (active) {
           const current = setSession(user);
           setCurrentSession(current);
-          if (current.role !== 'admin') navigate('/login', { replace: true });
+          if (!isAdminRole(current.role)) navigate('/login', { replace: true });
         }
       })
       .catch((error) => {
@@ -53,9 +55,15 @@ export default function AdminLayout() {
       </div>
     );
   }
-  if (!session || session.role !== 'admin') {
+  if (!session || !isAdminRole(session.role)) {
     return null;
   }
+
+  const roleLabel = {
+    admin: 'System Administrator',
+    admin_1: 'Admin 1',
+    admin_2: 'Admin 2',
+  }[session.role] || 'Administrator';
 
   return (
     <div className={`container admin-shell${pathname === '/admin/applications' ? ' admin-applications-wide' : ''}`}>
@@ -66,7 +74,7 @@ export default function AdminLayout() {
             <i className="bi bi-sliders2"></i>
           </span>
           <div className="admin-welcome-copy">
-            <span className="section-eyebrow">Admin Control Panel</span>
+            <span className="section-eyebrow">{roleLabel} Control Panel</span>
             <h2 className="section-title">
               Welcome, {session.name}
             </h2>

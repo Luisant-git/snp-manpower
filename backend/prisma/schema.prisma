@@ -9,12 +9,15 @@ datasource db {
 
 enum UserRole {
   ADMIN
+  ADMIN_1
+  ADMIN_2
   EMPLOYEE
   APPLICANT
 }
 
 enum ApplicationStatus {
   UNDER_REVIEW
+  ADMIN_1_APPROVED
   APPROVED
   REJECTED
 }
@@ -84,6 +87,12 @@ model Registration {
   employeeOtpVerified   Boolean           @default(false)
   confirmationStatus    NotificationStatus @default(PENDING)
   confirmationMessageId String?
+  admin1ApprovedById    Int?
+  admin1ApprovedByName  String?
+  admin1ApprovedAt      DateTime?
+  admin2ApprovedById    Int?
+  admin2ApprovedByName  String?
+  admin2ApprovedAt      DateTime?
   submittedByUserId     Int?
   submittedBy           User?             @relation("SubmittedRegistrations", fields: [submittedByUserId], references: [id], onDelete: SetNull)
   submittedByName       String?
