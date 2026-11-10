@@ -1614,7 +1614,7 @@ export default function Register({ readOnly = false, editable = false }) {
                             checked={(form.idDocType || 'PAN') === 'PAN'}
                             onChange={() => setForm((f) => ({ ...f, idDocType: 'PAN' }))}
                           />
-                          <span>PAN Card (ಪ್ಯಾನ್ ಕಾರ್ಡ್)</span>
+                          <span>{ts('panCard')}</span>
                         </label>
                         <label className="radio-option-item">
                           <input
@@ -1624,7 +1624,7 @@ export default function Register({ readOnly = false, editable = false }) {
                             checked={form.idDocType === 'VOTER_ID'}
                             onChange={() => setForm((f) => ({ ...f, idDocType: 'VOTER_ID' }))}
                           />
-                          <span>Voter ID (ಮತದಾರರ ಗುರುತಿನ ಚೀಟಿ)</span>
+                          <span>{ts('voterId')}</span>
                         </label>
                       </div>
 
@@ -1635,7 +1635,7 @@ export default function Register({ readOnly = false, editable = false }) {
                             maxLength={10}
                             value={form.pan}
                             onChange={handlePanChange}
-                            placeholder="E.G. ABCDE1234F (PAN Number)"
+                            placeholder="E.G. ABCDE1234F"
                             autoCapitalize="characters"
                             spellCheck={false}
                             style={{ maxWidth: '320px', flex: '1 1 200px' }}
@@ -1646,7 +1646,7 @@ export default function Register({ readOnly = false, editable = false }) {
                             maxLength={20}
                             value={form.voterId || ''}
                             onChange={handleVoterIdChange}
-                            placeholder="E.G. ABC1234567 (Voter ID Number)"
+                            placeholder="E.G. ABC1234567"
                             autoCapitalize="characters"
                             spellCheck={false}
                             style={{ maxWidth: '320px', flex: '1 1 200px' }}
@@ -1656,7 +1656,7 @@ export default function Register({ readOnly = false, editable = false }) {
                           className="badge bg-light text-primary border px-2 py-1"
                           style={{ fontSize: '0.74rem', fontWeight: 600 }}
                         >
-                          {(form.idDocType || 'PAN') === 'PAN' ? 'Selected: PAN Card' : 'Selected: Voter ID'}
+                          {(form.idDocType || 'PAN') === 'PAN' ? ts('panCard') : ts('voterId')}
                         </span>
                       </div>
                     </div>
@@ -1911,22 +1911,21 @@ export default function Register({ readOnly = false, editable = false }) {
                       <div
                         className="driver-category-selector mt-2 p-2"
                         style={{
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
                           borderRadius: '6px',
                         }}
                       >
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '6px' }}>
-                          <i className="bi bi-person-badge me-1"></i>
-                          Select Driver Category / ಡ್ರೈವರ್ ಆಯ್ಕೆ (Select Any One):
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          {ts('driverCategory')}:
                         </div>
                         <div className="radio-options-row" style={{ gap: '14px', flexWrap: 'wrap' }}>
                           {[
-                            { id: 'Spare Driver', label: 'Spare Driver (ಸ್ಪೇರ್ ಡ್ರೈವರ್)' },
-                            { id: 'Monthly Driver', label: 'Monthly Driver (ತಿಂಗಳ ಡ್ರೈವರ್)' },
-                            { id: 'Acting Driver', label: 'Acting Driver (ಆಕ್ಟಿಂಗ್ ಡ್ರೈವರ್)' },
+                            { id: 'Spare Driver', k: 'spareDriver' },
+                            { id: 'Monthly Driver', k: 'monthlyDriver' },
+                            { id: 'Acting Driver', k: 'actingDriver' },
                           ].map((opt) => (
-                            <label key={opt.id} className="radio-option-item" style={{ fontSize: '0.82rem' }}>
+                            <label key={opt.id} className="radio-option-item" style={{ fontSize: '0.84rem' }}>
                               <input
                                 type="radio"
                                 name="driverType"
@@ -1940,7 +1939,7 @@ export default function Register({ readOnly = false, editable = false }) {
                                   }));
                                 }}
                               />
-                              <span>{opt.label}</span>
+                              <span>{ts(opt.k)}</span>
                             </label>
                           ))}
                         </div>
@@ -1992,7 +1991,7 @@ export default function Register({ readOnly = false, editable = false }) {
                           className="badge bg-light text-secondary border px-2 py-1"
                           style={{ fontSize: '0.74rem', fontWeight: 600 }}
                         >
-                          (Selected: {form.jobType === 'DRIVER' ? `DRIVER · ${form.driverType || 'Monthly Driver'}` : form.jobType})
+                          ({form.jobType === 'DRIVER' ? `${ts('driver')} · ${form.driverType === 'Spare Driver' ? ts('spareDriver') : form.driverType === 'Acting Driver' ? ts('actingDriver') : ts('monthlyDriver')}` : (ts(form.jobType.toLowerCase()) || form.jobType)})
                         </span>
                       </div>
                     )}
