@@ -302,7 +302,7 @@ const emptyForm = {
   employeeMobile: '',
   employeeName: '',
   employeeRole: '',
-  registrationFeePaid: '1300',
+  registrationFeePaid: '',
   bankName: '',
   accountNumber: '',
   ifscCode: '',
@@ -399,10 +399,21 @@ export default function Register({ readOnly = false, editable = false }) {
       .catch((error) => setBranchLoadError(error.message));
     feeMasterApi.getRegistrationFee()
       .then((data) => {
-        if (data?.amount) setMasterFee(Number(data.amount));
+        if (data?.amount !== undefined && data?.amount !== null) {
+          const fee = Number(data.amount);
+          setMasterFee(fee);
+          if (!recordMode) {
+            setForm((current) => ({
+              ...current,
+              registrationFeePaid: current.registrationFeePaid && current.registrationFeePaid !== '1300'
+                ? current.registrationFeePaid
+                : String(fee),
+            }));
+          }
+        }
       })
       .catch(() => {});
-  }, []);
+  }, [recordMode]);
 
   useEffect(() => {
     if (!recordMode) return;
@@ -2894,12 +2905,17 @@ export default function Register({ readOnly = false, editable = false }) {
                         max={masterFee}
                         step="1"
                         inputMode="numeric"
+                        placeholder={String(masterFee)}
                         value={form.registrationFeePaid}
                         onChange={set}
                         aria-label="Registration fee paid in rupees"
                         required
                       />
-                      <small>Enter the amount received (System Fee: ₹{masterFee.toLocaleString('en-IN')}).</small>
+                      <small>
+                        {lang === 'kn'
+                          ? `ಸ್ವೀಕರಿಸಿದ ಮೊತ್ತವನ್ನು ನಮೂದಿಸಿ (ನಿಗದಿತ ಶುಲ್ಕ: ₹${masterFee.toLocaleString('en-IN')})`
+                          : `Enter the amount received (System Fee: ₹${masterFee.toLocaleString('en-IN')}).`}
+                      </small>
                     </div>
                   </td>
                 </tr>
