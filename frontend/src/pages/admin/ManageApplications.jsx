@@ -35,6 +35,9 @@ const applicationStatusLabel = (status) =>
 function toApplication(row) {
   const details = row.details || {};
   const payment = String(row.paymentStatus || 'PENDING').toLowerCase();
+  const policeCertAvailable = details.hasPoliceCert
+    ? details.hasPoliceCert === 'YES'
+    : Boolean(details.policeCertNo || details.policeCertDate);
   return {
     ...row,
     payment: payment[0].toUpperCase() + payment.slice(1),
@@ -46,6 +49,7 @@ function toApplication(row) {
     designation: row.designation || details.designation || '',
     dl: details.hasLicense === 'NO' ? 'NO LICENCE' : details.dlNumber || '—',
     vehicleNo: details.vehicleRegNo || '—',
+    policeCertStatus: policeCertAvailable ? 'Available' : 'Pending',
     date: row.createdAt,
     registrationData: details,
   };
@@ -67,6 +71,7 @@ export default function ManageApplications({ mySubmissions = false }) {
     staff: 'All',
     paymentStatus: 'All',
     designation: 'All',
+    policeCert: 'All',
   });
   const [feeModal, setFeeModal] = useState(null); // entry being fee-updated via ₹ button
   const [feeForm, setFeeForm] = useState({ paid: '' });
@@ -139,19 +144,27 @@ export default function ManageApplications({ mySubmissions = false }) {
 
   const filtered = useMemo(
     () =>
-      entries.filter((a) => {
-        const q = filterValues.keyword.trim().toLowerCase();
-        const staff = a.submittedBy || a.filledBy || 'Direct / Admin';
-        return (
-          ((a.ref || '').toLowerCase().includes(q) ||
-            (a.name || '').toLowerCase().includes(q) ||
-            (a.mobile || '').toLowerCase().includes(q) ||
-            (a.registrationData?.pan || '').toLowerCase().includes(q)) &&
-          (filterValues.staff === 'All' || staff === filterValues.staff) &&
-          (filterValues.paymentStatus === 'All' || (a.payment || 'Pending') === filterValues.paymentStatus) &&
-          (filterValues.designation === 'All' || a.designation === filterValues.designation)
-        );
-      }),
+      entries
+        .filter((a) => {
+          const q = filterValues.keyword.trim().toLowerCase();
+          const staff = a.submittedBy || a.filledBy || 'Direct / Admin';
+          return (
+            ((a.ref || '').toLowerCase().includes(q) ||
+              (a.name || '').toLowerCase().includes(q) ||
+              (a.mobile || '').toLowerCase().includes(q) ||
+              (a.registrationData?.pan || '').toLowerCase().includes(q)) &&
+            (filterValues.staff === 'All' || staff === filterValues.staff) &&
+            (filterValues.paymentStatus === 'All' || (a.payment || 'Pending') === filterValues.paymentStatus) &&
+            (filterValues.designation === 'All' || a.designation === filterValues.designation) &&
+            (filterValues.policeCert === 'All' || a.policeCertStatus === filterValues.policeCert)
+          );
+        })
+        .sort((a, b) => {
+          if (a.policeCertStatus !== b.policeCertStatus) {
+            return a.policeCertStatus === 'Pending' ? -1 : 1;
+          }
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        }),
     [entries, filterValues]
   );
 
@@ -176,6 +189,7 @@ export default function ManageApplications({ mySubmissions = false }) {
       staff: 'All',
       paymentStatus: 'All',
       designation: 'All',
+      policeCert: 'All',
     };
     setCurrentPage(1);
     setFilterValues(clearedFilters);
@@ -203,6 +217,7 @@ export default function ManageApplications({ mySubmissions = false }) {
         { header: 'Fees Status', key: 'feesStatus', width: 14 },
         { header: 'Fees Paid (INR)', key: 'feesPaid', width: 16 },
         { header: 'Fees Pending (INR)', key: 'feesPending', width: 18 },
+        { header: 'Police Certificate', key: 'policeCertificate', width: 20 },
         { header: 'Submitted Date', key: 'submittedDate', width: 18 },
         { header: 'Branch', key: 'branch', width: 22 },
       ];
@@ -221,6 +236,7 @@ export default function ManageApplications({ mySubmissions = false }) {
         feesStatus: application.payment || 'Pending',
         feesPaid: Number(application.feesPaid || 0),
         feesPending: Number(application.feesPending || 0),
+        policeCertificate: application.policeCertStatus,
         submittedDate: fmtDate(application.date),
         branch: application.branch?.name || application.registrationData?.employeeBranch || '',
       })));
@@ -230,7 +246,7 @@ export default function ManageApplications({ mySubmissions = false }) {
         pattern: 'solid',
         fgColor: { argb: 'FF17365D' },
       };
-      worksheet.autoFilter = { from: 'A1', to: 'P1' };
+      worksheet.autoFilter = { from: 'A1', to: 'Q1' };
       worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -436,6 +452,18 @@ export default function ManageApplications({ mySubmissions = false }) {
             ))}
           </select>
         </label>
+        <label className="registry-filter-field">
+          <span>Police Certificate</span>
+          <select
+            className="auth-input"
+            value={filterValues.policeCert}
+            onChange={(e) => updateFilter('policeCert', e.target.value)}
+          >
+            <option value="All">All certificate statuses</option>
+            <option value="Pending">Pending / Not available</option>
+            <option value="Available">Certificate available</option>
+          </select>
+        </label>
         <div className="registry-filter-actions">
           <button type="submit" className="btn btn-primary registry-filter-apply">
             <i className="bi bi-funnel"></i> Filter
@@ -478,6 +506,7 @@ export default function ManageApplications({ mySubmissions = false }) {
               <th>DL &amp; Vehicle</th>
               <th>Application Status</th>
               <th>Fees Status</th>
+              <th>Police Certificate</th>
               <th>Date</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -485,7 +514,7 @@ export default function ManageApplications({ mySubmissions = false }) {
           <tbody>
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan="11" className="text-center py-4 text-muted">
+                <td colSpan="12" className="text-center py-4 text-muted">
                   {loadError
                     ? 'Applications could not be loaded.'
                     : mySubmissions
@@ -571,6 +600,11 @@ export default function ManageApplications({ mySubmissions = false }) {
                       <small>{fees.paid} paid</small>
                       <small>{fees.pending} pending</small>
                     </div>
+                  </td>
+                  <td>
+                    <span className={`badge-pay ${a.policeCertStatus === 'Available' ? 'paid' : 'pending'}`}>
+                      {a.policeCertStatus}
+                    </span>
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>                  {fmtDate(a.date)}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

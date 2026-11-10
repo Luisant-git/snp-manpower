@@ -117,6 +117,13 @@ export const T = {
   },
   metaCertExpiryDate: { en: 'Expiry Date', kn: 'ಮುಕ್ತಾಯ ದಿನಾಂಕ', hi: 'समाप्ति तिथि', te: 'గడువు తేదీ', ta: 'காலாவதி தேதி' },
   metaCertNo: { en: 'Certificate No *', kn: 'ಪ್ರಮಾಣಪತ್ರ ಸಂಖ್ಯೆ *', hi: 'प्रमाण पत्र संख्या *', te: 'సర్టిఫికేట్ సంఖ్య *', ta: 'சான்றிதழ் எண் *' },
+  hasPoliceCertQuestion: {
+    en: 'Do you have a Police Verification Certificate?',
+    kn: 'ನೀವು ಪೊಲೀಸ್ ಪರಿಶೀಲನಾ ಪ್ರಮಾಣಪತ್ರವನ್ನು ಹೊಂದಿದ್ದೀರಾ?',
+    hi: 'क्या आपके पास पुलिस सत्यापन प्रमाण पत्र है?',
+    te: 'మీకు పోలీస్ ధృవీకరణ సర్టిఫికేట్ ఉందా?',
+    ta: 'உங்களிடம் காவல்துறை சரிபார்ப்பு சான்றிதழ் உள்ளதா?',
+  },
 
   /* ---- Page 1 Main Form Fields (1 to 24) ---- */
   refCandidate: {

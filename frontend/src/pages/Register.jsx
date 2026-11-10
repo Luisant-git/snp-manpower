@@ -233,6 +233,7 @@ const emptyForm = {
   state: 'KARNATAKA',
   regNo: '',
   mobile: '',
+  hasPoliceCert: 'NO',
   policeCertDate: '',
   policeCertNo: '',
   photoUrl: null,
@@ -432,6 +433,9 @@ export default function Register({ readOnly = false, editable = false }) {
     setForm((current) => ({
       ...current,
       ...details,
+      hasPoliceCert:
+        details.hasPoliceCert ||
+        (details.policeCertNo || details.policeCertDate ? 'YES' : 'NO'),
       addressProofs,
       pan: String(details.pan || '').toUpperCase(),
       aadhaar: formatAadhaar(details.aadhaar),
@@ -1355,49 +1359,89 @@ export default function Register({ readOnly = false, editable = false }) {
                       )}
                     </td>
                     <td colSpan="4" style={{ width: '65%' }}>
-                      <div className="d-flex align-items-center gap-3 w-100">
-                        <div className="d-flex align-items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
+                      <div className="d-flex flex-column gap-2 w-100">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                           <span className="inline-label" style={{ fontSize: '0.76rem', fontWeight: 800, color: '#881337' }}>
-                            {ts('metaCertExpiryDate')}:
+                            {ts('hasPoliceCertQuestion')}:
                           </span>
-                          <input
-                            type="date"
-                            name="policeCertDate"
-                            value={form.policeCertDate}
-                            onChange={set}
-                            style={{
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '4px',
-                              padding: '3px 6px',
-                              fontSize: '0.82rem',
-                              fontWeight: 700,
-                              width: '135px',
-                            }}
-                          />
+                          <div className="radio-options-row" style={{ padding: 0 }}>
+                            <label className="radio-option-item">
+                              <input
+                                type="radio"
+                                name="hasPoliceCert"
+                                value="YES"
+                                checked={form.hasPoliceCert === 'YES'}
+                                onChange={() =>
+                                  setForm((f) => ({ ...f, hasPoliceCert: 'YES' }))
+                                }
+                              />
+                              <span>{ts('yes')}</span>
+                            </label>
+                            <label className="radio-option-item">
+                              <input
+                                type="radio"
+                                name="hasPoliceCert"
+                                value="NO"
+                                checked={form.hasPoliceCert === 'NO'}
+                                onChange={() =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    hasPoliceCert: 'NO',
+                                    policeCertNo: '',
+                                    policeCertDate: '',
+                                  }))
+                                }
+                              />
+                              <span>{ts('no')}</span>
+                            </label>
+                          </div>
                         </div>
-                        <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0 }}>
-                          <span className="inline-label" style={{ fontSize: '0.76rem', fontWeight: 800, color: '#881337', whiteSpace: 'nowrap' }}>
-                            {ts('metaCertNo')}:
-                          </span>
-                          <input
-                            type="text"
-                            name="policeCertNo"
-                            value={form.policeCertNo}
-                            onChange={set}
-                            placeholder="POLICE VERIFICATION CERTIFICATE NO"
-                            style={{
-                              border: 'none',
-                              background: 'transparent',
-                              fontWeight: 700,
-                              fontSize: '0.88rem',
-                              color: '#0f172a',
-                              textTransform: 'uppercase',
-                              width: '100%',
-                              padding: '4px 6px',
-                              flex: 1,
-                            }}
-                          />
-                        </div>
+                        {form.hasPoliceCert === 'YES' && (
+                          <div className="d-flex align-items-center gap-3 w-100 flex-wrap">
+                            <div className="d-flex align-items-center gap-2" style={{ whiteSpace: 'nowrap' }}>
+                              <span className="inline-label" style={{ fontSize: '0.76rem', fontWeight: 800, color: '#881337' }}>
+                                {ts('metaCertExpiryDate')}:
+                              </span>
+                              <input
+                                type="date"
+                                name="policeCertDate"
+                                value={form.policeCertDate}
+                                onChange={set}
+                                style={{
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '4px',
+                                  padding: '3px 6px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 700,
+                                  width: '135px',
+                                }}
+                              />
+                            </div>
+                            <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0 }}>
+                              <span className="inline-label" style={{ fontSize: '0.76rem', fontWeight: 800, color: '#881337', whiteSpace: 'nowrap' }}>
+                                {ts('metaCertNo')}:
+                              </span>
+                              <input
+                                type="text"
+                                name="policeCertNo"
+                                value={form.policeCertNo}
+                                onChange={set}
+                                placeholder="POLICE VERIFICATION CERTIFICATE NO"
+                                style={{
+                                  border: 'none',
+                                  background: 'transparent',
+                                  fontWeight: 700,
+                                  fontSize: '0.88rem',
+                                  color: '#0f172a',
+                                  textTransform: 'uppercase',
+                                  width: '100%',
+                                  padding: '4px 6px',
+                                  flex: 1,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

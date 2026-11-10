@@ -5,6 +5,7 @@ export interface RegistrationDetails {
   state?: string;
   regNo?: string;
   mobile?: string;
+  hasPoliceCert?: string;
   policeCertDate?: string;
   policeCertNo?: string;
   photoUrl?: string | null;
@@ -82,7 +83,7 @@ export interface RegistrationDetails {
 }
 
 const stringFields: Array<keyof RegistrationDetails> = [
-  'formDate', 'state', 'regNo', 'mobile', 'policeCertDate', 'policeCertNo',
+  'formDate', 'state', 'regNo', 'mobile', 'hasPoliceCert', 'policeCertDate', 'policeCertNo',
   'refCandidate', 'refOtherDetail', 'fullName', 'fatherName', 'motherName',
   'dob', 'age', 'pan', 'bloodGroup', 'gender', 'nationality', 'religion',
   'languages', 'maritalStatus', 'qualification', 'aadhaar', 'hobbies',
