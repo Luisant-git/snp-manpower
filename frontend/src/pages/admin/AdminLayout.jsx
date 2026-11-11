@@ -69,7 +69,9 @@ export default function AdminLayout() {
 
   return (
     <div className={`container admin-shell${pathname === '/admin/applications' ? ' admin-applications-wide' : ''}`}>
-      <h1 className="admin-page-title">{pageTitle}</h1>
+      {pathname !== '/admin/users' && pathname !== '/admin/branches' && (
+        <h1 className="admin-page-title">{pageTitle}</h1>
+      )}
       <Outlet />
     </div>
   );

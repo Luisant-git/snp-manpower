@@ -1895,6 +1895,10 @@ textarea {
   flex-wrap: wrap;
 }
 
+.users-toolbar .admin-page-title {
+  margin: 0;
+}
+
 .add-user-btn {
   background: var(--navy);
   color: #fff; /* ensure white label on flat navy */

@@ -14,7 +14,6 @@ function fmtDate(iso) {
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
-  const [roleCounts, setRoleCounts] = useState({});
   const [totalUsers, setTotalUsers] = useState(0);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +48,6 @@ export default function UserManagement() {
       const result = await userApi.list({ search, role: roleFilter, page, pageSize });
       if (currentRequestId !== requestId.current) return;
       setUsers(result.items);
-      setRoleCounts(result.roleCounts);
       setTotalUsers(result.total);
       if (page > result.totalPages) setPage(result.totalPages);
     } catch (error) {
@@ -205,11 +203,7 @@ export default function UserManagement() {
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
 
       <div className="users-toolbar">
-        <div>
-          <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            {roleCounts.EMPLOYEE || 0} employee(s) · {roleCounts.ADMIN || 0} admin(s) · {roleCounts.SUPER_ADMIN || 0} super admin(s) · {roleCounts.APPLICANT || 0} job seeker(s)
-          </small>
-        </div>
+        <h1 className="admin-page-title">User Management</h1>
         <button className="btn add-user-btn" onClick={openAdd}>
           <i className="bi bi-person-plus-fill"></i> Add User
         </button>

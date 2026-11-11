@@ -3,8 +3,6 @@ import { branchApi } from '../../api/branchApi.js';
 
 export default function BranchMaster() {
   const [branches, setBranches] = useState([]);
-  const [activeCount, setActiveCount] = useState(0);
-  const [totalBranches, setTotalBranches] = useState(0);
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -40,8 +38,6 @@ export default function BranchMaster() {
       });
       if (currentRequestId !== requestId.current) return;
       setBranches(result.items);
-      setActiveCount(result.activeCount);
-      setTotalBranches(result.totalBranches);
       setTotalResults(result.total);
       if (page > result.totalPages) setPage(result.totalPages);
     } catch (error) {
@@ -125,11 +121,7 @@ export default function BranchMaster() {
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
 
       <div className="users-toolbar">
-        <div>
-          <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            Manage branches used in registration · {activeCount} active of {totalBranches}
-          </small>
-        </div>
+        <h1 className="admin-page-title">Branch Master</h1>
         <button className="btn add-user-btn" onClick={openAdd}>
           <i className="bi bi-plus-lg"></i> Add Branch
         </button>

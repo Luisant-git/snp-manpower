@@ -31,7 +31,7 @@ export class BranchesService {
     if (query.status === 'active') where.isActive = true;
     if (query.status === 'inactive') where.isActive = false;
 
-    const [items, total, activeCount, totalBranches] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.branch.findMany({
         where,
         orderBy: { name: 'asc' },
@@ -39,8 +39,6 @@ export class BranchesService {
         take: pageSize,
       }),
       this.prisma.branch.count({ where }),
-      this.prisma.branch.count({ where: { isActive: true } }),
-      this.prisma.branch.count(),
     ]);
 
     return {
@@ -49,8 +47,6 @@ export class BranchesService {
       page,
       pageSize,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
-      activeCount,
-      totalBranches,
     };
   }
 
