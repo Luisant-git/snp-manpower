@@ -357,6 +357,7 @@ export default function Register({ readOnly = false, editable = false }) {
   const [form, setForm] = useState(emptyForm);
   const [refCode, setRefCode] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [toast, setToast] = useState(null);
   const [lang, setLang] = useState(() => localStorage.getItem('snp_lang') || 'en');
   const session = getSession();
@@ -861,15 +862,24 @@ export default function Register({ readOnly = false, editable = false }) {
 
     const formElement = e.currentTarget;
     if (!formElement.checkValidity()) {
-      const invalidField = formElement.querySelector(':invalid');
-      const fieldName = invalidField?.name
-        ? invalidField.name.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())
-        : 'a required field';
+      setValidationAttempted(true);
+      const invalidFields = Array.from(formElement.querySelectorAll(':invalid'));
+      invalidFields.forEach((field) => field.classList.add('form-field-invalid'));
+      const invalidField = invalidFields[0];
+      const fieldName =
+        invalidField?.closest('tr')?.querySelector('.field-label-primary, .meta-cell-label')?.textContent?.trim() ||
+        invalidField?.closest('.branch-verification-field')?.querySelector('label')?.textContent?.trim() ||
+        invalidField?.getAttribute('aria-label') ||
+        invalidField?.closest('label')?.textContent?.trim() ||
+        invalidField?.name?.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase()) ||
+        invalidField?.getAttribute('placeholder') ||
+        'a required field';
       showToast('error', `Please complete or correct: ${fieldName}.`);
       invalidField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       invalidField?.focus({ preventScroll: true });
       return;
     }
+    setValidationAttempted(false);
 
     // Check candidate mobile
     if (!/^\d{10}$/.test(form.mobile)) {
@@ -962,7 +972,7 @@ export default function Register({ readOnly = false, editable = false }) {
     }
   };
 
-  const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+  const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
 
   const isOwnedByCurrentUser = () => {
     if (!viewApplication || !session) return false;
@@ -982,8 +992,7 @@ export default function Register({ readOnly = false, editable = false }) {
   const canEdit = () => {
     if (!viewApplication || !session) return false;
     if (isAdminRole(session.role)) return true;
-    // Employee can edit ONLY IF the application has been approved (by both Admin 1 and Admin 2)
-    return isOwnedByCurrentUser() && viewApplication.status === 'APPROVED';
+    return isOwnedByCurrentUser() && viewApplication.editRequestStatus === 'APPROVED';
   };
 
   if (recordMode && recordLoading) {
@@ -1178,15 +1187,22 @@ export default function Register({ readOnly = false, editable = false }) {
         >
           <i className="bi bi-shield-lock" style={{ fontSize: '1.25rem', color: '#64748b' }}></i>
           <div>
-            <strong>Editing Locked:</strong> You can edit this registered form only after <strong>Admin 1</strong> and <strong>Admin 2</strong> have approved it.
+            <strong>Editing Locked:</strong> You can edit this registered form only after <strong>Admin</strong> and <strong>Super Admin</strong> have approved it.
             <div style={{ marginTop: 2, fontSize: '0.84rem' }}>
               Current Status:{' '}
               <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                {viewApplication.status === 'ADMIN_1_APPROVED'
-                  ? 'Admin 1 Approved (Awaiting Admin 2 Approval)'
-                  : 'Under Review (Awaiting Admin 1 & 2 Approval)'}
+                {viewApplication.status === 'ADMIN_APPROVED'
+                  ? 'Admin Approved (Awaiting Super Admin Approval)'
+                  : viewApplication.status === 'REJECTED'
+                    ? `Rejected by ${viewApplication.rejectedByRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}`
+                    : 'Under Review (Awaiting Admin & Super Admin Approval)'}
               </span>
             </div>
+            {viewApplication.status === 'REJECTED' && viewApplication.rejectionReason && (
+              <div role="note" style={{ marginTop: 8, color: '#b91c1c' }}>
+                <strong>Rejection reason:</strong> {viewApplication.rejectionReason}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1222,7 +1238,17 @@ export default function Register({ readOnly = false, editable = false }) {
         </div>
       </div>}
 
-      <form noValidate onSubmit={readOnly ? (event) => event.preventDefault() : submit}>
+      <form
+        noValidate
+        className={validationAttempted ? 'validation-attempted' : ''}
+        onSubmit={readOnly ? (event) => event.preventDefault() : submit}
+        onInput={(event) => {
+          if (event.target.validity?.valid) event.target.classList.remove('form-field-invalid');
+        }}
+        onChange={(event) => {
+          if (event.target.validity?.valid) event.target.classList.remove('form-field-invalid');
+        }}
+      >
         {branchLoadError && <div className="track-result track-error" role="alert">{branchLoadError}</div>}
         <fieldset className="registration-view-fieldset" disabled={readOnly || submitting}>
         <div className="physical-form-wrapper">

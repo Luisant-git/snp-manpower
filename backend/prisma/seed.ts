@@ -30,8 +30,8 @@ async function seed() {
     return;
   }
   const isDevelopmentTestPassword = process.env.NODE_ENV !== 'production' && adminPassword === '1234';
-  if (!/^\d{10}$/.test(adminMobile) || (!isDevelopmentTestPassword && adminPassword.length < 12)) {
-    throw new Error('ADMIN_MOBILE must be 10 digits and ADMIN_PASSWORD must be at least 12 characters (except the local test password 1234).');
+  if (!/^\d{10}$/.test(adminMobile) || (!isDevelopmentTestPassword && adminPassword.length < 8)) {
+    throw new Error('ADMIN_MOBILE must be 10 digits and ADMIN_PASSWORD must be at least 8 characters (except the local test password 1234).');
   }
 
   const passwordHash = await bcrypt.hash(adminPassword, 12);
@@ -40,14 +40,14 @@ async function seed() {
     update: {
       name: 'System Administrator',
       passwordHash,
-      role: UserRole.ADMIN,
+      role: UserRole.SUPER_ADMIN,
       isActive: true,
     },
     create: {
       name: 'System Administrator',
       mobile: adminMobile,
       passwordHash,
-      role: UserRole.ADMIN,
+      role: UserRole.SUPER_ADMIN,
     },
   });
   console.info('System administrator seeded.');

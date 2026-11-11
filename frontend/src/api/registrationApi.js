@@ -20,5 +20,13 @@ export const registrationApi = {
     method: 'PATCH',
     body: changes,
   }),
+  requestEdit: (ref, notes) => apiRequest(`/registrations/${encodeURIComponent(ref)}/request-edit`, {
+    method: 'POST',
+    body: { notes },
+  }),
+  reviewEditRequest: (ref, action, reason) => apiRequest(`/registrations/${encodeURIComponent(ref)}/review-edit-request`, {
+    method: 'PATCH',
+    body: { action, reason },
+  }),
   remove: (ref) => apiRequest(`/registrations/${encodeURIComponent(ref)}`, { method: 'DELETE' }),
 };

@@ -8,18 +8,25 @@ datasource db {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
-  ADMIN_1
-  ADMIN_2
   EMPLOYEE
   APPLICANT
 }
 
 enum ApplicationStatus {
   UNDER_REVIEW
-  ADMIN_1_APPROVED
+  ADMIN_APPROVED
   APPROVED
   REJECTED
+}
+
+enum EditRequestStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
 }
 
 enum PaymentStatus {
@@ -68,39 +75,53 @@ model Branch {
 }
 
 model Registration {
-  id                    Int               @id @default(autoincrement())
-  ref                   String            @unique
-  name                  String
-  mobile                String
-  designation           String?
-  status                ApplicationStatus @default(UNDER_REVIEW)
-  paymentStatus         PaymentStatus     @default(PENDING)
-  feesPaid              Int               @default(0)
-  feesPending           Int               @default(2400)
-  details               Json
-  photoUrl              String?
-  addressProofUrl       String?
-  addressProofName      String?
-  bankProofUrl          String?
-  bankProofName         String?
-  candidateOtpVerified  Boolean           @default(false)
-  employeeOtpVerified   Boolean           @default(false)
-  confirmationStatus    NotificationStatus @default(PENDING)
-  confirmationMessageId String?
-  admin1ApprovedById    Int?
-  admin1ApprovedByName  String?
-  admin1ApprovedAt      DateTime?
-  admin2ApprovedById    Int?
-  admin2ApprovedByName  String?
-  admin2ApprovedAt      DateTime?
-  submittedByUserId     Int?
-  submittedBy           User?             @relation("SubmittedRegistrations", fields: [submittedByUserId], references: [id], onDelete: SetNull)
-  submittedByName       String?
-  submittedByMobile     String?
-  branchId              Int?
-  branch                Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  id                         Int                @id @default(autoincrement())
+  ref                        String             @unique
+  name                       String
+  mobile                     String
+  designation                String?
+  status                     ApplicationStatus  @default(UNDER_REVIEW)
+  paymentStatus              PaymentStatus      @default(PENDING)
+  feesPaid                   Int                @default(0)
+  feesPending                Int                @default(2400)
+  details                    Json
+  photoUrl                   String?
+  addressProofUrl            String?
+  addressProofName           String?
+  bankProofUrl               String?
+  bankProofName              String?
+  candidateOtpVerified       Boolean            @default(false)
+  employeeOtpVerified        Boolean            @default(false)
+  confirmationStatus         NotificationStatus @default(PENDING)
+  confirmationMessageId      String?
+  adminApprovedById          Int?
+  adminApprovedByName        String?
+  adminApprovedAt            DateTime?
+  superAdminApprovedById     Int?
+  superAdminApprovedByName   String?
+  superAdminApprovedAt       DateTime?
+  rejectionReason            String?
+  rejectedByRole             UserRole?
+  editRequestStatus          EditRequestStatus  @default(NONE)
+  editRequestNotes           String?
+  editRequestedAt            DateTime?
+  editRequestedByUserId      Int?
+  editRequestedByName        String?
+  editApprovedById           Int?
+  editApprovedByName         String?
+  editApprovedAt             DateTime?
+  editRejectedById           Int?
+  editRejectedByName         String?
+  editRejectedAt             DateTime?
+  editRequestRejectionReason String?
+  submittedByUserId          Int?
+  submittedBy                User?              @relation("SubmittedRegistrations", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  submittedByName            String?
+  submittedByMobile          String?
+  branchId                   Int?
+  branch                     Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
 
   @@index([mobile])
   @@index([submittedByUserId, createdAt])
@@ -133,5 +154,3 @@ model FeeMaster {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
-
-

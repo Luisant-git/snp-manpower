@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ApplicationStatus, NotificationStatus, OtpPurpose, PaymentStatus, Prisma, UserRole } from '@prisma/client';
+import { ApplicationStatus, EditRequestStatus, NotificationStatus, OtpPurpose, PaymentStatus, Prisma, UserRole } from '@prisma/client';
 import { SessionUser } from '../common/auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { FeeMasterService } from '../fee-master/fee-master.service';
@@ -9,7 +9,7 @@ import { parseRegistrationDetails } from './registration-details.dto';
 
 const defaultRegistrationFee = 2400;
 const applicationStatuses = new Set<string>(Object.values(ApplicationStatus));
-const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class RegistrationsService {
@@ -20,7 +20,7 @@ export class RegistrationsService {
     private readonly otpService: OtpService,
     private readonly whatsApp: WhatsAppService,
     private readonly feeMasterService: FeeMasterService,
-  ) {}
+  ) { }
 
   async create(body: Record<string, unknown>, user: SessionUser) {
     const details = parseRegistrationDetails(body.registrationData ?? body);
@@ -200,8 +200,8 @@ export class RegistrationsService {
         throw new ForbiddenException('You can only edit your own registrations.');
       }
 
-      if (registration.status !== ApplicationStatus.APPROVED) {
-        throw new ForbiddenException('You can only edit this application after both Admin 1 and Admin 2 have approved it.');
+      if (registration.editRequestStatus !== EditRequestStatus.APPROVED) {
+        throw new ForbiddenException('You cannot edit this application until your edit request has been approved.');
       }
     }
 
@@ -224,21 +224,27 @@ export class RegistrationsService {
       branchId = branch.id;
     }
 
+    const updatePayload: Prisma.RegistrationUpdateInput = {
+      name,
+      mobile,
+      designation: String(body.designation ?? details.designation ?? '').trim() || null,
+      details: details as Prisma.InputJsonValue,
+      photoUrl: this.optionalString(details.photoUrl),
+      addressProofUrl: this.optionalString(details.addressProofUrl),
+      addressProofName: this.optionalString(details.addressProofName),
+      bankProofUrl: this.optionalString(details.bankProofUrl),
+      bankProofName: this.optionalString(details.bankProofName),
+      branch: branchId ? { connect: { id: branchId } } : undefined,
+    };
+
+    if (!isAdmin && registration.editRequestStatus === EditRequestStatus.APPROVED) {
+      updatePayload.editRequestStatus = EditRequestStatus.COMPLETED;
+    }
+
     try {
       return await this.prisma.registration.update({
         where: { ref },
-        data: {
-          name,
-          mobile,
-          designation: String(body.designation ?? details.designation ?? '').trim() || null,
-          details: details as Prisma.InputJsonValue,
-          photoUrl: this.optionalString(details.photoUrl),
-          addressProofUrl: this.optionalString(details.addressProofUrl),
-          addressProofName: this.optionalString(details.addressProofName),
-          bankProofUrl: this.optionalString(details.bankProofUrl),
-          bankProofName: this.optionalString(details.bankProofName),
-          branchId,
-        },
+        data: updatePayload,
       });
     } catch (error) {
       if (this.isUniqueViolation(error)) throw new BadRequestException('This registration reference already exists.');
@@ -246,7 +252,11 @@ export class RegistrationsService {
     }
   }
 
-  async review(ref: string, body: { status?: string; feesPaid?: number }, user: SessionUser) {
+  async review(
+    ref: string,
+    body: { status?: string; feesPaid?: number; rejectionReason?: string },
+    user: SessionUser,
+  ) {
     const existing = await this.prisma.registration.findUnique({ where: { ref } });
     if (!existing) throw new NotFoundException('Registration not found.');
     const data: {
@@ -254,61 +264,54 @@ export class RegistrationsService {
       feesPaid?: number;
       feesPending?: number;
       paymentStatus?: PaymentStatus;
-      admin1ApprovedById?: number | null;
-      admin1ApprovedByName?: string | null;
-      admin1ApprovedAt?: Date | null;
-      admin2ApprovedById?: number | null;
-      admin2ApprovedByName?: string | null;
-      admin2ApprovedAt?: Date | null;
+      adminApprovedById?: number | null;
+      adminApprovedByName?: string | null;
+      adminApprovedAt?: Date | null;
+      superAdminApprovedById?: number | null;
+      superAdminApprovedByName?: string | null;
+      superAdminApprovedAt?: Date | null;
+      rejectionReason?: string | null;
+      rejectedByRole?: UserRole | null;
     } = {};
 
     if (body.status !== undefined) {
       const status = String(body.status).toUpperCase();
       if (!applicationStatuses.has(status)) {
-        throw new BadRequestException('Status must be UNDER_REVIEW, ADMIN_1_APPROVED, APPROVED, or REJECTED.');
+        throw new BadRequestException('Status must be UNDER_REVIEW, ADMIN_APPROVED, APPROVED, or REJECTED.');
+      }
+      const rejectionReason = String(body.rejectionReason || '').trim();
+      if (status === ApplicationStatus.REJECTED && !rejectionReason) {
+        throw new BadRequestException('A rejection reason is required.');
       }
 
-      if (user.role === UserRole.ADMIN_1) {
+      if (user.role === UserRole.ADMIN) {
         if (status === ApplicationStatus.APPROVED) {
-          throw new BadRequestException('Admin 1 cannot give final approval. Admin 1 can only approve to Level 1 (ADMIN_1_APPROVED).');
+          throw new BadRequestException('Admin cannot give final approval. Super Admin must approve after Admin review.');
         }
-        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
-          data.admin1ApprovedById = user.id;
-          data.admin1ApprovedByName = user.name;
-          data.admin1ApprovedAt = new Date();
+        if (status === ApplicationStatus.ADMIN_APPROVED) {
+          data.adminApprovedById = user.id;
+          data.adminApprovedByName = user.name;
+          data.adminApprovedAt = new Date();
         }
-      } else if (user.role === UserRole.ADMIN_2) {
-        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
-          throw new BadRequestException('Admin 2 cannot give Level 1 approval.');
+      } else if (user.role === UserRole.SUPER_ADMIN) {
+        if (status === ApplicationStatus.ADMIN_APPROVED) {
+          throw new BadRequestException('Admin must give the first approval.');
         }
         if (status === ApplicationStatus.APPROVED) {
-          if (existing.status !== ApplicationStatus.ADMIN_1_APPROVED) {
-            throw new BadRequestException('Admin 1 must review and approve this application first before Admin 2 can approve.');
+          if (existing.status !== ApplicationStatus.ADMIN_APPROVED) {
+            throw new BadRequestException('Admin must approve this application before Super Admin can give final approval.');
           }
-          data.admin2ApprovedById = user.id;
-          data.admin2ApprovedByName = user.name;
-          data.admin2ApprovedAt = new Date();
-        }
-      } else if (user.role === UserRole.ADMIN) {
-        if (status === ApplicationStatus.ADMIN_1_APPROVED) {
-          data.admin1ApprovedById = user.id;
-          data.admin1ApprovedByName = user.name;
-          data.admin1ApprovedAt = new Date();
-        } else if (status === ApplicationStatus.APPROVED) {
-          if (!existing.admin1ApprovedAt) {
-            data.admin1ApprovedById = user.id;
-            data.admin1ApprovedByName = user.name;
-            data.admin1ApprovedAt = new Date();
-          }
-          data.admin2ApprovedById = user.id;
-          data.admin2ApprovedByName = user.name;
-          data.admin2ApprovedAt = new Date();
+          data.superAdminApprovedById = user.id;
+          data.superAdminApprovedByName = user.name;
+          data.superAdminApprovedAt = new Date();
         }
       } else {
         throw new ForbiddenException('You do not have permission to review applications.');
       }
 
       data.status = status as ApplicationStatus;
+      data.rejectionReason = status === ApplicationStatus.REJECTED ? rejectionReason : null;
+      data.rejectedByRole = status === ApplicationStatus.REJECTED ? user.role : null;
     }
 
     if (body.feesPaid !== undefined) {
@@ -344,6 +347,111 @@ export class RegistrationsService {
         data: { confirmationStatus: NotificationStatus.FAILED },
       });
     }
+  }
+
+  async requestEdit(ref: string, notesInput: unknown, user: SessionUser) {
+    const registration = await this.prisma.registration.findUnique({ where: { ref } });
+    if (!registration) throw new NotFoundException('Registration not found.');
+
+    const cleanUserMobile = String(user.mobile || '').replace(/\D/g, '');
+    const cleanRegMobile = String(registration.mobile || '').replace(/\D/g, '');
+    const cleanSubmitterMobile = String(registration.submittedByMobile || '').replace(/\D/g, '');
+    const isOwner =
+      registration.submittedByUserId === user.id ||
+      cleanSubmitterMobile === cleanUserMobile ||
+      cleanRegMobile === cleanUserMobile;
+
+    if (!isOwner && !adminRoles.includes(user.role)) {
+      throw new ForbiddenException('You can only request edits for your own registrations.');
+    }
+
+    const notes = String(notesInput || '').trim();
+    if (!notes || notes.length < 3) {
+      throw new BadRequestException('Please provide a reason / notes for the edit request (at least 3 characters).');
+    }
+
+    if (registration.editRequestStatus === EditRequestStatus.PENDING) {
+      throw new BadRequestException('An edit request is already submitted and pending review.');
+    }
+    if (registration.editRequestStatus === EditRequestStatus.APPROVED) {
+      throw new BadRequestException('Edit permission is already approved. You can edit the application now.');
+    }
+
+    return this.prisma.registration.update({
+      where: { ref },
+      data: {
+        editRequestStatus: EditRequestStatus.PENDING,
+        editRequestNotes: notes,
+        editRequestedAt: new Date(),
+        editRequestedByUserId: user.id,
+        editRequestedByName: user.name,
+        editApprovedById: null,
+        editApprovedByName: null,
+        editApprovedAt: null,
+        editRejectedById: null,
+        editRejectedByName: null,
+        editRejectedAt: null,
+        editRequestRejectionReason: null,
+      },
+    });
+  }
+
+  async reviewEditRequest(
+    ref: string,
+    body: { action: string; reason?: string },
+    user: SessionUser,
+  ) {
+    const registration = await this.prisma.registration.findUnique({ where: { ref } });
+    if (!registration) throw new NotFoundException('Registration not found.');
+
+    if (registration.editRequestStatus !== EditRequestStatus.PENDING) {
+      throw new BadRequestException('No pending edit request found for this application.');
+    }
+
+    const action = String(body.action || '').toUpperCase();
+    if (action !== 'APPROVE' && action !== 'REJECT') {
+      throw new BadRequestException('Action must be APPROVE or REJECT.');
+    }
+
+    if (!adminRoles.includes(user.role)) {
+      throw new ForbiddenException('You do not have permission to review edit requests.');
+    }
+
+    const rejectionReason = String(body.reason || '').trim();
+    if (action === 'REJECT' && !rejectionReason) {
+      throw new BadRequestException('A rejection reason is required.');
+    }
+
+    const reviewedAt = new Date();
+    if (action === 'APPROVE') {
+      return this.prisma.registration.update({
+        where: { ref },
+        data: {
+          editRequestStatus: EditRequestStatus.APPROVED,
+          editApprovedById: user.id,
+          editApprovedByName: user.name,
+          editApprovedAt: reviewedAt,
+          editRejectedById: null,
+          editRejectedByName: null,
+          editRejectedAt: null,
+          editRequestRejectionReason: null,
+        },
+      });
+    }
+
+    return this.prisma.registration.update({
+      where: { ref },
+      data: {
+        editRequestStatus: EditRequestStatus.REJECTED,
+        editApprovedById: null,
+        editApprovedByName: null,
+        editApprovedAt: null,
+        editRejectedById: user.id,
+        editRejectedByName: user.name,
+        editRejectedAt: reviewedAt,
+        editRequestRejectionReason: rejectionReason,
+      },
+    });
   }
 
   async remove(ref: string) {

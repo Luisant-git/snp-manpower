@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
 const roles = new Set<string>(Object.values(UserRole));
-const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class UsersService {
@@ -128,9 +128,9 @@ export class UsersService {
   async remove(id: number) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('User not found.');
-    if (user.role === UserRole.ADMIN) {
+    if (adminRoles.includes(user.role)) {
       const activeAdmins = await this.prisma.user.count({
-        where: { role: UserRole.ADMIN, isActive: true },
+        where: { role: { in: [...adminRoles] }, isActive: true },
       });
       if (user.isActive && activeAdmins <= 1) {
         throw new BadRequestException('The last active administrator cannot be deleted.');
@@ -153,15 +153,15 @@ export class UsersService {
   }
 
   private async hashPassword(value: string) {
-    if (typeof value !== 'string' || value.length < 12) {
-      throw new BadRequestException('Password must be at least 12 characters.');
+    if (typeof value !== 'string' || value.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters.');
     }
     return bcrypt.hash(value, 12);
   }
 
   private parseRole(value: string) {
     const role = String(value).toUpperCase();
-    if (!roles.has(role)) throw new BadRequestException('Role must be ADMIN, ADMIN_1, ADMIN_2, EMPLOYEE, or APPLICANT.');
+    if (!roles.has(role)) throw new BadRequestException('Role must be SUPER_ADMIN, ADMIN, EMPLOYEE, or APPLICANT.');
     return role as UserRole;
   }
 

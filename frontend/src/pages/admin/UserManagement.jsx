@@ -81,12 +81,12 @@ export default function UserManagement() {
 
   const save = async () => {
     setFormError('');
-    const requiresPassword = ['ADMIN', 'ADMIN_1', 'ADMIN_2'].includes(form.role);
+    const requiresPassword = ['ADMIN', 'SUPER_ADMIN'].includes(form.role);
     if (!form.name.trim() || form.mobile.length !== 10
-      || (requiresPassword && isAdd && form.password.length < 12)
-      || (form.password && form.password.length < 12)) {
+      || (requiresPassword && isAdd && form.password.length < 8)
+      || (form.password && form.password.length < 8)) {
       setFormError(requiresPassword
-        ? 'Enter a name, 10-digit mobile, and an administrator password of at least 12 characters.'
+        ? 'Enter a name, 10-digit mobile, and an administrator password of at least 8 characters.'
         : 'Enter a name and a valid 10-digit mobile number.');
       return;
     }
@@ -144,17 +144,15 @@ export default function UserManagement() {
   };
 
   const employees = users.filter((u) => u.role === 'EMPLOYEE');
-  const administrators = users.filter((u) => u.role === 'ADMIN');
-  const admin1s = users.filter((u) => u.role === 'ADMIN_1');
-  const admin2s = users.filter((u) => u.role === 'ADMIN_2');
+  const admins = users.filter((u) => u.role === 'ADMIN');
+  const superAdmins = users.filter((u) => u.role === 'SUPER_ADMIN');
   const applicants = users.filter((u) => u.role === 'APPLICANT');
   const isAdd = modal?.mode === 'add';
 
   const roleLabel = (role) => {
     switch (role) {
-      case 'ADMIN': return 'System Administrator';
-      case 'ADMIN_1': return 'Admin 1';
-      case 'ADMIN_2': return 'Admin 2';
+      case 'ADMIN': return 'Admin';
+      case 'SUPER_ADMIN': return 'Super Admin';
       case 'APPLICANT': return 'Job Seeker';
       default: return 'Employee';
     }
@@ -162,9 +160,8 @@ export default function UserManagement() {
 
   const roleBadgeClass = (role) => {
     switch (role) {
-      case 'ADMIN': return 'admin';
-      case 'ADMIN_1': return 'admin-1';
-      case 'ADMIN_2': return 'admin-2';
+      case 'ADMIN': return 'admin-1';
+      case 'SUPER_ADMIN': return 'admin-2';
       case 'APPLICANT': return 'applicant';
       default: return 'employee';
     }
@@ -193,7 +190,7 @@ export default function UserManagement() {
         <div>
           <h4 style={{ fontWeight: 800 }}>User Accounts</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            {employees.length} employee(s) · {administrators.length} super admin(s) · {admin1s.length} admin 1(s) · {admin2s.length} admin 2(s) · {applicants.length} job seeker(s)
+            {employees.length} employee(s) · {admins.length} admin(s) · {superAdmins.length} super admin(s) · {applicants.length} job seeker(s)
           </small>
         </div>
         <button className="btn add-user-btn" onClick={openAdd}>
@@ -328,15 +325,14 @@ export default function UserManagement() {
                       onChange={(e) => setForm({ ...form, role: e.target.value })}
                     >
                       <option value="EMPLOYEE">Employee</option>
-                      <option value="ADMIN_1">Admin 1</option>
-                      <option value="ADMIN_2">Admin 2</option>
-                      <option value="ADMIN">System Administrator</option>
+                      <option value="ADMIN">Admin</option>
+                      <option value="SUPER_ADMIN">Super Admin</option>
                       <option value="APPLICANT">Job Seeker</option>
                     </select>
                   </div>
                 </div>
 
-                {['ADMIN', 'ADMIN_1', 'ADMIN_2'].includes(form.role) && (
+                {['ADMIN', 'SUPER_ADMIN'].includes(form.role) && (
                   <div className="field-block full">
                     <label className="input-label">
                       Administrator Password {isAdd ? '*' : '(optional)'}
@@ -346,10 +342,10 @@ export default function UserManagement() {
                       type="password"
                       value={form.password}
                       onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      placeholder={isAdd ? 'At least 12 characters' : 'Leave blank to keep current'}
+                      placeholder={isAdd ? 'At least 8 characters' : 'Leave blank to keep current'}
                       autoComplete="new-password"
                     />
-                    <small>Admin 1, Admin 2, and System Administrators sign in with password; employees and job seekers sign in with WhatsApp OTP.</small>
+                    <small>Admins and Super Admins sign in with a password; employees and job seekers sign in with WhatsApp OTP.</small>
                   </div>
                 )}
 

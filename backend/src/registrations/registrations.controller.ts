@@ -43,7 +43,7 @@ export class RegistrationsController {
   @UseGuards(AuthGuard, AdminGuard)
   review(
     @Param('ref') ref: string,
-    @Body() body: { status?: string; feesPaid?: number },
+    @Body() body: { status?: string; feesPaid?: number; rejectionReason?: string },
     @Req() request: SessionRequest,
   ) {
     return this.registrationsService.review(ref, body, getSessionUser(request));
@@ -57,6 +57,26 @@ export class RegistrationsController {
     @Req() request: SessionRequest,
   ) {
     return this.registrationsService.update(ref, body, getSessionUser(request));
+  }
+
+  @Post(':ref/request-edit')
+  @UseGuards(AuthGuard)
+  requestEdit(
+    @Param('ref') ref: string,
+    @Body() body: { notes: string },
+    @Req() request: SessionRequest,
+  ) {
+    return this.registrationsService.requestEdit(ref, body?.notes, getSessionUser(request));
+  }
+
+  @Patch(':ref/review-edit-request')
+  @UseGuards(AuthGuard, AdminGuard)
+  reviewEditRequest(
+    @Param('ref') ref: string,
+    @Body() body: { action: string; reason?: string },
+    @Req() request: SessionRequest,
+  ) {
+    return this.registrationsService.reviewEditRequest(ref, body, getSessionUser(request));
   }
 
   @Delete(':ref')

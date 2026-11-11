@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 import { UserRole } from '@prisma/client';
 import { getSessionUser } from './auth.guard';
 
-export const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+export const adminRoles: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class AdminGuard implements CanActivate {

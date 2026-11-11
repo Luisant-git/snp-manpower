@@ -26,12 +26,12 @@ function feesOf(a) {
 }
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
-export const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+export const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
 
 const applicationStatusLabel = (status) =>
   ({
     UNDER_REVIEW: 'Under Review',
-    ADMIN_1_APPROVED: 'Admin 1 Approved',
+    ADMIN_APPROVED: 'Admin Approved',
     APPROVED: 'Approved',
     REJECTED: 'Rejected',
   }[status] || String(status || '—').replace(/_/g, ' '));
@@ -86,6 +86,11 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [feeAttempted, setFeeAttempted] = useState(false);
   const [statusModal, setStatusModal] = useState(null);
   const [statusSaveError, setStatusSaveError] = useState('');
+  const [editRequestModal, setEditRequestModal] = useState(null);
+  const [editRequestNotes, setEditRequestNotes] = useState('');
+  const [editRequestReason, setEditRequestReason] = useState('');
+  const [editRequestError, setEditRequestError] = useState('');
+  const [rejectionReasonModal, setRejectionReasonModal] = useState(null);
   const feeCurrentPaid = feeModal ? Number(feeModal.feesPaid || 0) : 0;
   const feePendingAmount = feeModal
     ? Number(feeModal.feesPending ?? Math.max(0, masterFee - feeCurrentPaid))
@@ -143,6 +148,17 @@ export default function ManageApplications({ mySubmissions = false }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [statusModal, saving]);
+
+  useEffect(() => {
+    if (!editRequestModal) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !saving) setEditRequestModal(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editRequestModal, saving]);
 
   const entries = apps;
 
@@ -316,30 +332,104 @@ export default function ManageApplications({ mySubmissions = false }) {
     setStatusSaveError('');
     const userRole = String(session?.role || '').toLowerCase();
     let nextStatus = initialStatus || application.status || 'UNDER_REVIEW';
-    if (userRole === 'admin_1' && application.status === 'UNDER_REVIEW') {
-      nextStatus = 'ADMIN_1_APPROVED';
-    } else if (userRole === 'admin_2' && application.status === 'ADMIN_1_APPROVED') {
+    if (userRole === 'admin' && application.status === 'UNDER_REVIEW') {
+      nextStatus = 'ADMIN_APPROVED';
+    } else if (userRole === 'super_admin' && application.status === 'ADMIN_APPROVED') {
       nextStatus = 'APPROVED';
     }
-    setStatusModal({ application, status: nextStatus });
+    setStatusModal({
+      application,
+      status: nextStatus,
+      rejectionReason: application.rejectionReason || '',
+    });
   };
 
   const saveApplicationStatus = async () => {
     if (!statusModal || saving) return;
     const { application, status } = statusModal;
-    if (status === (application.status || 'UNDER_REVIEW')) return;
+    const rejectionReason = statusModal.rejectionReason.trim();
+    if (status === 'REJECTED' && !rejectionReason) {
+      setStatusSaveError('Enter a reason before rejecting this application.');
+      return;
+    }
+    if (
+      status === (application.status || 'UNDER_REVIEW') &&
+      (status !== 'REJECTED' || rejectionReason === (application.rejectionReason || '').trim())
+    ) return;
     const confirmationFailure = 'Application status was updated, but WhatsApp confirmation failed. Check the approved template configuration and retry by changing status away from Approved and approving again.';
     setSaving(true);
     setStatusSaveError('');
     setLoadError('');
     try {
-      const updated = await registrationApi.review(application.ref, { status });
+      const updated = await registrationApi.review(application.ref, {
+        status,
+        rejectionReason: status === 'REJECTED' ? rejectionReason : undefined,
+      });
       await refresh();
       if (updated.confirmationStatus === 'FAILED') setLoadError(confirmationFailure);
       setStatusModal(null);
     } catch (error) {
       setStatusSaveError(error.message);
       setLoadError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditRequest = (application) => {
+    setEditRequestNotes('');
+    setEditRequestReason('');
+    setEditRequestError('');
+    setEditRequestModal({ application, mode: 'request' });
+  };
+
+  const openEditRequestReview = (application) => {
+    setEditRequestReason('');
+    setEditRequestError('');
+    setEditRequestModal({ application, mode: 'review' });
+  };
+
+  const submitEditRequest = async () => {
+    if (!editRequestModal || saving) return;
+    const notes = editRequestNotes.trim();
+    if (notes.length < 3) {
+      setEditRequestError('Describe the correction you need (at least 3 characters).');
+      return;
+    }
+
+    setSaving(true);
+    setEditRequestError('');
+    try {
+      await registrationApi.requestEdit(editRequestModal.application.ref, notes);
+      await refresh();
+      setEditRequestModal(null);
+    } catch (error) {
+      setEditRequestError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reviewEditRequest = async (action) => {
+    if (!editRequestModal || saving) return;
+    const reason = editRequestReason.trim();
+    if (action === 'REJECT' && !reason) {
+      setEditRequestError('Enter a rejection reason before rejecting this request.');
+      return;
+    }
+
+    setSaving(true);
+    setEditRequestError('');
+    try {
+      await registrationApi.reviewEditRequest(
+        editRequestModal.application.ref,
+        action,
+        reason
+      );
+      await refresh();
+      setEditRequestModal(null);
+    } catch (error) {
+      setEditRequestError(error.message);
     } finally {
       setSaving(false);
     }
@@ -647,14 +737,16 @@ export default function ManageApplications({ mySubmissions = false }) {
                         {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
                       </button>
                     ) : (
-                      <span className={mySubmissions
-                        ? `employee-application-status ${String(a.status || 'UNDER_REVIEW')
-                          .toLowerCase()
-                          .replace(/_/g, '-')}`
-                        : undefined}
-                      >
-                        {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
-                      </span>
+                      <div className="applicant-cell">
+                        <span className={mySubmissions
+                          ? `employee-application-status ${String(a.status || 'UNDER_REVIEW')
+                            .toLowerCase()
+                            .replace(/_/g, '-')}`
+                          : undefined}
+                        >
+                          {applicationStatusLabel(a.status || 'UNDER_REVIEW')}
+                        </span>
+                      </div>
                     )}
                   </td>
                   <td>
@@ -682,26 +774,64 @@ export default function ManageApplications({ mySubmissions = false }) {
                       <i className="bi bi-eye"></i>
                     </button>{' '}
                     {mySubmissions && (
-                      a.status === 'APPROVED' ? (
+                      (a.status === 'REJECTED' && a.rejectionReason) ||
+                      (a.editRequestStatus === 'REJECTED' && a.editRequestRejectionReason)
+                    ) && (
+                      <>
+                        <button
+                          type="button"
+                          className="icon-btn danger"
+                          title="View rejection reason"
+                          aria-label={`View rejection reason for ${a.ref}`}
+                          onClick={() => setRejectionReasonModal(a)}
+                        >
+                          <i className="bi bi-exclamation-circle-fill"></i>
+                        </button>{' '}
+                      </>
+                    )}
+                    {mySubmissions && (
+                      a.editRequestStatus === 'APPROVED' ? (
                         <button
                           className="icon-btn primary"
-                          title="Edit application (Approved by Admin 1 & Admin 2)"
+                          title="Edit application (edit request approved)"
                           onClick={() => navigate(`/my-submissions/${encodeURIComponent(a.ref)}/edit`)}
                         >
                           <i className="bi bi-pencil"></i>
                         </button>
-                      ) : (
+                      ) : a.editRequestStatus === 'PENDING' ? (
                         <button
                           className="icon-btn disabled"
                           disabled
-                          title="Editing locked: Available after Admin 1 and Admin 2 approval"
-                          style={{ opacity: 0.45, cursor: 'not-allowed' }}
+                          title="Edit request pending administrator review"
+                          aria-label="Edit request pending administrator review"
+                          style={{ opacity: 0.6, cursor: 'not-allowed' }}
                         >
-                          <i className="bi bi-lock-fill"></i>
+                          <i className="bi bi-hourglass-split"></i>
+                        </button>
+                      ) : (
+                        <button
+                          className="icon-btn primary"
+                          title={a.editRequestStatus === 'REJECTED'
+                            ? 'Request application correction again (previous request rejected)'
+                            : 'Request permission to correct this application'}
+                          aria-label={`Request an application correction for ${a.ref}`}
+                          onClick={() => openEditRequest(a)}
+                        >
+                          <i className="bi bi-chat-left-text"></i>
                         </button>
                       )
                     )}{' '}
                     {isAdminRole(session.role) && <>
+                    {a.editRequestStatus === 'PENDING' && <>
+                    <button
+                      className="icon-btn fees"
+                      title="Review employee edit request"
+                      aria-label={`Review edit request for ${a.ref}`}
+                      onClick={() => openEditRequestReview(a)}
+                    >
+                      <i className="bi bi-chat-square-text"></i>
+                    </button>{' '}
+                    </>}
                     <button
                       className="icon-btn primary"
                       title="Edit application"
@@ -867,56 +997,217 @@ export default function ManageApplications({ mySubmissions = false }) {
         </div>
       )}
 
+      {editRequestModal && (() => {
+        const application = editRequestModal.application;
+        const isReview = editRequestModal.mode === 'review';
+        const requestStatus = application.editRequestStatus;
+        const role = String(session.role || '').toLowerCase();
+        const canApprove = ['admin', 'super_admin'].includes(role) && requestStatus === 'PENDING';
+        const waitingMessage = 'This request is no longer pending review.';
+
+        return (
+          <div
+            className="modal-overlay"
+            onClick={() => {
+              if (!saving) setEditRequestModal(null);
+            }}
+          >
+            <div
+              className="modal-card"
+              style={{ maxWidth: 540 }}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-request-title"
+              aria-describedby="edit-request-description"
+            >
+              <div className="modal-head">
+                <div className="add-user-icon" aria-hidden="true">
+                  <i className={`bi ${isReview ? 'bi-chat-square-text' : 'bi-chat-left-text'}`}></i>
+                </div>
+                <div>
+                  <h4 id="edit-request-title">
+                    {isReview ? 'Review Correction Request' : 'Request Application Correction'}
+                  </h4>
+                  <small>{application.name} · Ref: {application.ref}</small>
+                </div>
+                <button
+                  type="button"
+                  className="modal-close"
+                  onClick={() => setEditRequestModal(null)}
+                  aria-label="Close"
+                  disabled={saving}
+                >
+                  <i className="bi bi-x-lg"></i>
+                </button>
+              </div>
+
+              <div className="modal-body">
+                {editRequestError && (
+                  <div className="track-result track-error" role="alert">{editRequestError}</div>
+                )}
+                {isReview ? (
+                  <>
+                    <p id="edit-request-description">
+                      <strong>Requested by:</strong> {application.editRequestedByName || 'Employee'}
+                      {application.editRequestedAt && ` · ${fmtDate(application.editRequestedAt)}`}
+                    </p>
+                    <div className="field-block full">
+                      <span className="input-label">Correction requested</span>
+                      <div className="track-result" style={{ whiteSpace: 'pre-wrap' }}>
+                        {application.editRequestNotes || 'No description was provided.'}
+                      </div>
+                    </div>
+                    {!canApprove && (
+                      <div className="track-result" role="status" style={{ marginTop: 12 }}>
+                        {waitingMessage}
+                      </div>
+                    )}
+                    {canApprove && (
+                      <label
+                        className="field-block full"
+                        style={{
+                          marginTop: 14,
+                          padding: 12,
+                          border: '1px solid #fca5a5',
+                          borderRadius: 8,
+                          background: '#fff7f7',
+                        }}
+                      >
+                        <span className="input-label">Rejection reason (required to reject)</span>
+                        <textarea
+                          className="auth-input"
+                          rows={4}
+                          maxLength={2000}
+                          value={editRequestReason}
+                          onChange={(event) => {
+                            setEditRequestReason(event.target.value);
+                            setEditRequestError('');
+                          }}
+                          placeholder="Enter why this correction request is being rejected"
+                          aria-label="Rejection reason for correction request"
+                          disabled={saving}
+                          style={{ resize: 'vertical' }}
+                        />
+                      </label>
+                    )}
+                  </>
+                ) : (
+                  <label className="field-block full">
+                    <span id="edit-request-description" className="input-label">
+                      Describe what needs to be corrected
+                    </span>
+                    <textarea
+                      className="auth-input"
+                      rows={5}
+                      maxLength={2000}
+                      value={editRequestNotes}
+                      onChange={(event) => {
+                        setEditRequestNotes(event.target.value);
+                        setEditRequestError('');
+                      }}
+                      placeholder="For example: Please correct the candidate's address to..."
+                      aria-describedby="edit-request-help"
+                      aria-invalid={Boolean(editRequestError)}
+                      disabled={saving}
+                      required
+                      style={{ resize: 'vertical', minHeight: 120 }}
+                    />
+                    <small id="edit-request-help">
+                      Your request will be sent to the administrators. Editing is enabled after approval.
+                    </small>
+                  </label>
+                )}
+              </div>
+
+              <div className="modal-foot">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setEditRequestModal(null)}
+                  disabled={saving}
+                >
+                  Close
+                </button>
+                {isReview && canApprove ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => reviewEditRequest('REJECT')}
+                      disabled={saving || !editRequestReason.trim()}
+                    >
+                      <i className="bi bi-x-circle"></i> {saving ? 'Saving...' : 'Reject'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn add-user-btn modal-submit"
+                      onClick={() => reviewEditRequest('APPROVE')}
+                      disabled={saving}
+                    >
+                      <i className="bi bi-check-lg"></i> {saving ? 'Saving...' : 'Approve'}
+                    </button>
+                  </>
+                ) : !isReview ? (
+                  <button
+                    type="button"
+                    className="btn add-user-btn modal-submit"
+                    onClick={submitEditRequest}
+                    disabled={saving || editRequestNotes.trim().length < 3}
+                  >
+                    <i className="bi bi-send"></i> {saving ? 'Sending...' : 'Send Request'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {statusModal && (() => {
         const userRole = String(session.role || '').toLowerCase();
-        const isSuperAdmin = userRole === 'admin';
-        const isAdmin1 = userRole === 'admin_1';
-        const isAdmin2 = userRole === 'admin_2';
+        const isAdmin = userRole === 'admin';
+        const isSuperAdmin = userRole === 'super_admin';
         const currentAppStatus = statusModal.application.status || 'UNDER_REVIEW';
 
         let statusOptions = [];
         let roleGuidance = '';
         let cannotApproveNotice = '';
 
-        if (isSuperAdmin) {
+        if (isAdmin) {
           statusOptions = [
             { value: 'UNDER_REVIEW', label: 'Under Review' },
-            { value: 'ADMIN_1_APPROVED', label: 'Admin 1 Approved (Level 1)' },
-            { value: 'APPROVED', label: 'Approved (Admin 1 & 2 Approved)' },
+            { value: 'ADMIN_APPROVED', label: 'Admin Approved' },
             { value: 'REJECTED', label: 'Rejected' },
-          ];
-          roleGuidance = 'As Super Administrator, you can grant Level 1 or Level 2 approval, or reject.';
-        } else if (isAdmin1) {
-          statusOptions = [
-            { value: 'UNDER_REVIEW', label: 'Under Review' },
-            { value: 'ADMIN_1_APPROVED', label: 'Approve (Admin 1 - Level 1)' },
-            { value: 'REJECTED', label: 'Reject' },
           ];
           if (currentAppStatus === 'APPROVED') {
             statusOptions.unshift({ value: 'APPROVED', label: 'Approved (Both Approved)' });
           }
-          roleGuidance = 'Admin 1 Review: Approving advances this application to Admin 1 Approved. Admin 2 will then review for final approval.';
-        } else if (isAdmin2) {
+          roleGuidance = 'Admin Review: Super Admin gives final approval after Admin approval.';
+        } else if (isSuperAdmin) {
           if (currentAppStatus === 'UNDER_REVIEW') {
-            cannotApproveNotice = 'Admin 1 must review and approve this application first before Admin 2 can approve.';
+            cannotApproveNotice = 'Admin must review and approve this application first before Super Admin can approve.';
             statusOptions = [
-              { value: 'UNDER_REVIEW', label: 'Under Review (Awaiting Admin 1)' },
+              { value: 'UNDER_REVIEW', label: 'Under Review (Awaiting Admin)' },
               { value: 'REJECTED', label: 'Reject' },
             ];
           } else {
             statusOptions = [
-              { value: 'ADMIN_1_APPROVED', label: 'Admin 1 Approved' },
-              { value: 'APPROVED', label: 'Approve (Admin 2 Final Approval)' },
+              { value: 'ADMIN_APPROVED', label: 'Admin Approved' },
+              { value: 'APPROVED', label: 'Approve (Super Admin Final Approval)' },
               { value: 'REJECTED', label: 'Reject' },
             ];
-            roleGuidance = 'Admin 2 Final Review: Admin 1 has approved this application. Granting final approval will unlock editing for the employee.';
+            roleGuidance = 'Super Admin Final Review: Admin has approved this application. Employees may separately request permission to correct their application.';
           }
         }
 
         const isSubmitDisabled = saving ||
-          statusModal.status === currentAppStatus ||
-          (isAdmin2 && currentAppStatus === 'UNDER_REVIEW' && statusModal.status === 'APPROVED') ||
-          (isAdmin1 && statusModal.status === 'APPROVED' && currentAppStatus !== 'APPROVED');
+          (statusModal.status === currentAppStatus &&
+            (statusModal.status !== 'REJECTED' ||
+              statusModal.rejectionReason.trim() === (statusModal.application.rejectionReason || '').trim())) ||
+          (statusModal.status === 'REJECTED' && !statusModal.rejectionReason.trim()) ||
+          (isSuperAdmin && currentAppStatus === 'UNDER_REVIEW' && statusModal.status === 'APPROVED') ||
+          (isAdmin && statusModal.status === 'APPROVED' && currentAppStatus !== 'APPROVED');
 
         return (
           <div
@@ -968,18 +1259,18 @@ export default function ManageApplications({ mySubmissions = false }) {
                   fontSize: '0.84rem'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: '#475569', fontWeight: 600 }}>1. Admin 1 Approval:</span>
-                    <span style={{ fontWeight: 600, color: statusModal.application.admin1ApprovedAt ? '#16a34a' : '#d97706' }}>
-                      {statusModal.application.admin1ApprovedAt
-                        ? `✓ Approved by ${statusModal.application.admin1ApprovedByName || 'Admin 1'} (${fmtDate(statusModal.application.admin1ApprovedAt)})`
+                    <span style={{ color: '#475569', fontWeight: 600 }}>1. Admin Approval:</span>
+                    <span style={{ fontWeight: 600, color: statusModal.application.adminApprovedAt ? '#16a34a' : '#d97706' }}>
+                      {statusModal.application.adminApprovedAt
+                        ? `✓ Approved by ${statusModal.application.adminApprovedByName || 'Admin'} (${fmtDate(statusModal.application.adminApprovedAt)})`
                         : '○ Pending Review'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#475569', fontWeight: 600 }}>2. Admin 2 Approval:</span>
-                    <span style={{ fontWeight: 600, color: statusModal.application.admin2ApprovedAt ? '#16a34a' : '#d97706' }}>
-                      {statusModal.application.admin2ApprovedAt
-                        ? `✓ Approved by ${statusModal.application.admin2ApprovedByName || 'Admin 2'} (${fmtDate(statusModal.application.admin2ApprovedAt)})`
+                    <span style={{ color: '#475569', fontWeight: 600 }}>2. Super Admin Approval:</span>
+                    <span style={{ fontWeight: 600, color: statusModal.application.superAdminApprovedAt ? '#16a34a' : '#d97706' }}>
+                      {statusModal.application.superAdminApprovedAt
+                        ? `✓ Approved by ${statusModal.application.superAdminApprovedByName || 'Super Admin'} (${fmtDate(statusModal.application.superAdminApprovedAt)})`
                         : '○ Pending Review'}
                     </span>
                   </div>
@@ -1019,6 +1310,29 @@ export default function ManageApplications({ mySubmissions = false }) {
                     </div>
                   </div>
                 </div>
+                {statusModal.status === 'REJECTED' && (
+                  <label className="field-block full" style={{ marginTop: 14 }}>
+                    <span className="input-label">Rejection reason (required)</span>
+                    <textarea
+                      className="auth-input"
+                      rows={4}
+                      maxLength={2000}
+                      value={statusModal.rejectionReason}
+                      onChange={(event) => {
+                        const rejectionReason = event.target.value;
+                        setStatusModal((current) => current
+                          ? { ...current, rejectionReason }
+                          : current);
+                        setStatusSaveError('');
+                      }}
+                      placeholder="Explain why this application is being rejected"
+                      aria-label="Application rejection reason"
+                      required
+                      disabled={saving}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="modal-foot">
@@ -1043,6 +1357,74 @@ export default function ManageApplications({ mySubmissions = false }) {
           </div>
         );
       })()}
+
+      {rejectionReasonModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setRejectionReasonModal(null)}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: 500 }}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rejection-reason-title"
+          >
+            <div className="modal-head">
+              <div className="add-user-icon" style={{ background: '#fee2e2', color: '#b91c1c' }}>
+                <i className="bi bi-exclamation-circle-fill"></i>
+              </div>
+              <div>
+                <h4 id="rejection-reason-title">Rejection Reason</h4>
+                <small>{rejectionReasonModal.name} · Ref: {rejectionReasonModal.ref}</small>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setRejectionReasonModal(null)}
+                aria-label="Close"
+              >
+                <i className="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              {rejectionReasonModal.status === 'REJECTED' && rejectionReasonModal.rejectionReason && (
+                <div className="field-block full">
+                  <span className="input-label">
+                    Application rejected by {rejectionReasonModal.rejectedByRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
+                  </span>
+                  <div className="track-result track-error" role="note" style={{ whiteSpace: 'pre-wrap' }}>
+                    {rejectionReasonModal.rejectionReason}
+                  </div>
+                </div>
+              )}
+              {rejectionReasonModal.editRequestStatus === 'REJECTED' &&
+                rejectionReasonModal.editRequestRejectionReason && (
+                  <div className="field-block full" style={{ marginTop: 12 }}>
+                    <span className="input-label">
+                      Correction request rejected{rejectionReasonModal.editRejectedByName
+                        ? ` by ${rejectionReasonModal.editRejectedByName}`
+                        : ''}
+                    </span>
+                    <div className="track-result track-error" role="note" style={{ whiteSpace: 'pre-wrap' }}>
+                      {rejectionReasonModal.editRequestRejectionReason}
+                    </div>
+                  </div>
+                )}
+            </div>
+            <div className="modal-foot">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setRejectionReasonModal(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

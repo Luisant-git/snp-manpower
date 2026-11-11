@@ -30,7 +30,7 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+  const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
   const isAdmin = session && isAdminRole(session.role);
   const isApplicant = session && String(session.role).toUpperCase() === 'APPLICANT';
 

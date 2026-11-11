@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SessionUser } from '../common/auth.guard';
 import { OtpService } from '../whatsapp/otp.service';
 
-const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class AuthService {

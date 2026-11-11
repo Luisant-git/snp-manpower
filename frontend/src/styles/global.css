@@ -3094,6 +3094,16 @@ textarea {
   margin-bottom: 12px;
 }
 
+form.validation-attempted input:invalid,
+form.validation-attempted select:invalid,
+form.validation-attempted textarea:invalid,
+form .form-field-invalid {
+  outline: 2px solid #dc2626 !important;
+  outline-offset: 1px;
+  border-color: #dc2626 !important;
+  background-color: #fef2f2 !important;
+}
+
 /* Photo Affix Box */
 .photo-affix-box {
   width: 140px;

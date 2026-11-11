@@ -11,7 +11,7 @@ const LINKS = [
   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
 ];
 
-export const isAdminRole = (role) => ['admin', 'admin_1', 'admin_2'].includes(String(role || '').toLowerCase());
+export const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -60,9 +60,8 @@ export default function AdminLayout() {
   }
 
   const roleLabel = {
-    admin: 'System Administrator',
-    admin_1: 'Admin 1',
-    admin_2: 'Admin 2',
+    admin: 'Admin',
+    super_admin: 'Super Admin',
   }[session.role] || 'Administrator';
 
   return (

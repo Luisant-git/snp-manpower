@@ -15,7 +15,7 @@ const codeLifetimeMs = 5 * 60 * 1000;
 const resendCooldownMs = 60 * 1000;
 const maxVerificationAttempts = 5;
 
-const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.ADMIN_1, UserRole.ADMIN_2];
+const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
 @Injectable()
 export class OtpService {

@@ -59,6 +59,7 @@ export default function Login() {
     const next = [...otp];
     const enteredDigits = val.replace(/\D/g, '');
     const cleanDigits = enteredDigits.slice(0, 6 - i);
+    next[i] = '';
     cleanDigits.split('').forEach((digit, offset) => {
       next[i + offset] = digit;
     });
@@ -73,7 +74,18 @@ export default function Login() {
   };
 
   const onKeyDown = (i, e) => {
-    if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
+    if (e.key !== 'Backspace') return;
+
+    e.preventDefault();
+    const next = [...otp];
+    if (next[i]) {
+      next[i] = '';
+    } else if (i > 0) {
+      next[i - 1] = '';
+      otpRefs.current[i - 1]?.focus();
+    }
+    setOtp(next);
+    setError('');
   };
 
   const resendOtp = async () => {
