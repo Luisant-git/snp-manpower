@@ -127,7 +127,7 @@ export default function Login() {
     setLoggingIn(true);
     try {
       const user = await authApi.login({ mobile: phone, password });
-      if (String(user.role).toLowerCase() !== 'admin') {
+      if (!['admin', 'super_admin'].includes(String(user.role).toLowerCase())) {
         await authApi.logout();
         throw new Error('This account is not an administrator. Use the OTP option for employee access.');
       }

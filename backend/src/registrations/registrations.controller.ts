@@ -55,8 +55,8 @@ export class RegistrationsController {
 
   @Get()
   @UseGuards(AuthGuard, AdminGuard)
-  listAll() {
-    return this.registrationsService.listAll();
+  listAll(@Req() request: SessionRequest) {
+    return this.registrationsService.listAll(getSessionUser(request));
   }
 
   @Get(':ref')

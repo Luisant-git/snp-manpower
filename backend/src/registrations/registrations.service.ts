@@ -112,7 +112,7 @@ export class RegistrationsService {
   }
 
   async listMySubmissions(user: SessionUser) {
-    if (adminRoles.includes(user.role)) return this.listAll();
+    if (adminRoles.includes(user.role)) return this.listAll(user);
     const cleanMobile = this.normalizeMobile(user.mobile);
     let registrations;
     if (user.role === UserRole.APPLICANT) {
@@ -142,8 +142,20 @@ export class RegistrationsService {
     return this.withCurrentFees(registrations);
   }
 
-  async listAll() {
+  async listAll(user: SessionUser) {
     const registrations = await this.prisma.registration.findMany({
+      where: user.role === UserRole.SUPER_ADMIN
+        ? {
+            OR: [
+              { status: ApplicationStatus.ADMIN_APPROVED },
+              { status: ApplicationStatus.APPROVED },
+              {
+                status: ApplicationStatus.REJECTED,
+                rejectedByRole: UserRole.SUPER_ADMIN,
+              },
+            ],
+          }
+        : undefined,
       orderBy: { createdAt: 'desc' },
       include: {
         branch: { select: { id: true, name: true } },
@@ -537,6 +549,7 @@ export class RegistrationsService {
 
   private parseFeesPaid(value: unknown) {
     const raw = String(value).trim().replace(/[₹,\s]/g, '');
+    if (!raw) return 0;
     if (!/^\d+$/.test(raw)) throw new BadRequestException('feesPaid must be a whole-rupee amount.');
     return Number(raw);
   }

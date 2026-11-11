@@ -115,7 +115,9 @@ export class OtpService {
       throw new BadRequestException('Incorrect OTP.');
     }
 
-    if (challenge.verifiedAt) return { verified: true };
+    if (challenge.verifiedAt) {
+      return { verified: true, expiresAt: challenge.expiresAt.toISOString() };
+    }
     const updated = await this.prisma.otpChallenge.updateMany({
       where: {
         id: challenge.id,
@@ -126,7 +128,7 @@ export class OtpService {
       data: { verifiedAt: new Date() },
     });
     if (updated.count === 0) throw new BadRequestException('OTP is invalid or expired. Request a new OTP.');
-    return { verified: true };
+    return { verified: true, expiresAt: challenge.expiresAt.toISOString() };
   }
 
   async consumeVerified(
@@ -148,7 +150,7 @@ export class OtpService {
     });
     if (!challenge) {
       throw new BadRequestException(
-        `${purpose === OtpPurpose.CANDIDATE ? 'Candidate' : purpose === OtpPurpose.EMPLOYEE ? 'Employee' : 'Login'} mobile OTP must be verified before continuing.`,
+        `${purpose === OtpPurpose.CANDIDATE ? 'Candidate' : purpose === OtpPurpose.EMPLOYEE ? 'Employee' : 'Login'} mobile OTP has expired or is no longer verified. Please verify it again.`,
       );
     }
 

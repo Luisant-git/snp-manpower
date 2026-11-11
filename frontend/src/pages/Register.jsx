@@ -377,6 +377,8 @@ export default function Register({ readOnly = false, editable = false }) {
   const [employeeOtpVerifying, setEmployeeOtpVerifying] = useState(false);
   const [candidateVerified, setCandidateVerified] = useState(false);
   const [employeeVerified, setEmployeeVerified] = useState(false);
+  const [candidateOtpExpiresAt, setCandidateOtpExpiresAt] = useState(null);
+  const [employeeOtpExpiresAt, setEmployeeOtpExpiresAt] = useState(null);
   const [employeeLookupError, setEmployeeLookupError] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
@@ -395,6 +397,26 @@ export default function Register({ readOnly = false, editable = false }) {
   }, []);
 
   useEffect(() => {
+    if (!candidateVerified || !candidateOtpExpiresAt) return undefined;
+    const timeout = window.setTimeout(() => {
+      setCandidateVerified(false);
+      setCandidateOtpExpiresAt(null);
+      setCandidateOtpError('Candidate OTP verification expired. Please verify again.');
+    }, Math.max(0, candidateOtpExpiresAt - Date.now()));
+    return () => window.clearTimeout(timeout);
+  }, [candidateVerified, candidateOtpExpiresAt]);
+
+  useEffect(() => {
+    if (!employeeVerified || !employeeOtpExpiresAt) return undefined;
+    const timeout = window.setTimeout(() => {
+      setEmployeeVerified(false);
+      setEmployeeOtpExpiresAt(null);
+      setEmployeeOtpError('Employee OTP verification expired. Please verify again.');
+    }, Math.max(0, employeeOtpExpiresAt - Date.now()));
+    return () => window.clearTimeout(timeout);
+  }, [employeeVerified, employeeOtpExpiresAt]);
+
+  useEffect(() => {
     branchApi.list()
       .then((rows) => setBranches(rows.map((branch) => branch.name)))
       .catch((error) => setBranchLoadError(error.message));
@@ -403,14 +425,6 @@ export default function Register({ readOnly = false, editable = false }) {
         if (data?.amount !== undefined && data?.amount !== null) {
           const fee = Number(data.amount);
           setMasterFee(fee);
-          if (!recordMode) {
-            setForm((current) => ({
-              ...current,
-              registrationFeePaid: current.registrationFeePaid && current.registrationFeePaid !== '1300'
-                ? current.registrationFeePaid
-                : String(fee),
-            }));
-          }
         }
       })
       .catch(() => {});
@@ -526,6 +540,7 @@ export default function Register({ readOnly = false, editable = false }) {
     setCandidateInputOtp('');
     setCandidateOtpError('');
     setCandidateVerified(false);
+    setCandidateOtpExpiresAt(null);
   };
 
   const handleBankProofUpload = (e) => {
@@ -561,6 +576,7 @@ export default function Register({ readOnly = false, editable = false }) {
     setEmployeeInputOtp('');
     setEmployeeOtpError('');
     setEmployeeVerified(false);
+    setEmployeeOtpExpiresAt(null);
     if (val.length !== 10) return;
 
     try {
@@ -594,6 +610,7 @@ export default function Register({ readOnly = false, editable = false }) {
     const setInputOtp = isCandidate ? setCandidateInputOtp : setEmployeeInputOtp;
     const setError = isCandidate ? setCandidateOtpError : setEmployeeOtpError;
     const setVerified = isCandidate ? setCandidateVerified : setEmployeeVerified;
+    const setExpiresAt = isCandidate ? setCandidateOtpExpiresAt : setEmployeeOtpExpiresAt;
 
     if (!/^\d{10}$/.test(mobile)) {
       setError('Enter a valid 10-digit mobile number first.');
@@ -611,6 +628,7 @@ export default function Register({ readOnly = false, editable = false }) {
       setSent(true);
       setInputOtp('');
       setVerified(false);
+      setExpiresAt(null);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -626,6 +644,7 @@ export default function Register({ readOnly = false, editable = false }) {
     const setVerifying = isCandidate ? setCandidateOtpVerifying : setEmployeeOtpVerifying;
     const setError = isCandidate ? setCandidateOtpError : setEmployeeOtpError;
     const setVerified = isCandidate ? setCandidateVerified : setEmployeeVerified;
+    const setExpiresAt = isCandidate ? setCandidateOtpExpiresAt : setEmployeeOtpExpiresAt;
 
     if (!otpSent) {
       setError('Send an OTP to this mobile number first.');
@@ -639,10 +658,16 @@ export default function Register({ readOnly = false, editable = false }) {
     setVerifying(true);
     setError('');
     try {
-      await whatsappApi.verifyOtp(mobile, isCandidate ? 'CANDIDATE' : 'EMPLOYEE', code);
+      const result = await whatsappApi.verifyOtp(mobile, isCandidate ? 'CANDIDATE' : 'EMPLOYEE', code);
+      const expiresAt = Date.parse(result.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        throw new Error('OTP verification expired. Please request and verify a new OTP.');
+      }
       setVerified(true);
+      setExpiresAt(expiresAt);
     } catch (error) {
       setVerified(false);
+      setExpiresAt(null);
       setError(error.message);
     } finally {
       setVerifying(false);
@@ -896,13 +921,17 @@ export default function Register({ readOnly = false, editable = false }) {
       return;
     }
 
-    if (!editable && !candidateVerified) {
+    if (!editable && (!candidateVerified || !candidateOtpExpiresAt || candidateOtpExpiresAt <= Date.now())) {
+      setCandidateVerified(false);
+      setCandidateOtpExpiresAt(null);
       showToast('error', 'Verify the candidate mobile number using the OTP before submitting.');
       document.querySelector('[name="mobile"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    if (!editable && !employeeVerified) {
+    if (!editable && (!employeeVerified || !employeeOtpExpiresAt || employeeOtpExpiresAt <= Date.now())) {
+      setEmployeeVerified(false);
+      setEmployeeOtpExpiresAt(null);
       showToast('error', 'Verify the employee mobile number using the OTP before submitting.');
       document.querySelector('.branch-verification-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -966,7 +995,21 @@ export default function Register({ readOnly = false, editable = false }) {
       showToast('success', 'Registration submitted successfully.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
-      showToast('error', error.message);
+      if (error.message.includes('Candidate mobile OTP')) {
+        setCandidateVerified(false);
+        setCandidateOtpExpiresAt(null);
+        setCandidateOtpSent(false);
+        setCandidateOtpError('Candidate OTP verification expired. Please request and verify a new OTP.');
+        showToast('error', 'Candidate OTP verification expired. Please verify the candidate mobile again.');
+      } else if (error.message.includes('Employee mobile OTP')) {
+        setEmployeeVerified(false);
+        setEmployeeOtpExpiresAt(null);
+        setEmployeeOtpSent(false);
+        setEmployeeOtpError('Employee OTP verification expired. Please request and verify a new OTP.');
+        showToast('error', 'Employee OTP verification expired. Please verify the employee mobile again.');
+      } else {
+        showToast('error', error.message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -2976,7 +3019,6 @@ export default function Register({ readOnly = false, editable = false }) {
                   <FormLabelCell
                     k="registrationFeePaidLabel"
                     enSecondary="Registration Fee Paid (₹)"
-                    required
                   />
                   <td className="field-input-cell">
                     <div className="registration-fee-field">
@@ -2989,16 +3031,13 @@ export default function Register({ readOnly = false, editable = false }) {
                         max={masterFee}
                         step="1"
                         inputMode="numeric"
-                        placeholder={String(masterFee)}
+                        placeholder="0"
                         value={form.registrationFeePaid}
                         onChange={set}
                         aria-label="Registration fee paid in rupees"
-                        required
                       />
                       <small>
-                        {lang === 'kn'
-                          ? `ಸ್ವೀಕರಿಸಿದ ಮೊತ್ತವನ್ನು ನಮೂದಿಸಿ (ನಿಗದಿತ ಶುಲ್ಕ: ₹${masterFee.toLocaleString('en-IN')})`
-                          : `Enter the amount received (System Fee: ₹${masterFee.toLocaleString('en-IN')}).`}
+                        {ts('registrationFeePaidOptionalHint')}
                       </small>
                     </div>
                   </td>
