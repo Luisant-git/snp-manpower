@@ -111,11 +111,12 @@ export class RegistrationsService {
     return registration;
   }
 
-  listMySubmissions(user: SessionUser) {
+  async listMySubmissions(user: SessionUser) {
     if (adminRoles.includes(user.role)) return this.listAll();
     const cleanMobile = this.normalizeMobile(user.mobile);
+    let registrations;
     if (user.role === UserRole.APPLICANT) {
-      return this.prisma.registration.findMany({
+      registrations = await this.prisma.registration.findMany({
         where: { mobile: cleanMobile },
         orderBy: { createdAt: 'desc' },
         include: {
@@ -123,30 +124,33 @@ export class RegistrationsService {
           submittedBy: { select: { id: true, name: true, mobile: true } },
         },
       });
+    } else {
+      registrations = await this.prisma.registration.findMany({
+        where: {
+          OR: [
+            { submittedByUserId: user.id },
+            { submittedByMobile: cleanMobile },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          branch: { select: { id: true, name: true } },
+          submittedBy: { select: { id: true, name: true, mobile: true } },
+        },
+      });
     }
-    return this.prisma.registration.findMany({
-      where: {
-        OR: [
-          { submittedByUserId: user.id },
-          { submittedByMobile: cleanMobile },
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        branch: { select: { id: true, name: true } },
-        submittedBy: { select: { id: true, name: true, mobile: true } },
-      },
-    });
+    return this.withCurrentFees(registrations);
   }
 
-  listAll() {
-    return this.prisma.registration.findMany({
+  async listAll() {
+    const registrations = await this.prisma.registration.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         branch: { select: { id: true, name: true } },
         submittedBy: { select: { id: true, name: true, mobile: true } },
       },
     });
+    return this.withCurrentFees(registrations);
   }
 
   async track(ref: string, mobileInput: string) {
@@ -178,7 +182,8 @@ export class RegistrationsService {
     if (!adminRoles.includes(user.role) && !isOwner) {
       throw new ForbiddenException('You can only view your own registrations.');
     }
-    return registration;
+    const [registrationWithCurrentFee] = await this.withCurrentFees([registration]);
+    return registrationWithCurrentFee;
   }
 
   async update(ref: string, body: Record<string, unknown>, user: SessionUser) {
@@ -480,6 +485,16 @@ export class RegistrationsService {
   private paymentStatus(paid: number, maxFee = defaultRegistrationFee) {
     if (paid === 0) return PaymentStatus.PENDING;
     return paid >= maxFee ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
+  }
+
+  private async withCurrentFees<T extends { feesPaid: number }>(registrations: T[]) {
+    const feeConfig = await this.feeMasterService.getRegistrationFee();
+    const currentFee = feeConfig?.amount ?? defaultRegistrationFee;
+    return registrations.map((registration) => ({
+      ...registration,
+      feesPending: Math.max(0, currentFee - registration.feesPaid),
+      paymentStatus: this.paymentStatus(registration.feesPaid, currentFee),
+    }));
   }
 
   private async generateReference(transaction: Prisma.TransactionClient) {

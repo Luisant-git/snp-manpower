@@ -16,12 +16,11 @@ function rupees(str) {
   return isNaN(n) ? 0 : n;
 }
 
-const REGISTRATION_FEE = 2400;
-
-function feesOf(a) {
+function feesOf(a, currentFee) {
+  const paidAmount = Number(a.feesPaid || 0);
   return {
-    paid: `₹${Number(a.feesPaid || 0).toLocaleString('en-IN')}`,
-    pending: `₹${Number(a.feesPending || 0).toLocaleString('en-IN')}`,
+    paid: `₹${paidAmount.toLocaleString('en-IN')}`,
+    pending: `₹${Math.max(0, currentFee - paidAmount).toLocaleString('en-IN')}`,
   };
 }
 
@@ -92,9 +91,7 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [editRequestError, setEditRequestError] = useState('');
   const [rejectionReasonModal, setRejectionReasonModal] = useState(null);
   const feeCurrentPaid = feeModal ? Number(feeModal.feesPaid || 0) : 0;
-  const feePendingAmount = feeModal
-    ? Number(feeModal.feesPending ?? Math.max(0, masterFee - feeCurrentPaid))
-    : 0;
+  const feePendingAmount = feeModal ? Math.max(0, masterFee - feeCurrentPaid) : 0;
   const feePaidNow = feeForm.paid === '' ? NaN : Number(feeForm.paid);
   const feeAmountValid =
     Number.isInteger(feePaidNow) &&
@@ -114,7 +111,7 @@ export default function ManageApplications({ mySubmissions = false }) {
   useEffect(() => {
     feeMasterApi.getRegistrationFee()
       .then((data) => {
-        if (data?.amount) setMasterFee(Number(data.amount));
+        if (Number.isFinite(Number(data?.amount))) setMasterFee(Number(data.amount));
       })
       .catch(() => {});
   }, []);
@@ -224,7 +221,7 @@ export default function ManageApplications({ mySubmissions = false }) {
   const lastVisible = Math.min(currentPage * pageSize, filtered.length);
   const paidCount = filtered.filter((a) => (a.payment || 'Pending') === 'Paid').length;
   const pendingCount = filtered.filter((a) => (a.payment || 'Pending') === 'Pending').length;
-  const totalDues = filtered.reduce((sum, a) => sum + rupees(feesOf(a).pending), 0);
+  const totalDues = filtered.reduce((sum, a) => sum + rupees(feesOf(a, masterFee).pending), 0);
 
   if (!session) return <Navigate to="/login" replace />;
 
@@ -287,7 +284,7 @@ export default function ManageApplications({ mySubmissions = false }) {
         applicationStatus: applicationStatusLabel(application.status || 'UNDER_REVIEW'),
         feesStatus: application.payment || 'Pending',
         feesPaid: Number(application.feesPaid || 0),
-        feesPending: Number(application.feesPending || 0),
+        feesPending: Math.max(0, masterFee - Number(application.feesPaid || 0)),
         policeCertificate: application.policeCertStatus,
         submittedDate: fmtDate(application.date),
         branch: application.branch?.name || application.registrationData?.employeeBranch || '',
@@ -677,7 +674,7 @@ export default function ManageApplications({ mySubmissions = false }) {
               </tr>
             )}
             {pageEntries.map((a, i) => {
-              const fees = feesOf(a);
+              const fees = feesOf(a, masterFee);
               const pay = a.payment || 'Pending';
               return (
                 <tr key={a.ref || `row-${i}`}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registrationApi } from '../../api/registrationApi.js';
 import { userApi } from '../../api/userApi.js';
+import { feeMasterApi } from '../../api/feeMasterApi.js';
 import { getSession } from '../../data/session.js';
 
 const CARD_INFO = [
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const session = getSession();
   const [applications, setApplications] = useState([]);
   const [userCount, setUserCount] = useState(0);
+  const [masterFee, setMasterFee] = useState(2400);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [requestReview, setRequestReview] = useState(null);
@@ -51,10 +53,15 @@ export default function Dashboard() {
   const refreshDashboard = () => {
     setLoading(true);
     setError('');
-    Promise.all([registrationApi.listAll(), userApi.list()])
-      .then(([rows, users]) => {
+    Promise.all([
+      registrationApi.listAll(),
+      userApi.list(),
+      feeMasterApi.getRegistrationFee(),
+    ])
+      .then(([rows, users, fee]) => {
         setApplications(rows);
         setUserCount(users.filter((user) => user.role === 'APPLICANT').length);
+        setMasterFee(Number(fee.amount));
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
@@ -72,7 +79,10 @@ export default function Dashboard() {
     { ...CARD_INFO[2], value: pendingCount },
     { ...CARD_INFO[3], value: userCount },
   ];
-  const pendingDues = applications.reduce((sum, application) => sum + application.feesPending, 0);
+  const pendingDues = applications.reduce(
+    (sum, application) => sum + Math.max(0, masterFee - Number(application.feesPaid || 0)),
+    0
+  );
   const editRequests = applications
     .filter((application) => application.editRequestStatus && application.editRequestStatus !== 'NONE')
     .sort((a, b) => new Date(a.editRequestedAt || 0).getTime() - new Date(b.editRequestedAt || 0).getTime());
