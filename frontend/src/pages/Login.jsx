@@ -111,11 +111,7 @@ export default function Login() {
     try {
       const user = await authApi.loginWithOtp(phone, code);
       setSession(user);
-      if (String(user.role).toUpperCase() === 'APPLICANT') {
-        navigate('/my-submissions');
-      } else {
-        navigate('/register');
-      }
+      navigate('/register');
     } catch (err) {
       setError(err.message);
     } finally {

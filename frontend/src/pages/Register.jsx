@@ -1165,9 +1165,22 @@ export default function Register({ readOnly = false, editable = false }) {
       ) : session && (
         <div className="session-ribbon no-print">
           <i className="bi bi-person-badge-fill"></i> Filling as: <strong>{session.name}</strong>
-          {isAdminRole(session.role) ? ' (Administrator)' : ' (Employee)'}
+          {isAdminRole(session.role)
+            ? ' (Administrator)'
+            : String(session.role).toUpperCase() === 'APPLICANT'
+              ? ' (Applicant)'
+              : ' (Employee)'}
         </div>
       )}
+
+      {String(session?.role || '').toUpperCase() === 'APPLICANT' &&
+        (!recordMode || viewApplication) &&
+        !String(form.policeCertNo || '').trim() && (
+          <div className="police-cert-reminder no-print" role="status">
+            <i className="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+            <span>Please update your police certificate number.</span>
+          </div>
+        )}
 
       {readOnly && !isAdminRole(session?.role) && viewApplication && viewApplication.status !== 'APPROVED' && (
         <div

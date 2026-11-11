@@ -25,7 +25,7 @@ function feesOf(a, currentFee) {
 }
 
 const payClass = { Paid: 'paid', Pending: 'pending', Partial: 'partial' };
-export const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
+const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
 
 const applicationStatusLabel = (status) =>
   ({
