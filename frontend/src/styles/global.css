@@ -2424,6 +2424,68 @@ textarea {
   min-width: 560px;
 }
 
+.fee-master-table {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.fee-master-name-column { width: 17%; }
+.fee-master-amount-column { width: 18%; }
+.fee-master-description-column { width: 31%; }
+.fee-master-status-column { width: 18%; }
+.fee-master-actions-column { width: 16%; }
+
+.fee-master-table th,
+.fee-master-table td {
+  padding-right: 14px;
+  padding-left: 14px;
+}
+
+.fee-master-name {
+  color: var(--navy) !important;
+  white-space: nowrap;
+}
+
+.fee-master-name > i {
+  margin-right: 8px;
+  color: var(--royal);
+}
+
+.fee-master-name > strong {
+  letter-spacing: 0.2px;
+}
+
+.fee-master-amount,
+.fee-master-status {
+  white-space: nowrap;
+}
+
+.fee-master-amount .badge-pay {
+  display: inline-block;
+  padding: 6px 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.fee-master-description {
+  color: var(--slate) !important;
+  font-size: 0.85rem !important;
+  overflow-wrap: anywhere;
+}
+
+.fee-master-actions,
+.fee-master-table th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.fee-master-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .branch-master-empty {
   padding: 28px 16px !important;
   color: var(--muted) !important;

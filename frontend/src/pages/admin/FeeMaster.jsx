@@ -84,7 +84,14 @@ export default function FeeMaster() {
       </div>
 
       <div className="admin-table-wrap">
-        <table className="admin-table branch-master-table">
+        <table className="admin-table fee-master-table">
+          <colgroup>
+            <col className="fee-master-name-column" />
+            <col className="fee-master-amount-column" />
+            <col className="fee-master-description-column" />
+            <col className="fee-master-status-column" />
+            <col className="fee-master-actions-column" />
+          </colgroup>
           <thead>
             <tr>
               <th>Fee Master Name</th>
@@ -97,31 +104,24 @@ export default function FeeMaster() {
           <tbody>
             {fees.map((fee) => (
               <tr key={fee.id}>
-                <td>
-                  <strong style={{ color: 'var(--navy)', letterSpacing: '.3px' }}>
-                    <i className="bi bi-cash-coin me-2 text-primary"></i>
-                    {fee.name}
-                  </strong>
+                <td className="fee-master-name">
+                  <i className="bi bi-cash-coin" aria-hidden="true"></i>
+                  <strong>{fee.name}</strong>
                 </td>
-                <td>
-                  <span
-                    className="badge-pay pay-paid"
-                    style={{ fontSize: '0.95rem', padding: '6px 14px', fontWeight: 800 }}
-                  >
+                <td className="fee-master-amount">
+                  <span className="badge-pay pay-paid">
                     ₹{Number(fee.amount || 0).toLocaleString('en-IN')}
                   </span>
                 </td>
-                <td>
-                  <span style={{ color: 'var(--slate)', fontSize: '0.85rem' }}>
-                    {fee.description || 'Standard Registration Fee'}
-                  </span>
+                <td className="fee-master-description">
+                  {fee.description || 'Standard Registration Fee'}
                 </td>
-                <td>
+                <td className="fee-master-status">
                   <span className={`badge-role ${fee.isActive ? 'active' : 'inactive'}`}>
                     {fee.isActive ? '● Active in Master' : '○ Inactive'}
                   </span>
                 </td>
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td className="fee-master-actions">
                   <button
                     className="btn btn-sm btn-primary"
                     title="Edit Master Fee"
@@ -235,4 +235,3 @@ export default function FeeMaster() {
     </div>
   );
 }
-
