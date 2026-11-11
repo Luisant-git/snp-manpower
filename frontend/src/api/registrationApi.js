@@ -7,6 +7,10 @@ export const registrationApi = {
   }),
   listMine: () => apiRequest('/registrations/my-submissions'),
   listAll: () => apiRequest('/registrations'),
+  listCorrectionRequests: ({ search = '', approvedBy = '', fromDate = '', toDate = '' } = {}) => {
+    const query = new URLSearchParams({ search, approvedBy, fromDate, toDate });
+    return apiRequest(`/registrations/edit-requests?${query.toString()}`);
+  },
   track: (ref, mobile) => apiRequest('/registrations/track', {
     method: 'POST',
     body: { ref, mobile },

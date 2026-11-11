@@ -219,7 +219,7 @@ export default function BranchMaster() {
                     aria-label={`Edit ${branch.name}`}
                     onClick={() => openEdit(branch)}
                   >
-                    <i className="bi bi-pencil"></i>
+                    <i className="bi bi-pencil-square"></i>
                   </button>{' '}
                   <button
                     className={`branch-status-button${branch.isActive ? ' deactivate' : ' activate'}`}

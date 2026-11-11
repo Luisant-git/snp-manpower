@@ -153,6 +153,70 @@ export class RegistrationsService {
     return this.withCurrentFees(registrations);
   }
 
+  async listEditRequests(filters: {
+    search?: string;
+    approvedBy?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    const where: Prisma.RegistrationWhereInput = {
+      editRequestStatus: { not: EditRequestStatus.NONE },
+    };
+    const search = filters.search?.trim();
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { ref: { contains: search, mode: 'insensitive' } },
+        { editRequestedByName: { contains: search, mode: 'insensitive' } },
+        { submittedByName: { contains: search, mode: 'insensitive' } },
+        { editRequestNotes: { contains: search, mode: 'insensitive' } },
+        { editApprovedByName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (filters.approvedBy) where.editApprovedByName = filters.approvedBy;
+    if (filters.fromDate || filters.toDate) {
+      where.editRequestedAt = {
+        ...(filters.fromDate ? { gte: new Date(`${filters.fromDate}T00:00:00.000Z`) } : {}),
+        ...(filters.toDate
+          ? { lt: new Date(new Date(`${filters.toDate}T00:00:00.000Z`).getTime() + 86400000) }
+          : {}),
+      };
+    }
+
+    const [items, approverRows] = await Promise.all([
+      this.prisma.registration.findMany({
+        where,
+        orderBy: { editRequestedAt: 'asc' },
+        select: {
+          ref: true,
+          name: true,
+          editRequestStatus: true,
+          editRequestNotes: true,
+          editRequestedAt: true,
+          editRequestedByName: true,
+          submittedByName: true,
+          editApprovedByName: true,
+          editRequestRejectionReason: true,
+        },
+      }),
+      this.prisma.registration.groupBy({
+        by: ['editApprovedByName'],
+        where: {
+          editRequestStatus: { not: EditRequestStatus.NONE },
+          editApprovedByName: { not: null },
+        },
+        orderBy: { editApprovedByName: 'asc' },
+      }),
+    ]);
+
+    return {
+      items,
+      approvers: approverRows
+        .map((row) => row.editApprovedByName)
+        .filter((name): name is string => Boolean(name)),
+    };
+  }
+
   async track(ref: string, mobileInput: string) {
     const mobile = this.normalizeMobile(mobileInput);
     const registration = await this.prisma.registration.findFirst({

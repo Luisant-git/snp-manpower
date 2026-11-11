@@ -1154,7 +1154,7 @@ export default function Register({ readOnly = false, editable = false }) {
                   : `/my-submissions/${encodeURIComponent(viewApplication.ref)}/edit`}
                 className="btn btn-primary"
               >
-                <i className="bi bi-pencil"></i> Edit Application
+                <i className="bi bi-pencil-square"></i> Edit Application
               </Link>
             )}
             <button type="button" className="btn btn-primary" onClick={() => window.print()}>

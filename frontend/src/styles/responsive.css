@@ -122,6 +122,14 @@
    ≤ 768 px  — Mobile landscape / small tablet
    ============================================================ */
 @media (max-width: 768px) {
+  .correction-request-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .correction-request-reset {
+    justify-self: start;
+  }
+
   /* Navbar height reduction */
   .navbar-inner {
     height: 64px;
@@ -408,6 +416,12 @@
    Fill remaining gaps
    ============================================================ */
 @media (max-width: 640px) {
+  .correction-request-filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
   /* Base */
   .container {
     padding: 0 14px;
@@ -1032,9 +1046,37 @@
     page-break-inside: avoid;
   }
 
+  .physical-sheet {
+    background-color: #fffdfa !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
   .physical-sheet * {
     color: #000 !important;
-    background: #fff !important;
+    background-color: transparent !important;
+  }
+
+  .physical-sheet .field-label-cell,
+  .physical-sheet .meta-cell-label {
+    background-color: #fff1f2 !important;
+    color: #881337 !important;
+  }
+
+  .physical-sheet .field-label-cell {
+    border-left: 2px solid #881337 !important;
+  }
+
+  .physical-sheet .field-label-kannada {
+    color: #881337 !important;
+  }
+
+  .physical-sheet .field-label-english {
+    color: #1e3a8a !important;
+  }
+
+  .physical-sheet .field-input-cell {
+    background-color: #ffffff !important;
   }
 }
 

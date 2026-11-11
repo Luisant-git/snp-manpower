@@ -771,7 +771,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                           title="Edit application (edit request approved)"
                           onClick={() => navigate(`/my-submissions/${encodeURIComponent(a.ref)}/edit`)}
                         >
-                          <i className="bi bi-pencil"></i>
+                          <i className="bi bi-pencil-square"></i>
                         </button>
                       ) : a.editRequestStatus === 'PENDING' ? (
                         <button
@@ -812,7 +812,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                       title="Edit application"
                       onClick={() => navigate(`/admin/application/${encodeURIComponent(a.ref)}/edit`)}
                     >
-                      <i className="bi bi-pencil"></i>
+                      <i className="bi bi-pencil-square"></i>
                     </button>{' '}
                     <button
                       className="icon-btn fees"

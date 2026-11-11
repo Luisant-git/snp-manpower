@@ -1963,6 +1963,35 @@ textarea {
   border-bottom: 1px solid var(--line);
 }
 
+.correction-request-filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) repeat(3, minmax(150px, 0.8fr)) auto;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.correction-request-filter {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--slate);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.correction-request-filter .auth-input {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.correction-request-reset {
+  align-self: end;
+}
+
 .recent-head h4 {
   font-size: 0.95rem;
   font-weight: 800;
@@ -2013,6 +2042,39 @@ textarea {
 .badge-pay.pay-partial {
   background: #e0f2fe;
   color: #0369a1;
+}
+
+.badge-pay.request-status {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.badge-pay.request-status-pending {
+  border-color: #fcd34d;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-pay.request-status-approved {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-pay.request-status-rejected {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-pay.request-status-completed {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .fee-status-select:disabled {
@@ -2607,6 +2669,52 @@ textarea {
   border-color: #fecaca;
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.icon-btn.primary,
+.icon-btn.view {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.icon-btn.primary:hover,
+.icon-btn.view:hover {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.icon-btn.fees {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.icon-btn.fees:hover {
+  border-color: #6ee7b7;
+  background: #d1fae5;
+  color: #047857;
+}
+
+.icon-btn.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.icon-btn.danger:hover {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.icon-btn.disabled,
+.icon-btn:disabled {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .table-toolbar {

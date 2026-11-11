@@ -64,6 +64,17 @@ export default function Navbar() {
           </Link>
 
           <ul className="nav-links">
+            {isAdmin && (
+              <li>
+                <NavLink
+                  to="/admin"
+                  end
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                >
+                  <i className="bi bi-speedometer2"></i> Dashboard
+                </NavLink>
+              </li>
+            )}
             {(!session || String(session.role).toUpperCase() !== 'APPLICANT') && NAV_LINKS.map((link) => (
               <li key={link.to}>
                 <NavLink
@@ -75,13 +86,13 @@ export default function Navbar() {
                 </NavLink>
               </li>
             ))}
-            {session && (
+            {session && !isAdmin && (
               <li>
                 <NavLink
                   to="/my-submissions"
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  {String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Applications'}
+                  {isApplicant ? 'My Applications' : 'Applications'}
                 </NavLink>
               </li>
             )}
@@ -132,6 +143,10 @@ export default function Navbar() {
                       ))}
                     </div>
                   </div>
+                ) : isApplicant ? (
+                  <Link to="/login" className="btn btn-sm btn-outline">
+                    Login
+                  </Link>
                 ) : (
                   <Link to={panelLink.to} className="btn btn-sm btn-outline">
                     {panelLink.label}
@@ -177,13 +192,13 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-            {session && (
+            {session && !isAdmin && (
               <NavLink
                 to="/my-submissions"
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                {String(session.role).toUpperCase() === 'APPLICANT' ? 'My Applications' : 'Applications'}
+                {isApplicant ? 'My Applications' : 'Applications'}
               </NavLink>
             )}
             {isAdmin && (
@@ -211,8 +226,12 @@ export default function Navbar() {
             <div className="actions">
               {session ? (
                 <>
-                  <Link to={panelLink.to} className="btn btn-sm btn-outline" onClick={() => setOpen(false)}>
-                    {panelLink.label}
+                  <Link
+                    to={isApplicant ? '/login' : panelLink.to}
+                    className="btn btn-sm btn-outline"
+                    onClick={() => setOpen(false)}
+                  >
+                    {isApplicant ? 'Login' : panelLink.label}
                   </Link>
                   <button className="btn btn-sm btn-dark" onClick={doLogout}>
                     <i className="bi bi-box-arrow-right"></i> Logout

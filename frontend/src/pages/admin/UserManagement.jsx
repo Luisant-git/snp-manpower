@@ -316,7 +316,7 @@ export default function UserManagement() {
                 </td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button className="icon-btn primary" title="Edit user" onClick={() => openEdit(u)}>
-                    <i className="bi bi-pencil"></i>
+                    <i className="bi bi-pencil-square"></i>
                   </button>{' '}
                   <button className="icon-btn danger" title="Delete user" onClick={() => removeUser(u)}>
                     <i className="bi bi-trash3"></i>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registrationApi } from '../../api/registrationApi.js';
 import { userApi } from '../../api/userApi.js';
@@ -20,6 +20,7 @@ function dateTimeLabel(date) {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     })
     : '—';
 }
@@ -37,8 +38,18 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const session = getSession();
   const [applications, setApplications] = useState([]);
+  const [editRequests, setEditRequests] = useState([]);
+  const [approverOptions, setApproverOptions] = useState([]);
   const [userCount, setUserCount] = useState(0);
   const [masterFee, setMasterFee] = useState(2400);
+  const [requestSearch, setRequestSearch] = useState('');
+  const [approvedByFilter, setApprovedByFilter] = useState('');
+  const [requestFromDate, setRequestFromDate] = useState('');
+  const [requestToDate, setRequestToDate] = useState('');
+  const [requestLoading, setRequestLoading] = useState(true);
+  const [requestError, setRequestError] = useState('');
+  const [requestRefreshKey, setRequestRefreshKey] = useState(0);
+  const requestId = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [requestReview, setRequestReview] = useState(null);
@@ -67,6 +78,32 @@ export default function Dashboard() {
     refreshDashboard();
   }, []);
 
+  useEffect(() => {
+    const currentRequestId = ++requestId.current;
+    setRequestLoading(true);
+    setRequestError('');
+    registrationApi.listCorrectionRequests({
+      search: requestSearch,
+      approvedBy: approvedByFilter,
+      fromDate: requestFromDate,
+      toDate: requestToDate,
+    })
+      .then((result) => {
+        if (currentRequestId !== requestId.current) return;
+        setEditRequests(result.items);
+        setApproverOptions(result.approvers);
+      })
+      .catch((requestError) => {
+        if (currentRequestId === requestId.current) {
+          setRequestError(requestError.message);
+          setEditRequests([]);
+        }
+      })
+      .finally(() => {
+        if (currentRequestId === requestId.current) setRequestLoading(false);
+      });
+  }, [requestSearch, approvedByFilter, requestFromDate, requestToDate, requestRefreshKey]);
+
   const paidCount = applications.filter((application) => application.paymentStatus === 'PAID').length;
   const pendingCount = applications.filter((application) => application.paymentStatus === 'PENDING').length;
   const cards = [
@@ -79,9 +116,6 @@ export default function Dashboard() {
     (sum, application) => sum + Math.max(0, masterFee - Number(application.feesPaid || 0)),
     0
   );
-  const editRequests = applications
-    .filter((application) => application.editRequestStatus && application.editRequestStatus !== 'NONE')
-    .sort((a, b) => new Date(a.editRequestedAt || 0).getTime() - new Date(b.editRequestedAt || 0).getTime());
   const role = String(session?.role || '').toLowerCase();
   const canReviewRequest = requestReview &&
     ['admin', 'super_admin'].includes(role) &&
@@ -100,6 +134,7 @@ export default function Dashboard() {
     try {
       await registrationApi.reviewEditRequest(requestReview.ref, action, reason);
       setRequestReview(null);
+      setRequestRefreshKey((key) => key + 1);
       refreshDashboard();
     } catch (requestError) {
       setReviewError(requestError.message);
@@ -144,20 +179,82 @@ export default function Dashboard() {
           <h4><i className="bi bi-chat-square-text"></i> Employee Correction Requests</h4>
           <small>Oldest requests appear first</small>
         </div>
+        <div className="correction-request-filters">
+          <label className="correction-request-filter">
+            <span>Search requests</span>
+            <input
+              className="auth-input"
+              type="text"
+              value={requestSearch}
+              onChange={(event) => setRequestSearch(event.target.value)}
+              placeholder="Name, reference, requester or notes"
+            />
+          </label>
+          <label className="correction-request-filter">
+            <span>Approved by</span>
+            <select
+              className="auth-input"
+              value={approvedByFilter}
+              onChange={(event) => setApprovedByFilter(event.target.value)}
+            >
+              <option value="">All approvers</option>
+              {approverOptions.map((approver) => (
+                <option key={approver} value={approver}>{approver}</option>
+              ))}
+            </select>
+          </label>
+          <label className="correction-request-filter">
+            <span>From date</span>
+            <input
+              className="auth-input"
+              type="date"
+              value={requestFromDate}
+              max={requestToDate || undefined}
+              onChange={(event) => setRequestFromDate(event.target.value)}
+            />
+          </label>
+          <label className="correction-request-filter">
+            <span>To date</span>
+            <input
+              className="auth-input"
+              type="date"
+              value={requestToDate}
+              min={requestFromDate || undefined}
+              onChange={(event) => setRequestToDate(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="registry-filter-reset correction-request-reset"
+            onClick={() => {
+              setRequestSearch('');
+              setApprovedByFilter('');
+              setRequestFromDate('');
+              setRequestToDate('');
+            }}
+            aria-label="Reset correction request filters"
+            title="Reset filters"
+          >
+            <i className="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
         <table className="admin-table">
           <thead>
             <tr>
               <th>Requested At</th><th>Application</th><th>Requested By</th>
-              <th>Correction Description</th><th>Status</th><th style={{ textAlign: 'right' }}>Action</th>
+              <th>Correction Description</th><th>Status</th><th>Approved By</th>
+              <th style={{ textAlign: 'right' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan="6" className="text-center py-4 text-muted">Loading requests…</td></tr>
-            ) : error ? (
-              <tr><td colSpan="6" className="text-center py-4 text-muted">Requests could not be loaded.</td></tr>
+            {requestLoading ? (
+              <tr><td colSpan="7" className="text-center py-4 text-muted">Loading requests…</td></tr>
+            ) : requestError ? (
+              <tr><td colSpan="7" className="text-center py-4 text-muted">{requestError}</td></tr>
             ) : editRequests.length === 0 ? (
-              <tr><td colSpan="6" className="text-center py-4 text-muted">No employee correction requests yet.</td></tr>
+              <tr><td colSpan="7" className="text-center py-4 text-muted">
+                No correction requests match the selected filters.
+              </td></tr>
             ) : editRequests.map((application) => {
               const status = application.editRequestStatus;
               const isPending = status === 'PENDING';
@@ -180,10 +277,11 @@ export default function Dashboard() {
                     )}
                   </td>
                   <td>
-                    <span className={`badge-pay ${status === 'REJECTED' ? 'pending' : status === 'APPROVED' || status === 'COMPLETED' ? 'paid' : 'partial'}`}>
+                    <span className={`badge-pay request-status request-status-${String(status).toLowerCase()}`}>
                       {requestStatusLabel(status)}
                     </span>
                   </td>
+                  <td>{application.editApprovedByName || '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {isPending ? (
                       <button
