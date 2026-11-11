@@ -1736,6 +1736,7 @@ textarea {
    ADMIN CONTROL PANEL
    ============================================================ */
 .admin-shell {
+  max-width: 1440px;
   padding-top: 28px;
   padding-bottom: 64px;
 }
@@ -1870,15 +1871,6 @@ textarea {
 
 .admin-panel {
   background: transparent;
-}
-
-.container.admin-shell.admin-applications-wide {
-  max-width: 1440px;
-}
-
-.admin-shell.admin-applications-wide > .admin-panel.manage-apps-neat {
-  width: 100%;
-  max-width: 1440px;
 }
 
 .users-toolbar {

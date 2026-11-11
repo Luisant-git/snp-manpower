@@ -26,8 +26,8 @@ export async function apiRequest(path, { method = 'GET', body, headers = {} } = 
       },
       ...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
     });
-  } catch {
-    throw new Error(`Could not connect to the API at ${apiOrigin}.`);
+  } catch (error) {
+    throw new Error('Unable to connect to the server. Please try again.', { cause: error });
   }
 
   const contentType = response.headers.get('content-type') || '';
