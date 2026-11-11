@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../common/admin.guard';
 import { AuthGuard } from '../common/auth.guard';
 import { UsersService } from './users.service';
@@ -9,8 +9,13 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  list() {
-    return this.usersService.list();
+  list(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.usersService.list({ search, role, page, pageSize });
   }
 
   @Post()

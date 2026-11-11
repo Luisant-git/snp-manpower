@@ -55,12 +55,12 @@ export default function Dashboard() {
     setError('');
     Promise.all([
       registrationApi.listAll(),
-      userApi.list(),
+      userApi.list({ role: 'APPLICANT', page: 1, pageSize: 1 }),
       feeMasterApi.getRegistrationFee(),
     ])
       .then(([rows, users, fee]) => {
         setApplications(rows);
-        setUserCount(users.filter((user) => user.role === 'APPLICANT').length);
+        setUserCount(users.total);
         setMasterFee(Number(fee.amount));
       })
       .catch((requestError) => setError(requestError.message))

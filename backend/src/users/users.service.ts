@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,20 +11,54 @@ const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        mobile: true,
-        role: true,
-        isActive: true,
-        branchId: true,
-        createdAt: true,
-        branch: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(query: { search?: string; role?: string; page?: string; pageSize?: string }) {
+    const page = this.parsePositiveInteger(query.page, 1, 'page');
+    const pageSize = this.parsePositiveInteger(query.pageSize, 10, 'pageSize');
+    if (pageSize > 100) throw new BadRequestException('pageSize cannot exceed 100.');
+    const skip = (page - 1) * pageSize;
+    if (!Number.isSafeInteger(skip)) throw new BadRequestException('Requested page is too large.');
+
+    const where: Prisma.UserWhereInput = {};
+    const search = query.search?.trim();
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { mobile: { contains: search } },
+      ];
+    }
+    if (query.role) where.role = this.parseRole(query.role);
+
+    const [items, total, groupedRoles] = await Promise.all([
+      this.prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          mobile: true,
+          role: true,
+          isActive: true,
+          branchId: true,
+          createdAt: true,
+          branch: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+        where,
+      }),
+      this.prisma.user.count({ where }),
+      this.prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+    ]);
+
+    const roleCounts = Object.fromEntries(Object.values(UserRole).map((role) => [role, 0])) as Record<UserRole, number>;
+    for (const row of groupedRoles) roleCounts[row.role] = row._count._all;
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      roleCounts,
+    };
   }
 
   async findEmployee(mobileInput: string) {
@@ -163,6 +197,15 @@ export class UsersService {
     const role = String(value).toUpperCase();
     if (!roles.has(role)) throw new BadRequestException('Role must be SUPER_ADMIN, ADMIN, EMPLOYEE, or APPLICANT.');
     return role as UserRole;
+  }
+
+  private parsePositiveInteger(value: string | undefined, defaultValue: number, field: string) {
+    if (value === undefined || value === '') return defaultValue;
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed < 1) {
+      throw new BadRequestException(`${field} must be a positive integer.`);
+    }
+    return parsed;
   }
 
   private async assertBranch(branchId?: number) {

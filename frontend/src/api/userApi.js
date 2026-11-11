@@ -1,7 +1,10 @@
 import { apiRequest } from './client.js';
 
 export const userApi = {
-  list: () => apiRequest('/users'),
+  list: ({ search = '', role = '', page = 1, pageSize = 10 } = {}) => {
+    const query = new URLSearchParams({ search, role, page: String(page), pageSize: String(pageSize) });
+    return apiRequest(`/users?${query.toString()}`);
+  },
   create: (user) => apiRequest('/users', { method: 'POST', body: user }),
   update: (id, changes) => apiRequest(`/users/${encodeURIComponent(id)}`, {
     method: 'PATCH',

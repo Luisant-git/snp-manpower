@@ -2560,6 +2560,56 @@ textarea {
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
+.user-filter-toolbar {
+  grid-template-columns: minmax(240px, 2fr) minmax(170px, 1fr) minmax(130px, 0.7fr) auto;
+}
+
+.user-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.user-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-pagination .registry-page-button {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.user-pagination .registry-page-button:not(:disabled):hover {
+  border-color: var(--royal);
+  background: #dbeafe;
+  color: var(--royal);
+}
+
+.user-pagination .registry-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.user-pagination .registry-page-indicator {
+  color: var(--slate);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .registry-filter-field {
   display: grid;
   gap: 6px;

@@ -1,12 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { branchApi } from '../../api/branchApi.js';
 import { userApi } from '../../api/userApi.js';
-
-/* Avatar initials for the users table */
-function initials(name) {
-  const parts = (name || 'U').trim().split(/\s+/);
-  return parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('');
-}
 
 /* 03 Nov 2026 style date */
 function fmtDate(iso) {
@@ -20,9 +14,16 @@ function fmtDate(iso) {
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [roleCounts, setRoleCounts] = useState({});
+  const [totalUsers, setTotalUsers] = useState(0);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const requestId = useRef(0);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -40,21 +41,30 @@ export default function UserManagement() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
+    const currentRequestId = ++requestId.current;
     setLoadError('');
+    setLoading(true);
     try {
-      const [userRows, branchRows] = await Promise.all([userApi.list(), branchApi.listAll()]);
-      setUsers(userRows);
-      setBranches(branchRows);
+      const result = await userApi.list({ search, role: roleFilter, page, pageSize });
+      if (currentRequestId !== requestId.current) return;
+      setUsers(result.items);
+      setRoleCounts(result.roleCounts);
+      setTotalUsers(result.total);
+      if (page > result.totalPages) setPage(result.totalPages);
     } catch (error) {
-      setLoadError(error.message);
+      if (currentRequestId === requestId.current) setLoadError(error.message);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestId.current) setLoading(false);
     }
-  };
+  }, [search, roleFilter, page, pageSize]);
 
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    branchApi.listAll().then(setBranches).catch((error) => setLoadError(error.message));
   }, []);
 
   /* ---------- Actions ---------- */
@@ -114,7 +124,8 @@ export default function UserManagement() {
         }
         setMsg(`User "${form.name}" updated successfully.`);
       }
-      await refresh();
+      if (page !== 1) setPage(1);
+      else await refresh();
       setModal(null);
     } catch (err) {
       setFormError(err.message);
@@ -127,7 +138,8 @@ export default function UserManagement() {
     if (!window.confirm(`Delete user "${u.name}"? This cannot be undone.`)) return;
     try {
       await userApi.remove(u.id);
-      await refresh();
+      if (users.length === 1 && page > 1) setPage((currentPage) => currentPage - 1);
+      else await refresh();
       setMsg(`User "${u.name}" deleted.`);
     } catch (error) {
       setMsg(error.message);
@@ -143,10 +155,16 @@ export default function UserManagement() {
     }
   };
 
-  const employees = users.filter((u) => u.role === 'EMPLOYEE');
-  const admins = users.filter((u) => u.role === 'ADMIN');
-  const superAdmins = users.filter((u) => u.role === 'SUPER_ADMIN');
-  const applicants = users.filter((u) => u.role === 'APPLICANT');
+  const resetFilters = () => {
+    setSearch('');
+    setRoleFilter('');
+    setPage(1);
+    setPageSize(10);
+  };
+
+  const pageCount = Math.max(1, Math.ceil(totalUsers / pageSize));
+  const firstVisible = totalUsers === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastVisible = Math.min(page * pageSize, totalUsers);
   const isAdd = modal?.mode === 'add';
 
   const roleLabel = (role) => {
@@ -190,11 +208,68 @@ export default function UserManagement() {
         <div>
           <h4 style={{ fontWeight: 800 }}>User Accounts</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            {employees.length} employee(s) · {admins.length} admin(s) · {superAdmins.length} super admin(s) · {applicants.length} job seeker(s)
+            {roleCounts.EMPLOYEE || 0} employee(s) · {roleCounts.ADMIN || 0} admin(s) · {roleCounts.SUPER_ADMIN || 0} super admin(s) · {roleCounts.APPLICANT || 0} job seeker(s)
           </small>
         </div>
         <button className="btn add-user-btn" onClick={openAdd}>
           <i className="bi bi-person-plus-fill"></i> Add User
+        </button>
+      </div>
+
+      <div className="registry-filter-toolbar user-filter-toolbar">
+        <label className="registry-filter-field">
+          <span>Search name or mobile</span>
+          <input
+            className="auth-input"
+            type="text"
+            value={search}
+            placeholder="Enter name or mobile number"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <label className="registry-filter-field">
+          <span>Filter by role</span>
+          <select
+            className="auth-input"
+            value={roleFilter}
+            onChange={(event) => {
+              setRoleFilter(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">All roles</option>
+            <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="ADMIN">Admin</option>
+            <option value="EMPLOYEE">Employee</option>
+            <option value="APPLICANT">Job Seeker</option>
+          </select>
+        </label>
+        <label className="registry-filter-field">
+          <span>Rows per page</span>
+          <select
+            className="auth-input"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="registry-filter-reset"
+          onClick={resetFilters}
+          aria-label="Reset all filters"
+          title="Reset all filters"
+        >
+          <i className="bi bi-arrow-counterclockwise"></i>
         </button>
       </div>
 
@@ -217,17 +292,16 @@ export default function UserManagement() {
             ) : loadError ? (
               <tr><td colSpan="7" className="text-center py-4 text-muted">Users could not be loaded.</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan="7" className="text-center py-4 text-muted">No user accounts found.</td></tr>
+              <tr><td colSpan="7" className="text-center py-4 text-muted">No users match the selected search and role.</td></tr>
             ) : users.map((u, i) => (
               <tr key={u.id}>
                 <td>
-                  <span className="sno-chip">#{i + 1}</span>
+                  <span className="sno-chip">#{(page - 1) * pageSize + i + 1}</span>
                 </td>
                 <td>
-                  <span className="user-avatar">{initials(u.name)}</span>
                   {u.name}
                 </td>
-                <td className="mono-cell">+91 {u.mobile}</td>
+                <td className="mono-cell">{u.mobile}</td>
                 <td>
                   <span className={`badge-role ${roleBadgeClass(u.role)}`}>
                     {roleLabel(u.role)}
@@ -260,6 +334,33 @@ export default function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      <nav className="registry-pagination user-pagination" aria-label="User pagination">
+        <span className="registry-pagination-count">
+          Showing {firstVisible}–{lastVisible} of {totalUsers} users
+        </span>
+        <div className="registry-pagination-controls">
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+            disabled={page === 1 || loading}
+            aria-label="Previous page"
+          >
+            <i className="bi bi-chevron-left"></i>
+          </button>
+          <span className="registry-page-indicator">Page {page} of {pageCount}</span>
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setPage((currentPage) => Math.min(pageCount, currentPage + 1))}
+            disabled={page === pageCount || loading}
+            aria-label="Next page"
+          >
+            <i className="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </nav>
 
       {/* ============ USER MODAL (Add / Edit) ============ */}
       {modal && (
