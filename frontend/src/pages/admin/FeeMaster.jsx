@@ -74,15 +74,6 @@ export default function FeeMaster() {
       )}
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
 
-      <div className="users-toolbar">
-        <div>
-          <h4 style={{ fontWeight: 800 }}>Fee Master</h4>
-          <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            System Master configuration for registration and processing fees applied across the portal
-          </small>
-        </div>
-      </div>
-
       <div className="admin-table-wrap">
         <table className="admin-table fee-master-table">
           <colgroup>

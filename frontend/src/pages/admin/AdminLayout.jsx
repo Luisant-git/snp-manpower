@@ -1,15 +1,7 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { authApi } from '../../api/authApi.js';
 import { getSession, setSession, clearSession } from '../../data/session.js';
-
-const LINKS = [
-  { to: '/admin', label: 'Dashboard', icon: 'bi-speedometer2', end: true },
-  { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
-  { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
-  { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
-  { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
-];
 
 export const isAdminRole = (role) => ['admin', 'super_admin'].includes(String(role || '').toLowerCase());
 
@@ -59,42 +51,25 @@ export default function AdminLayout() {
     return null;
   }
 
-  const roleLabel = {
-    admin: 'Admin',
-    super_admin: 'Super Admin',
-  }[session.role] || 'Administrator';
+  const pageTitle = pathname === '/admin'
+    ? 'Dashboard'
+    : pathname === '/admin/users'
+      ? 'User Management'
+      : pathname === '/admin/branches'
+        ? 'Branch Master'
+        : pathname === '/admin/fee-master'
+          ? 'Fee Master'
+          : pathname === '/admin/applications'
+            ? 'Manage Applications'
+            : pathname.endsWith('/edit')
+              ? 'Edit Application'
+              : pathname.startsWith('/admin/application/')
+                ? 'Application Details'
+                : 'Admin';
 
   return (
     <div className={`container admin-shell${pathname === '/admin/applications' ? ' admin-applications-wide' : ''}`}>
-      {/* ---------- Header ---------- */}
-      <div className="admin-head">
-        <div className="admin-welcome-tile">
-          <span className="admin-welcome-mark" aria-hidden="true">
-            <i className="bi bi-sliders2"></i>
-          </span>
-          <div className="admin-welcome-copy">
-            <span className="section-eyebrow">{roleLabel} Control Panel</span>
-            <h2 className="section-title">
-              Welcome, {session.name}
-            </h2>
-          </div>
-        </div>
-      </div>
-
-      {/* ---------- Sub navigation ---------- */}
-      <div className="admin-tabs">
-        {LINKS.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.end}
-            className={({ isActive }) => `tab-pill${isActive ? ' active' : ''}`}
-          >
-            <i className={`bi ${l.icon}`}></i> {l.label}
-          </NavLink>
-        ))}
-      </div>
-
+      <h1 className="admin-page-title">{pageTitle}</h1>
       <Outlet />
     </div>
   );

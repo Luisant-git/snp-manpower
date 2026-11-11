@@ -126,7 +126,6 @@ export default function BranchMaster() {
 
       <div className="users-toolbar">
         <div>
-          <h4 style={{ fontWeight: 800 }}>Branch Master</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
             Manage branches used in registration · {activeCount} active of {totalBranches}
           </small>

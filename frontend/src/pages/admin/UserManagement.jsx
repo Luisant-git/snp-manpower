@@ -206,7 +206,6 @@ export default function UserManagement() {
 
       <div className="users-toolbar">
         <div>
-          <h4 style={{ fontWeight: 800 }}>User Accounts</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
             {roleCounts.EMPLOYEE || 0} employee(s) · {roleCounts.ADMIN || 0} admin(s) · {roleCounts.SUPER_ADMIN || 0} super admin(s) · {roleCounts.APPLICANT || 0} job seeker(s)
           </small>

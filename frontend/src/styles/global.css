@@ -1740,6 +1740,19 @@ textarea {
   padding-bottom: 64px;
 }
 
+.admin-page-title {
+  margin: 0 0 20px;
+  color: var(--ink);
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.my-submissions-neat > .admin-page-title {
+  padding-top: 20px;
+}
+
 .admin-head {
   display: flex;
   align-items: center;

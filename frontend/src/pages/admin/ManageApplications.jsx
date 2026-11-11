@@ -462,27 +462,8 @@ export default function ManageApplications({ mySubmissions = false }) {
 
   return (
     <div className={`admin-panel ${mySubmissions ? 'my-submissions-neat' : 'manage-apps-neat'}`}>
+      {mySubmissions && <h1 className="admin-page-title">My Submissions</h1>}
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
-      {mySubmissions && (
-        <header className="neat-registry-head my-submissions-welcome">
-          <span className="admin-welcome-mark" aria-hidden="true">
-            <i className="bi bi-file-earmark-person"></i>
-          </span>
-          <div className="admin-welcome-copy my-submissions-welcome-copy">
-            <span className="section-eyebrow">My Submissions</span>
-            <h1 className="section-title">Welcome, {session.name}</h1>
-            <p>
-              <strong>My Submitted Forms</strong>
-              <span aria-hidden="true"> — </span>
-              Review and track the registration forms you have submitted.
-            </p>
-          </div>
-          <div className="neat-head-chip my-submissions-count">
-            <i className="bi bi-files" aria-hidden="true"></i>
-            {loading ? 'Loading…' : `${apps.length} ${apps.length === 1 ? 'record' : 'records'}`}
-          </div>
-        </header>
-      )}
 
       {/* ---------- Stat cards ---------- */}
       <div className="stats-grid registry-stats">
