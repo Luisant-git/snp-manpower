@@ -615,9 +615,6 @@ export default function ManageApplications({ mySubmissions = false }) {
           />
         </label>
         <div className="registry-filter-actions">
-          <button type="submit" className="btn btn-primary registry-filter-apply">
-            <i className="bi bi-funnel"></i> Filter
-          </button>
           {!mySubmissions && isAdminRole(session.role) && (
             <button
               type="button"
