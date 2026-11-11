@@ -129,6 +129,7 @@ export default function Navbar() {
                         { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                         { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
                         { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
+                        { to: '/admin/hiring-jobs', label: 'Hiring Job Board', icon: 'bi-briefcase' },
                         { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                       ].map((item) => (
                         <NavLink
@@ -209,6 +210,7 @@ export default function Navbar() {
                   { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                   { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
                   { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
+                  { to: '/admin/hiring-jobs', label: 'Hiring Job Board', icon: 'bi-briefcase' },
                   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                 ].map((item) => (
                   <NavLink

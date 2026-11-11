@@ -59,13 +59,15 @@ export default function AdminLayout() {
         ? 'Branch Master'
         : pathname === '/admin/fee-master'
           ? 'Fee Master'
-          : pathname === '/admin/applications'
-            ? 'Manage Applications'
-            : pathname.endsWith('/edit')
-              ? 'Edit Application'
-              : pathname.startsWith('/admin/application/')
-                ? 'Application Details'
-                : 'Admin';
+          : pathname === '/admin/hiring-jobs'
+            ? 'Hiring Job Board'
+            : pathname === '/admin/applications'
+              ? 'Manage Applications'
+              : pathname.endsWith('/edit')
+                ? 'Edit Application'
+                : pathname.startsWith('/admin/application/')
+                  ? 'Application Details'
+                  : 'Admin';
 
   return (
     <div className="container admin-shell">
