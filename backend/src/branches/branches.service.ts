@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -10,6 +11,47 @@ export class BranchesService {
       where: includeInactive ? undefined : { isActive: true },
       orderBy: { name: 'asc' },
     });
+  }
+
+  async listPaginated(query: {
+    search?: string;
+    status?: string;
+    page?: string;
+    pageSize?: string;
+  }) {
+    const page = this.parsePositiveInteger(query.page, 1, 'page');
+    const pageSize = this.parsePositiveInteger(query.pageSize, 10, 'pageSize');
+    if (pageSize > 100) throw new BadRequestException('pageSize cannot exceed 100.');
+    const skip = (page - 1) * pageSize;
+    if (!Number.isSafeInteger(skip)) throw new BadRequestException('Requested page is too large.');
+
+    const where: Prisma.BranchWhereInput = {};
+    const search = query.search?.trim();
+    if (search) where.name = { contains: search, mode: 'insensitive' };
+    if (query.status === 'active') where.isActive = true;
+    if (query.status === 'inactive') where.isActive = false;
+
+    const [items, total, activeCount, totalBranches] = await Promise.all([
+      this.prisma.branch.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.branch.count({ where }),
+      this.prisma.branch.count({ where: { isActive: true } }),
+      this.prisma.branch.count(),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      activeCount,
+      totalBranches,
+    };
   }
 
   async create(value: string) {
@@ -46,5 +88,14 @@ export class BranchesService {
 
   private isUniqueViolation(error: unknown) {
     return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
+  }
+
+  private parsePositiveInteger(value: string | undefined, defaultValue: number, field: string) {
+    if (value === undefined || value === '') return defaultValue;
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed < 1) {
+      throw new BadRequestException(`${field} must be a positive integer.`);
+    }
+    return parsed;
   }
 }

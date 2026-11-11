@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminGuard } from '../common/admin.guard';
 import { AuthGuard } from '../common/auth.guard';
 import { BranchesService } from './branches.service';
@@ -16,6 +16,20 @@ export class BranchesController {
   @UseGuards(AuthGuard, AdminGuard)
   listAll() {
     return this.branchesService.list(true);
+  }
+
+  @Get('manage')
+  @UseGuards(AuthGuard, AdminGuard)
+  listForManagement(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    if (status && !['all', 'active', 'inactive'].includes(status)) {
+      throw new BadRequestException('status must be all, active, or inactive.');
+    }
+    return this.branchesService.listPaginated({ search, status, page, pageSize });
   }
 
   @Post()

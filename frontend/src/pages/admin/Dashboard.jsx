@@ -12,10 +12,6 @@ const CARD_INFO = [
   { label: 'Registered Candidates', icon: 'bi-people-fill', tone: 'purple' },
 ];
 
-function money(amount) {
-  return `₹${Number(amount || 0).toLocaleString('en-IN')}`;
-}
-
 function dateTimeLabel(date) {
   return date
     ? new Date(date).toLocaleString('en-GB', {
@@ -131,7 +127,14 @@ export default function Dashboard() {
         <div className="stat-icon amber"><i className="bi bi-cash-stack"></i></div>
         <div>
           <small>Total Pending Processing Dues</small>
-          <strong>{loading || error ? '—' : money(pendingDues)}</strong>
+          <strong>
+            {loading || error ? '—' : (
+              <>
+                <span aria-label="Indian rupees">₹</span>
+                {Number(pendingDues || 0).toLocaleString('en-IN')}
+              </>
+            )}
+          </strong>
         </div>
         <i className="bi bi-exclamation-circle-fill dues-flag"></i>
       </div>

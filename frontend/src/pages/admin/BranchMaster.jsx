@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { branchApi } from '../../api/branchApi.js';
 
 export default function BranchMaster() {
   const [branches, setBranches] = useState([]);
+  const [activeCount, setActiveCount] = useState(0);
+  const [totalBranches, setTotalBranches] = useState(0);
+  const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const requestId = useRef(0);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null);
   const [branchName, setBranchName] = useState('');
@@ -19,20 +27,41 @@ export default function BranchMaster() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
+    const currentRequestId = ++requestId.current;
     setLoadError('');
+    setLoading(true);
     try {
-      setBranches(await branchApi.listAll());
+      const result = await branchApi.listForManagement({
+        search,
+        status: statusFilter,
+        page,
+        pageSize,
+      });
+      if (currentRequestId !== requestId.current) return;
+      setBranches(result.items);
+      setActiveCount(result.activeCount);
+      setTotalBranches(result.totalBranches);
+      setTotalResults(result.total);
+      if (page > result.totalPages) setPage(result.totalPages);
     } catch (error) {
-      setLoadError(error.message);
+      if (currentRequestId === requestId.current) setLoadError(error.message);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestId.current) setLoading(false);
     }
-  };
+  }, [search, statusFilter, page, pageSize]);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
+
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setPage(1);
+    setPageSize(10);
+  };
+
   const openAdd = () => {
     setBranchName('');
     setFormError('');
@@ -61,7 +90,8 @@ export default function BranchMaster() {
         await branchApi.update(modal.branch.id, { name });
         setMessage(`Branch "${name}" updated.`);
       }
-      await refresh();
+      if (page !== 1) setPage(1);
+      else await refresh();
       setModal(null);
     } catch (error) {
       setFormError(error.message);
@@ -79,7 +109,9 @@ export default function BranchMaster() {
       setLoadError(error.message);
     }
   };
-  const activeCount = branches.filter((branch) => branch.isActive).length;
+  const pageCount = Math.max(1, Math.ceil(totalResults / pageSize));
+  const firstVisible = totalResults === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastVisible = Math.min(page * pageSize, totalResults);
   const isAdd = modal?.mode === 'add';
 
   return (
@@ -96,11 +128,66 @@ export default function BranchMaster() {
         <div>
           <h4 style={{ fontWeight: 800 }}>Branch Master</h4>
           <small style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
-            Manage branches used in registration · {activeCount} active of {branches.length}
+            Manage branches used in registration · {activeCount} active of {totalBranches}
           </small>
         </div>
         <button className="btn add-user-btn" onClick={openAdd}>
           <i className="bi bi-plus-lg"></i> Add Branch
+        </button>
+      </div>
+
+      <div className="registry-filter-toolbar branch-filter-toolbar">
+        <label className="registry-filter-field">
+          <span>Search branch</span>
+          <input
+            className="auth-input"
+            type="text"
+            value={search}
+            placeholder="Enter branch name"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <label className="registry-filter-field">
+          <span>Filter by status</span>
+          <select
+            className="auth-input"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </label>
+        <label className="registry-filter-field">
+          <span>Rows per page</span>
+          <select
+            className="auth-input"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="registry-filter-reset"
+          onClick={resetFilters}
+          aria-label="Reset all filters"
+          title="Reset all filters"
+        >
+          <i className="bi bi-arrow-counterclockwise"></i>
         </button>
       </div>
 
@@ -115,9 +202,19 @@ export default function BranchMaster() {
             </tr>
           </thead>
           <tbody>
-            {branches.map((branch, index) => (
+            {loading ? (
+              <tr><td colSpan="4" className="branch-master-empty">Loading branches…</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan="4" className="branch-master-empty">Branches could not be loaded.</td></tr>
+            ) : branches.length === 0 ? (
+              <tr>
+                <td colSpan="4" className="branch-master-empty">
+                  No branches match the selected search and status.
+                </td>
+              </tr>
+            ) : branches.map((branch, index) => (
               <tr key={branch.id}>
-                <td><span className="sno-chip">#{index + 1}</span></td>
+                <td><span className="sno-chip">#{(page - 1) * pageSize + index + 1}</span></td>
                 <td><strong>{branch.name}</strong></td>
                 <td>
                   <span className={`badge-role ${branch.isActive ? 'active' : 'inactive'}`}>
@@ -142,18 +239,36 @@ export default function BranchMaster() {
                 </td>
               </tr>
             ))}
-            {loading ? (
-              <tr><td colSpan="4" className="branch-master-empty">Loading branches…</td></tr>
-            ) : branches.length === 0 && (
-              <tr>
-                <td colSpan="4" className="branch-master-empty">
-                  No branches yet. Add a branch to make it available in registration.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
+
+      <nav className="registry-pagination user-pagination" aria-label="Branch pagination">
+        <span className="registry-pagination-count">
+          Showing {firstVisible}–{lastVisible} of {totalResults} branches
+        </span>
+        <div className="registry-pagination-controls user-pagination-controls">
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+            disabled={page === 1 || loading}
+            aria-label="Previous page"
+          >
+            <i className="bi bi-chevron-left"></i>
+          </button>
+          <span className="registry-page-indicator">Page {page} of {pageCount}</span>
+          <button
+            type="button"
+            className="registry-page-button"
+            onClick={() => setPage((currentPage) => Math.min(pageCount, currentPage + 1))}
+            disabled={page === pageCount || loading}
+            aria-label="Next page"
+          >
+            <i className="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </nav>
 
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>

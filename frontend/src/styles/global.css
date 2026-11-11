@@ -2564,6 +2564,10 @@ textarea {
   grid-template-columns: minmax(240px, 2fr) minmax(170px, 1fr) minmax(130px, 0.7fr) auto;
 }
 
+.branch-filter-toolbar {
+  grid-template-columns: minmax(240px, 2fr) minmax(170px, 1fr) minmax(130px, 0.7fr) auto;
+}
+
 .user-pagination {
   display: flex;
   align-items: center;
