@@ -12,6 +12,7 @@ import ManageApplications from './pages/admin/ManageApplications.jsx';
 import BranchMaster from './pages/admin/BranchMaster.jsx';
 import FeeMaster from './pages/admin/FeeMaster.jsx';
 import HiringJobBoard from './pages/admin/HiringJobBoard.jsx';
+import AvailableJobs from './pages/AvailableJobs.jsx';
 
 export default function App() {
   const location = useLocation();
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/my-submissions" element={<div className="container my-submissions-wide"><ManageApplications mySubmissions /></div>} />
           <Route path="/my-submissions/:ref" element={<Register readOnly />} />
           <Route path="/my-submissions/:ref/edit" element={<Register editable />} />
+          <Route path="/available-jobs" element={<AvailableJobs />} />
 
           {/* Admin area — shared layout with sub navigation */}
           <Route path="/admin" element={<AdminLayout />}>

@@ -86,6 +86,16 @@ export default function Navbar() {
                 </NavLink>
               </li>
             ))}
+            {isApplicant && (
+              <li>
+                <NavLink
+                  to="/available-jobs"
+                  className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                >
+                  Available Jobs
+                </NavLink>
+              </li>
+            )}
             {session && !isAdmin && (
               <li>
                 <NavLink
@@ -129,6 +139,7 @@ export default function Navbar() {
                         { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                         { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
                         { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
+                        { to: '/admin/hiring-jobs', label: 'Hiring Job Board', icon: 'bi-briefcase' },
                         { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                       ].map((item) => (
                         <NavLink
@@ -143,15 +154,11 @@ export default function Navbar() {
                       ))}
                     </div>
                   </div>
-                ) : isApplicant ? (
-                  <Link to="/login" className="btn btn-sm btn-outline">
-                    Login
-                  </Link>
-                ) : (
+                ) : !isApplicant ? (
                   <Link to={panelLink.to} className="btn btn-sm btn-outline">
                     {panelLink.label}
                   </Link>
-                )}
+                ) : null}
                 <button className="btn btn-sm btn-dark" onClick={doLogout}>
                   <i className="bi bi-box-arrow-right"></i> Logout
                 </button>
@@ -192,6 +199,15 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
+            {isApplicant && (
+              <NavLink
+                to="/available-jobs"
+                className="nav-link"
+                onClick={() => setOpen(false)}
+              >
+                Available Jobs
+              </NavLink>
+            )}
             {session && !isAdmin && (
               <NavLink
                 to="/my-submissions"
@@ -209,6 +225,7 @@ export default function Navbar() {
                   { to: '/admin/users', label: 'User Management', icon: 'bi-people' },
                   { to: '/admin/branches', label: 'Branch Master', icon: 'bi-building' },
                   { to: '/admin/fee-master', label: 'Fee Master', icon: 'bi-currency-rupee' },
+                  { to: '/admin/hiring-jobs', label: 'Hiring Job Board', icon: 'bi-briefcase' },
                   { to: '/admin/applications', label: 'Manage Applications', icon: 'bi-folder2-open' },
                 ].map((item) => (
                   <NavLink
@@ -227,11 +244,11 @@ export default function Navbar() {
               {session ? (
                 <>
                   <Link
-                    to={isApplicant ? '/login' : panelLink.to}
+                    to={panelLink.to}
                     className="btn btn-sm btn-outline"
                     onClick={() => setOpen(false)}
                   >
-                    {isApplicant ? 'Login' : panelLink.label}
+                    {panelLink.label}
                   </Link>
                   <button className="btn btn-sm btn-dark" onClick={doLogout}>
                     <i className="bi bi-box-arrow-right"></i> Logout

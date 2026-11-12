@@ -12,7 +12,7 @@ export function getApiOrigin() {
   return apiUrl.origin;
 }
 
-export async function apiRequest(path, { method = 'GET', body, headers = {} } = {}) {
+export async function apiRequest(path, { method = 'GET', body, headers = {}, signal } = {}) {
   const apiOrigin = getApiOrigin();
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   let response;
@@ -24,9 +24,11 @@ export async function apiRequest(path, { method = 'GET', body, headers = {} } = 
         ...(body === undefined || isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...headers,
       },
+      signal,
       ...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
     });
   } catch (error) {
+    if (error.name === 'AbortError') throw error;
     throw new Error('Unable to connect to the server. Please try again.', { cause: error });
   }
 

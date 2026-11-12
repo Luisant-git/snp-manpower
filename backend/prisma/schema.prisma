@@ -47,6 +47,13 @@ enum NotificationStatus {
   FAILED
 }
 
+enum JobApprovalStatus {
+  PENDING
+  ADMIN_APPROVED
+  APPROVED
+  REJECTED
+}
+
 model User {
   id            Int            @id @default(autoincrement())
   name          String
@@ -153,4 +160,25 @@ model FeeMaster {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model JobApproval {
+  id                       Int               @id @default(autoincrement())
+  externalJobId            String            @unique
+  jobSnapshot              Json
+  status                   JobApprovalStatus @default(PENDING)
+  adminApprovedById        Int?
+  adminApprovedByName      String?
+  adminApprovedAt          DateTime?
+  superAdminApprovedById   Int?
+  superAdminApprovedByName String?
+  superAdminApprovedAt     DateTime?
+  rejectedById             Int?
+  rejectedByName           String?
+  rejectedAt               DateTime?
+  rejectionReason          String?
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+
+  @@index([status, superAdminApprovedAt])
 }
