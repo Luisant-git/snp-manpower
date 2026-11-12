@@ -16,6 +16,7 @@ export default function AvailableJobs() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accessDenied, setAccessDenied] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -26,6 +27,15 @@ export default function AvailableJobs() {
       setLoading(true);
       setError('');
       try {
+        const access = await hiringJobsApi.applicantAccess();
+        if (!access.canViewAvailableJobs) {
+          if (active) {
+            setAccessDenied(true);
+            setJobs([]);
+          }
+          return;
+        }
+        if (active) setAccessDenied(false);
         const result = await hiringJobsApi.available();
         if (active) setJobs(Array.isArray(result.jobs) ? result.jobs : []);
       } catch (loadError) {
@@ -51,6 +61,7 @@ export default function AvailableJobs() {
   }, [jobs, search]);
 
   if (!session) return <Navigate to="/login" replace />;
+  if (accessDenied) return <Navigate to="/my-submissions" replace />;
 
   return (
     <div className="container available-jobs-page">

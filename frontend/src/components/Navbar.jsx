@@ -2,6 +2,7 @@ import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { BRAND, NAV_LINKS } from '../data/site.js';
 import { authApi } from '../api/authApi.js';
+import { hiringJobsApi } from '../api/hiringJobsApi.js';
 import { clearSession, getSession } from '../data/session.js';
 
 export default function Navbar() {
@@ -11,12 +12,31 @@ export default function Navbar() {
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [session, setCurrentSession] = useState(getSession);
   const [logoLoaded, setLogoLoaded] = useState(false);
+  const [applicantCanViewJobs, setApplicantCanViewJobs] = useState(true);
 
   useEffect(() => {
     const refreshSession = () => setCurrentSession(getSession());
     window.addEventListener('snp-session-change', refreshSession);
     return () => window.removeEventListener('snp-session-change', refreshSession);
   }, []);
+
+  useEffect(() => {
+    if (String(session?.role || '').toUpperCase() !== 'APPLICANT') {
+      setApplicantCanViewJobs(true);
+      return undefined;
+    }
+    let active = true;
+    hiringJobsApi.applicantAccess()
+      .then((access) => {
+        if (active) setApplicantCanViewJobs(Boolean(access.canViewAvailableJobs));
+      })
+      .catch(() => {
+        if (active) setApplicantCanViewJobs(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, location.pathname]);
 
   const doLogout = async () => {
     try {
@@ -86,7 +106,7 @@ export default function Navbar() {
                 </NavLink>
               </li>
             ))}
-            {isApplicant && (
+            {isApplicant && applicantCanViewJobs && (
               <li>
                 <NavLink
                   to="/available-jobs"
@@ -199,7 +219,7 @@ export default function Navbar() {
                 {link.label}
               </NavLink>
             ))}
-            {isApplicant && (
+            {isApplicant && applicantCanViewJobs && (
               <NavLink
                 to="/available-jobs"
                 className="nav-link"

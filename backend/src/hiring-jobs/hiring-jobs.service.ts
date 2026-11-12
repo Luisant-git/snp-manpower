@@ -208,7 +208,37 @@ export class HiringJobsService {
     return { approvals };
   }
 
-  async listAvailable() {
+  async getApplicantAccess(user: SessionUser) {
+    if (user.role !== UserRole.APPLICANT) {
+      return { canViewAvailableJobs: true, applicationStatus: null };
+    }
+
+    const mobile = cleanText(user.mobile).replace(/\D/g, '');
+    const localMobile = mobile.startsWith('91') && mobile.length === 12
+      ? mobile.slice(2)
+      : mobile;
+    if (!/^\d{10}$/.test(localMobile)) {
+      throw new ForbiddenException('Unable to verify your application status.');
+    }
+
+    const latestApplication = await this.prisma.registration.findFirst({
+      where: { mobile: localMobile },
+      orderBy: [{ createdAt: 'desc' }, { ref: 'desc' }],
+      select: { status: true },
+    });
+    const applicationStatus = latestApplication?.status ?? null;
+    return {
+      canViewAvailableJobs: applicationStatus !== 'REJECTED',
+      applicationStatus,
+    };
+  }
+
+  async listAvailable(user: SessionUser) {
+    const access = await this.getApplicantAccess(user);
+    if (!access.canViewAvailableJobs) {
+      throw new ForbiddenException('Your latest application was rejected. Available jobs are not accessible.');
+    }
+
     const approvals = await this.prisma.jobApproval.findMany({
       where: { status: JobApprovalStatus.APPROVED },
       orderBy: { superAdminApprovedAt: 'desc' },

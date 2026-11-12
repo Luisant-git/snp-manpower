@@ -16,10 +16,16 @@ export class HiringJobsController {
     return this.hiringJobsService.listApprovals();
   }
 
+  @Get('access')
+  @UseGuards(AuthGuard)
+  getApplicantAccess(@Req() request: SessionRequest) {
+    return this.hiringJobsService.getApplicantAccess(getSessionUser(request));
+  }
+
   @Get('available')
   @UseGuards(AuthGuard)
-  listAvailable() {
-    return this.hiringJobsService.listAvailable();
+  listAvailable(@Req() request: SessionRequest) {
+    return this.hiringJobsService.listAvailable(getSessionUser(request));
   }
 
   @Get()

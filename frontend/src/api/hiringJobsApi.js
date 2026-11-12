@@ -2,6 +2,7 @@ import { apiRequest } from './client.js';
 
 export const hiringJobsApi = {
   approvals: (signal) => apiRequest('/hiring-jobs/approvals', { signal }),
+  applicantAccess: () => apiRequest('/hiring-jobs/access'),
   available: () => apiRequest('/hiring-jobs/available'),
   approve: (job) => {
     const jobId = String(job?.id || '').trim();
