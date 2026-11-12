@@ -148,29 +148,25 @@ export default function AvailableJobs() {
               const hasContact = Boolean(job.showContact && (contactPhone || job.contactEmail));
 
               return (
-                <article className="hiring-job-card" key={job.id || `${job.title || 'job'}-${index}`} role="listitem">
-                  <div className="hiring-job-accent" aria-hidden="true" />
+                <article className="hiring-job-card hiring-job-card-clean" key={job.id || `${job.title || 'job'}-${index}`} role="listitem">
                   <div className="hiring-job-main">
                     <div className="hiring-job-title-row">
                       <div className="hiring-job-heading">
-                        <div className="hiring-job-card-kicker">
-                          <span className="hiring-job-pill">{job.jobType || job.category || 'Full Time'}</span>
-                          <span className="hiring-availability"><i className="bi bi-circle-fill" aria-hidden="true"></i> Open</span>
-                        </div>
                         <h2>{job.title || 'Untitled job'}</h2>
                         <p className="hiring-job-company">
                           {job.company || 'Company not specified'}
                           {job.role ? <span> · {job.role}</span> : null}
                         </p>
                       </div>
-                      <span className="hiring-approval-badge approved"><i className="bi bi-patch-check-fill" aria-hidden="true"></i> Verified</span>
+                      <span className="hiring-availability"><i className="bi bi-circle-fill" aria-hidden="true"></i> Open</span>
                     </div>
 
                     <div className="hiring-job-facts">
+                      {job.jobType && <span><i className="bi bi-briefcase" aria-hidden="true"></i> {job.jobType}</span>}
                       <span><i className="bi bi-geo-alt" aria-hidden="true"></i> {location}</span>
                       <span><i className="bi bi-person-workspace" aria-hidden="true"></i> {formatJobExperience(job.experienceMin, job.experienceMax)} experience</span>
                       <span><i className="bi bi-cash-coin" aria-hidden="true"></i> {formatJobSalary(job.salaryMin, job.salaryMax)}</span>
-                      {job.category && <span><i className="bi bi-tag" aria-hidden="true"></i> {job.category}</span>}
+                      {job.category && job.category !== job.jobType && <span><i className="bi bi-tag" aria-hidden="true"></i> {job.category}</span>}
                       {job.remoteWork && <span><i className="bi bi-house" aria-hidden="true"></i> {job.remoteWork}</span>}
                     </div>
 
