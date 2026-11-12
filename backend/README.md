@@ -15,12 +15,13 @@ Standalone NestJS + Prisma backend using the modular structure of the reference 
    npm run prisma:seed
    ```
 
-For production schema sync, first review and back up the target database, then run
-`.\scripts\prisma-push-safe.ps1` from PowerShell in the backend directory. This
-script does not pass `--accept-data-loss` or `--force-reset`; cancel and investigate
-if Prisma reports a destructive change. The Prisma schema includes the
-`user_sessions` table managed by `connect-pg-simple` so schema sync preserves
-stored login sessions.
+For production schema sync, first review and back up the target database. On Linux,
+run `bash scripts/prisma-push-safe.sh` from the backend directory. On Windows
+PowerShell, run `.\scripts\prisma-push-safe.ps1`. Neither script passes
+`--accept-data-loss` or `--force-reset`; the Linux script also runs non-interactively
+so Prisma cannot receive confirmation for a destructive change. Stop and investigate
+if schema sync fails. The Prisma schema includes the `user_sessions` table managed by
+`connect-pg-simple` so schema sync preserves stored login sessions.
 
 4. To seed the administrator, run `npm run prisma:seed`. In non-production mode, the default test login is mobile `9876543210` with password `1234`; set `ADMIN_PASSWORD` in `.env` to override it. The test password is disabled in production, where `ADMIN_PASSWORD` must be at least 12 characters. Optionally override the mobile with `ADMIN_MOBILE`. Seeding creates or updates that account as an active administrator and resets its password.
 5. Start with `npm run start:dev`. The API listens on port 3001 by default, with routes directly under `/` (for example, `/auth/login`). Set the frontend's ignored `.env` file to `VITE_API_URL=http://localhost:3001`. Legacy requests prefixed with `/api` are also accepted.
