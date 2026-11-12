@@ -6395,6 +6395,74 @@ form .form-field-invalid {
   color: #a3630b;
 }
 
+.hiring-board-table {
+  min-width: 1000px;
+}
+
+.hiring-board-table .hiring-board-job-cell {
+  min-width: 190px;
+}
+
+.hiring-board-job-cell strong,
+.hiring-board-job-cell div,
+.hiring-board-job-cell small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.hiring-board-job-cell div,
+.hiring-board-job-cell small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.hiring-board-status-cell,
+.hiring-board-actions-cell {
+  min-width: 155px;
+}
+
+.hiring-board-status-cell > * {
+  display: block;
+  width: fit-content;
+  margin: 0 0 6px;
+}
+
+.hiring-board-status-cell > *:last-child {
+  margin-bottom: 0;
+}
+
+.hiring-board-actions-cell {
+  text-align: right;
+  white-space: normal !important;
+}
+
+.hiring-board-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.hiring-board-actions-cell .icon-btn:focus-visible {
+  outline: 2px solid var(--royal);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .hiring-board-table {
+    min-width: 860px;
+  }
+
+  .hiring-board-table th,
+  .hiring-board-table td {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+}
+
 .admin-hiring-posted {
   color: #8a96a8;
   font-size: 0.74rem;
@@ -6483,9 +6551,9 @@ form .form-field-invalid {
 
 .admin-hiring-fact small,
 .admin-hiring-side-label {
-  color: #8994a5;
+  color: #075fd6;
   font-size: 0.64rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: 0.07em;
   line-height: 1.25;
   text-transform: uppercase;
@@ -6566,33 +6634,6 @@ form .form-field-invalid {
   overflow-wrap: anywhere;
 }
 
-.admin-hiring-description-button {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 11px;
-  border: 1px solid #dfe6ef;
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #385273;
-  font: inherit;
-  font-size: 0.77rem;
-  font-weight: 700;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.admin-hiring-description-button:hover {
-  border-color: #c7d7e9;
-  background: #f0f6fc;
-}
-
-.admin-hiring-description-button i:last-child {
-  margin-left: 3px;
-  color: #8391a4;
-  font-size: 0.7rem;
-}
-
 .admin-hiring-modal-backdrop {
   position: fixed;
   z-index: 1000;
@@ -6671,6 +6712,92 @@ form .form-field-invalid {
   line-height: 1.75;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.hiring-job-details-modal {
+  width: min(100%, 860px);
+  max-height: 90vh;
+}
+
+.hiring-job-details-modal:focus {
+  outline: none;
+}
+
+.hiring-job-details-body {
+  max-height: calc(90vh - 105px);
+  white-space: normal;
+}
+
+.hiring-job-detail-section + .hiring-job-detail-section {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #edf0f4;
+}
+
+.hiring-job-detail-section h3 {
+  margin: 0 0 12px;
+  color: #273449;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.hiring-job-detail-section dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.hiring-job-detail-section dl > div {
+  min-width: 0;
+}
+
+.hiring-job-detail-section dt {
+  margin-bottom: 3px;
+  color: #7354a5;
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.hiring-job-detail-section dd {
+  margin: 0;
+  color: #273449;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.hiring-job-detail-section dd a {
+  color: var(--royal);
+}
+
+.hiring-job-detail-section dd .admin-hiring-state {
+  font-size: 0.82rem;
+}
+
+.hiring-job-description-section p {
+  margin: 0;
+  color: #465367;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .hiring-job-details-modal {
+    max-height: 94vh;
+  }
+
+  .hiring-job-details-body {
+    max-height: calc(94vh - 100px);
+    padding: 16px;
+  }
+
+  .hiring-job-detail-section dl {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
 .admin-hiring-aside {
