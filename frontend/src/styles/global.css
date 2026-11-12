@@ -4764,6 +4764,32 @@ form .form-field-invalid {
   font-size: 0.72rem;
 }
 
+.registration-fee-master-amount,
+.registration-fee-error {
+  grid-column: 1 / -1;
+}
+
+.registration-fee-master-amount {
+  color: #1e40af;
+  font-size: 0.82rem;
+}
+
+.registration-fee-error {
+  color: #b91c1c;
+  font-size: 0.75rem;
+}
+
+.registration-fee-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .registration-fee-summary {
   display: flex;
   align-items: center;

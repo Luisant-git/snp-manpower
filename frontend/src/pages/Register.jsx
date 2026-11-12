@@ -358,6 +358,9 @@ export default function Register({ readOnly = false, editable = false }) {
   const [recordLoading, setRecordLoading] = useState(recordMode);
   const [recordError, setRecordError] = useState('');
   const [masterFee, setMasterFee] = useState(2400);
+  const [feeMasterLoading, setFeeMasterLoading] = useState(true);
+  const [feeMasterError, setFeeMasterError] = useState('');
+  const [feeMasterRetry, setFeeMasterRetry] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [refCode, setRefCode] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -424,15 +427,39 @@ export default function Register({ readOnly = false, editable = false }) {
     branchApi.list()
       .then((rows) => setBranches(rows.map((branch) => branch.name)))
       .catch((error) => setBranchLoadError(error.message));
+  }, [recordMode]);
+
+  useEffect(() => {
+    let active = true;
+    setFeeMasterLoading(true);
+    setFeeMasterError('');
     feeMasterApi.getRegistrationFee()
       .then((data) => {
-        if (data?.amount !== undefined && data?.amount !== null) {
-          const fee = Number(data.amount);
+        const fee = Number(data?.amount);
+        if (!Number.isInteger(fee) || fee < 0) {
+          throw new Error('Fee Master returned an invalid registration fee.');
+        }
+        if (active) {
           setMasterFee(fee);
+          if (!recordMode) {
+            setForm((current) => (
+              current.registrationFeePaid === ''
+                ? { ...current, registrationFeePaid: String(fee) }
+                : current
+            ));
+          }
         }
       })
-      .catch(() => {});
-  }, [recordMode]);
+      .catch((error) => {
+        if (active) setFeeMasterError(error.message || 'Unable to load the registration fee from Fee Master.');
+      })
+      .finally(() => {
+        if (active) setFeeMasterLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [feeMasterRetry, recordMode]);
 
   useEffect(() => {
     if (!recordMode) return;
@@ -956,6 +983,14 @@ export default function Register({ readOnly = false, editable = false }) {
     if (!form.addressProofs?.length && !form.addressProofUrl) {
       showToast('error', 'Upload at least one address proof document before submitting.');
       document.querySelector('.address-proof-upload-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (!recordMode && (feeMasterLoading || feeMasterError)) {
+      showToast('error', feeMasterLoading
+        ? 'Please wait while the registration fee loads.'
+        : 'Unable to load the registration fee from Fee Master. Please retry before submitting.');
+      document.querySelector('.registration-fee-field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -3077,6 +3112,23 @@ export default function Register({ readOnly = false, editable = false }) {
                         onChange={set}
                         aria-label="Registration fee paid in rupees"
                       />
+                      <strong className="registration-fee-master-amount">
+                        {feeMasterLoading
+                          ? 'Loading Fee Master amount…'
+                          : `Fee Master total: ₹${masterFee.toLocaleString('en-IN')}`}
+                      </strong>
+                      {feeMasterError && (
+                        <span className="registration-fee-error" role="alert">
+                          {feeMasterError}{' '}
+                          <button
+                            type="button"
+                            className="registration-fee-retry"
+                            onClick={() => setFeeMasterRetry((attempt) => attempt + 1)}
+                          >
+                            Retry
+                          </button>
+                        </span>
+                      )}
                       <small>
                         {ts('registrationFeePaidOptionalHint')}
                       </small>
