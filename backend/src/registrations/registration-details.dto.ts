@@ -83,6 +83,9 @@ export interface RegistrationDetails {
   fam4Name?: string;
   fam4Mobile?: string;
   prevCustomer?: string;
+  termsAccepted?: boolean;
+  termsAcceptedAt?: string;
+  termsType?: string;
   confirmed?: boolean;
 }
 
@@ -102,7 +105,7 @@ const stringFields: Array<keyof RegistrationDetails> = [
   'employeeMobile', 'employeeName', 'employeeRole', 'registrationFeePaid',
   'bankName', 'accountNumber', 'ifscCode', 'upiMobile', 'fam1Name',
   'fam1Mobile', 'fam2Name', 'fam2Mobile', 'fam3Name', 'fam3Mobile',
-  'fam4Name', 'fam4Mobile', 'prevCustomer',
+  'fam4Name', 'fam4Mobile', 'prevCustomer', 'termsAcceptedAt', 'termsType',
 ];
 
 const nullableStringFields: Array<keyof RegistrationDetails> = [
@@ -127,7 +130,7 @@ export function parseRegistrationDetails(value: unknown): RegistrationDetails {
       throw new BadRequestException(`${field} must be a string or null.`);
     }
   }
-  for (const field of ['sameAddress', 'confirmed'] as const) {
+  for (const field of ['sameAddress', 'termsAccepted', 'confirmed'] as const) {
     if (details[field] !== undefined && typeof details[field] !== 'boolean') {
       throw new BadRequestException(`${field} must be a boolean.`);
     }

@@ -10,6 +10,8 @@ import feeMasterApi from '../api/feeMasterApi.js';
 import { whatsappApi } from '../api/whatsappApi.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
+import TermsAndConditions from '../components/TermsAndConditions.jsx';
+import { getTermsForJob } from '../data/termsConditions.js';
 
 const BLOOD_GROUPS = [
   'A+',
@@ -316,6 +318,8 @@ const emptyForm = {
   fam4Name: '',
   fam4Mobile: '',
   prevCustomer: '',
+  termsAccepted: false,
+  termsAcceptedAt: '',
   confirmed: true,
 };
 
@@ -758,6 +762,14 @@ export default function Register({ readOnly = false, editable = false }) {
     }));
   };
 
+  const handleTermsAcceptedChange = (accepted) => {
+    setForm((f) => ({
+      ...f,
+      termsAccepted: accepted,
+      termsAcceptedAt: accepted ? new Date().toISOString() : '',
+    }));
+  };
+
   const handlePanChange = (e) => {
     const pan = e.target.value.replace(/[^a-z\d]/gi, '').slice(0, 10).toUpperCase();
     setForm((current) => ({ ...current, pan, idDocNumber: pan }));
@@ -950,6 +962,13 @@ export default function Register({ readOnly = false, editable = false }) {
       return;
     }
 
+    const applicableTerms = getTermsForJob(form.jobType, form.driverType);
+    if (applicableTerms && !form.termsAccepted) {
+      showToast('error', `Please read and accept the ${applicableTerms.label} Terms & Conditions before submitting.`);
+      document.querySelector('.terms-conditions-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     await completeRegistration();
   };
 
@@ -962,6 +981,7 @@ export default function Register({ readOnly = false, editable = false }) {
       const cleanVoterId = (form.voterId || '').trim().toUpperCase();
       const idDocNumber = idDocType === 'VOTER_ID' ? cleanVoterId : cleanPan;
       const driverType = form.jobType === 'DRIVER' ? (form.driverType || 'Monthly Driver') : '';
+      const termsType = getTermsForJob(form.jobType, form.driverType)?.label || '';
 
       const registrationData = {
         ...form,
@@ -970,6 +990,7 @@ export default function Register({ readOnly = false, editable = false }) {
         pan: idDocType === 'PAN' ? cleanPan : '',
         voterId: idDocType === 'VOTER_ID' ? cleanVoterId : '',
         driverType,
+        termsType,
         aadhaar: normalizeAadhaar(form.aadhaar),
         regNo: applicationRef || form.regNo,
         ...(editable ? { registrationFeePaid: String(viewApplication.feesPaid) } : {}),
@@ -1999,6 +2020,8 @@ export default function Register({ readOnly = false, editable = false }) {
                               jobType: 'TAXI',
                               designation: 'TAXI',
                               hasLicense: 'YES',
+                              termsAccepted: false,
+                              termsAcceptedAt: '',
                             }));
                           }}
                         />
@@ -2018,6 +2041,8 @@ export default function Register({ readOnly = false, editable = false }) {
                               designation: `DRIVER - ${(f.driverType || 'Monthly Driver').toUpperCase()}`,
                               hasLicense: 'YES',
                               taxiPermitType: '',
+                              termsAccepted: false,
+                              termsAcceptedAt: '',
                             }));
                           }}
                         />
@@ -2038,6 +2063,8 @@ export default function Register({ readOnly = false, editable = false }) {
                                 f.designation === 'TAXI' || f.designation === 'DRIVER'
                                   ? ''
                                   : f.designation,
+                              termsAccepted: false,
+                              termsAcceptedAt: '',
                             }));
                           }}
                         />
@@ -2074,6 +2101,8 @@ export default function Register({ readOnly = false, editable = false }) {
                                     ...f,
                                     driverType: opt.id,
                                     designation: `DRIVER - ${opt.id.toUpperCase()}`,
+                                    termsAccepted: false,
+                                    termsAcceptedAt: '',
                                   }));
                                 }}
                               />
@@ -3145,6 +3174,15 @@ export default function Register({ readOnly = false, editable = false }) {
                 </tr>
               </tbody>
             </table>
+
+            {/* Terms & Conditions — adapts to Monthly Driver / Spare Driver / Acting Driver / Taxi */}
+            <TermsAndConditions
+              jobType={form.jobType}
+              driverType={form.driverType}
+              accepted={Boolean(form.termsAccepted)}
+              onAcceptedChange={handleTermsAcceptedChange}
+              readOnly={readOnly}
+            />
 
             {/* Declaration */}
             <div className="sheet-declaration">
