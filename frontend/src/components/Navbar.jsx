@@ -12,7 +12,7 @@ export default function Navbar() {
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [session, setCurrentSession] = useState(getSession);
   const [logoLoaded, setLogoLoaded] = useState(false);
-  const [applicantCanViewJobs, setApplicantCanViewJobs] = useState(true);
+  const [applicantCanViewJobs, setApplicantCanViewJobs] = useState(false);
 
   useEffect(() => {
     const refreshSession = () => setCurrentSession(getSession());
@@ -30,8 +30,9 @@ export default function Navbar() {
       .then((access) => {
         if (active) setApplicantCanViewJobs(Boolean(access.canViewAvailableJobs));
       })
-      .catch(() => {
-        if (active) setApplicantCanViewJobs(true);
+      .catch((error) => {
+        console.error('Unable to verify applicant access to available jobs:', error);
+        if (active) setApplicantCanViewJobs(false);
       });
     return () => {
       active = false;

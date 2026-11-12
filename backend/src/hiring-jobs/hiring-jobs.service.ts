@@ -228,7 +228,7 @@ export class HiringJobsService {
     });
     const applicationStatus = latestApplication?.status ?? null;
     return {
-      canViewAvailableJobs: applicationStatus !== 'REJECTED',
+      canViewAvailableJobs: applicationStatus === 'APPROVED',
       applicationStatus,
     };
   }
