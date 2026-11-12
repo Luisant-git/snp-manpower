@@ -18,6 +18,18 @@ const APPROVAL_META = {
   REJECTED: { label: 'Rejected', className: 'rejected' },
 };
 
+function canCloseJob(job, approvalStatus, role) {
+  return (role === 'admin' || role === 'super_admin') &&
+    String(job.status || '').toUpperCase() !== 'CLOSED' &&
+    approvalStatus === 'APPROVED';
+}
+
+function canReopenJob(job, approvalStatus, role) {
+  return (role === 'admin' || role === 'super_admin') &&
+    String(job.status || '').toUpperCase() === 'CLOSED' &&
+    approvalStatus === 'APPROVED';
+}
+
 export default function HiringJobBoard() {
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
@@ -25,14 +37,24 @@ export default function HiringJobBoard() {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [approvalLoading, setApprovalLoading] = useState(true);
   const [error, setError] = useState('');
   const [approvalError, setApprovalError] = useState('');
   const [actionError, setActionError] = useState('');
   const [approvals, setApprovals] = useState({});
-  const [approvingId, setApprovingId] = useState('');
+  const [allJobs, setAllJobs] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
+  const [savingId, setSavingId] = useState('');
   const [viewJob, setViewJob] = useState(null);
+  const [decisionJob, setDecisionJob] = useState(null);
+  const [selectedDecision, setSelectedDecision] = useState('');
   const viewDialogRef = useRef(null);
+  const decisionDialogRef = useRef(null);
+  const confirmationDialogRef = useRef(null);
   const viewTriggerRef = useRef(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -40,52 +62,86 @@ export default function HiringJobBoard() {
   const role = String(session?.role || '').toLowerCase();
   const isAdmin = role === 'admin';
   const isSuperAdmin = role === 'super_admin';
+  const dateRangeError = fromDate && toDate && fromDate > toDate
+    ? 'From date must be on or before To date.'
+    : '';
 
   useEffect(() => {
-    if (!viewJob) return undefined;
+    const activeDialog = selectedDecision
+      ? confirmationDialogRef.current
+      : decisionJob
+        ? decisionDialogRef.current
+        : viewJob
+          ? viewDialogRef.current
+          : null;
+    if (!activeDialog) {
+      viewTriggerRef.current?.focus();
+      return undefined;
+    }
+
     const handleDialogKeyDown = (event) => {
       if (event.key === 'Escape') {
-        setViewJob(null);
+        if (selectedDecision) {
+          setSelectedDecision('');
+          setActionError('');
+        } else if (decisionJob) {
+          setDecisionJob(null);
+          setActionError('');
+        } else {
+          setViewJob(null);
+        }
         return;
       }
       if (event.key !== 'Tab') return;
 
-      const dialog = viewDialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll(
+      const focusable = Array.from(activeDialog.querySelectorAll(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
       )).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
 
       if (focusable.length === 0) {
         event.preventDefault();
-        dialog.focus();
+        activeDialog.focus();
         return;
       }
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const activeElement = document.activeElement;
-      if (event.shiftKey && (activeElement === first || !dialog.contains(activeElement))) {
+      if (event.shiftKey && (activeElement === first || !activeDialog.contains(activeElement))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && (activeElement === last || !dialog.contains(activeElement))) {
+      } else if (!event.shiftKey && (activeElement === last || !activeDialog.contains(activeElement))) {
         event.preventDefault();
         first.focus();
       }
     };
-    viewDialogRef.current?.focus();
+    const firstFocusable = activeDialog.querySelector('button:not([disabled])');
+    if (firstFocusable) firstFocusable.focus();
+    else activeDialog.focus();
     window.addEventListener('keydown', handleDialogKeyDown);
     return () => {
       window.removeEventListener('keydown', handleDialogKeyDown);
-      viewTriggerRef.current?.focus();
     };
-  }, [viewJob]);
+  }, [viewJob, decisionJob, selectedDecision]);
 
   const loadJobs = useCallback(async (signal) => {
+    if (dateRangeError) {
+      setJobs([]);
+      setTotal(0);
+      setError('');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const result = await jobRequirementsApi.list({ page, limit: pageSize, signal });
+      const result = await jobRequirementsApi.list({
+        page,
+        limit: pageSize,
+        fromDate,
+        toDate,
+        signal,
+      });
       setJobs(result.jobs || []);
       setTotal(result.total);
       const resultPageCount = Math.max(1, Math.ceil(result.total / pageSize));
@@ -101,25 +157,46 @@ export default function HiringJobBoard() {
     }
 
     if (signal?.aborted) return;
-
-    try {
-      const result = await hiringJobsApi.approvals();
-      setApprovals(Object.fromEntries(
-        (result.approvals || []).map((approval) => [String(approval.externalJobId), approval]),
-      ));
-      setApprovalError('');
-    } catch (approvalLoadError) {
-      if (approvalLoadError.name !== 'AbortError') {
-        setApprovalError(approvalLoadError.message);
-      }
-    }
-  }, [page, pageSize]);
+  }, [page, pageSize, fromDate, toDate, dateRangeError]);
 
   useEffect(() => {
     const controller = new AbortController();
     loadJobs(controller.signal);
     return () => controller.abort();
   }, [loadJobs, refreshKey]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setStatsLoading(true);
+    setApprovalLoading(true);
+    setStatsError('');
+    setApprovalError('');
+    Promise.allSettled([
+      jobRequirementsApi.listAll({ signal: controller.signal }),
+      hiringJobsApi.approvals(controller.signal),
+    ]).then(([jobsResult, approvalsResult]) => {
+      if (controller.signal.aborted) return;
+      if (jobsResult.status === 'fulfilled') {
+        setAllJobs(jobsResult.value);
+      } else if (jobsResult.reason.name !== 'AbortError') {
+        setAllJobs(null);
+        setStatsError(jobsResult.reason.message);
+      }
+      if (approvalsResult.status === 'fulfilled') {
+        setApprovals(Object.fromEntries(
+          (approvalsResult.value.approvals || []).map((approval) => [String(approval.externalJobId), approval]),
+        ));
+      } else if (approvalsResult.reason.name !== 'AbortError') {
+        setApprovalError(approvalsResult.reason.message);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) {
+        setStatsLoading(false);
+        setApprovalLoading(false);
+      }
+    });
+    return () => controller.abort();
+  }, [refreshKey]);
 
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -131,17 +208,68 @@ export default function HiringJobBoard() {
     });
   }, [jobs, search, statusFilter]);
 
-  const approveJob = async (job) => {
-    const jobId = String(job.id);
-    setApprovingId(jobId);
+  const stats = useMemo(() => {
+    if (!allJobs) return null;
+    let active = 0;
+    let pending = 0;
+    let rejected = 0;
+
+    allJobs.jobs.forEach((job) => {
+      if (String(job.status || '').toUpperCase() === 'ACTIVE') active += 1;
+      const approvalStatus = approvals[String(job.id)]?.status || 'PENDING';
+      if (approvalStatus === 'PENDING' || approvalStatus === 'ADMIN_APPROVED') pending += 1;
+      if (approvalStatus === 'REJECTED') rejected += 1;
+    });
+
+    return { total: allJobs.total, active, pending, rejected };
+  }, [allJobs, approvals]);
+
+  const saveDecision = async () => {
+    if (!decisionJob || !selectedDecision) return;
+    if (selectedDecision === 'CLOSE' &&
+      !canCloseJob(decisionJob, approvals[String(decisionJob.id)]?.status || 'PENDING', role)) {
+      setSelectedDecision('');
+      setActionError('Only approved jobs can be closed.');
+      return;
+    }
+    if (selectedDecision === 'REOPEN' &&
+      !canReopenJob(decisionJob, approvals[String(decisionJob.id)]?.status || 'PENDING', role)) {
+      setSelectedDecision('');
+      setActionError('Only approved, closed jobs can be reopened.');
+      return;
+    }
+    const jobId = String(decisionJob.id);
+    setSavingId(jobId);
     setActionError('');
     try {
-      const approval = await hiringJobsApi.approve(job);
+      const approval = selectedDecision === 'CLOSE'
+        ? await hiringJobsApi.close(decisionJob)
+        : selectedDecision === 'REOPEN'
+          ? await hiringJobsApi.reopen(decisionJob)
+        : await hiringJobsApi.approve(decisionJob);
       setApprovals((current) => ({ ...current, [jobId]: approval }));
+      if (selectedDecision === 'CLOSE' || selectedDecision === 'REOPEN') {
+        const jobStatus = selectedDecision === 'CLOSE' ? 'CLOSED' : 'ACTIVE';
+        setJobs((current) => current.map((job) => (
+          String(job.id) === jobId ? { ...job, status: jobStatus } : job
+        )));
+        setAllJobs((current) => current && ({
+          ...current,
+          jobs: current.jobs.map((job) => (
+            String(job.id) === jobId ? { ...job, status: jobStatus } : job
+          )),
+        }));
+        setViewJob((current) => current && String(current.id) === jobId
+          ? { ...current, status: jobStatus }
+          : current);
+      }
+      setSelectedDecision('');
+      setDecisionJob(null);
+      setRefreshKey((key) => key + 1);
     } catch (approvalActionError) {
       setActionError(approvalActionError.message);
     } finally {
-      setApprovingId('');
+      setSavingId('');
     }
   };
 
@@ -163,6 +291,41 @@ export default function HiringJobBoard() {
           {loading ? 'Loading…' : 'Refresh'}
         </button>
       </div>
+
+      <section className="stats-grid registry-stats" aria-label="Hiring job totals">
+        {[
+          ['Total Jobs', stats?.total, 'blue', 'bi-briefcase'],
+          ['Active Jobs', stats?.active, 'green', 'bi-check2-circle'],
+          ['Pending Jobs', stats?.pending, 'amber', 'bi-hourglass-split'],
+          ['Rejected Jobs', stats?.rejected, 'purple', 'bi-x-circle'],
+        ].map(([label, count, tone, icon]) => (
+          <article className="stat-card" key={label}>
+            <div className={`stat-icon ${tone}`}>
+              <i className={`bi ${icon}`} aria-hidden="true"></i>
+            </div>
+            <div>
+              <div className="stat-value" aria-live="polite">
+                {statsLoading || approvalLoading
+                  ? '…'
+                  : stats && Number.isFinite(count) &&
+                    (!(label === 'Pending Jobs' || label === 'Rejected Jobs') || !approvalError)
+                    ? count.toLocaleString('en-IN')
+                    : '—'}
+              </div>
+              <div className="stat-label">{label}</div>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      {statsError && (
+        <div className="track-result track-error hiring-board-error" role="alert">
+          <span>Job statistics could not be loaded: {statsError}</span>
+          <button type="button" className="btn btn-sm btn-outline" onClick={() => setRefreshKey((key) => key + 1)}>
+            Try again
+          </button>
+        </div>
+      )}
 
       <div className="registry-filter-toolbar user-filter-toolbar hiring-board-filter-toolbar">
         <label className="registry-filter-field">
@@ -194,6 +357,30 @@ export default function HiringJobBoard() {
           </select>
         </label>
         <label className="registry-filter-field">
+          <span>From date</span>
+          <input
+            type="date"
+            className="auth-input"
+            value={fromDate}
+            onChange={(event) => {
+              setFromDate(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <label className="registry-filter-field">
+          <span>To date</span>
+          <input
+            type="date"
+            className="auth-input"
+            value={toDate}
+            onChange={(event) => {
+              setToDate(event.target.value);
+              setPage(1);
+            }}
+          />
+        </label>
+        <label className="registry-filter-field">
           <span>Rows per page</span>
           <select
             className="auth-input"
@@ -212,6 +399,8 @@ export default function HiringJobBoard() {
           onClick={() => {
             setSearch('');
             setStatusFilter('ALL');
+            setFromDate('');
+            setToDate('');
             setPageSize(10);
             setPage(1);
           }}
@@ -220,15 +409,18 @@ export default function HiringJobBoard() {
         </button>
       </div>
 
-      {approvalError && (
+      <p className="hiring-filter-scope">
+        Date range searches all jobs in the feed. Search and status filters apply to the current page.
+      </p>
+      {dateRangeError && (
         <div className="track-result track-error hiring-board-error" role="alert">
-          <span>Approval status could not be loaded: {approvalError}</span>
+          {dateRangeError}
         </div>
       )}
 
-      {actionError && (
+      {approvalError && (
         <div className="track-result track-error hiring-board-error" role="alert">
-          <span>{actionError}</span>
+          <span>Approval status could not be loaded: {approvalError}</span>
         </div>
       )}
 
@@ -276,7 +468,10 @@ export default function HiringJobBoard() {
               const canAdminApprove = isAdmin && !isClosed &&
                 (approvalStatus === 'PENDING' || approvalStatus === 'REJECTED');
               const canSuperApprove = isSuperAdmin && !isClosed && approvalStatus === 'ADMIN_APPROVED';
-              const isSaving = approvingId === jobId;
+              const canReview = canAdminApprove || canSuperApprove;
+              const canClose = canCloseJob(job, approvalStatus, role);
+              const canReopen = canReopenJob(job, approvalStatus, role);
+              const isSaving = savingId === jobId;
               return (
                 <tr key={job.id}>
                     <td><span className="sno-chip">#{(page - 1) * pageSize + index + 1}</span></td>
@@ -290,7 +485,7 @@ export default function HiringJobBoard() {
                       <div>{formatJobExperience(job.experienceMin, job.experienceMax)}</div>
                       <div>{formatJobSalary(job.salaryMin, job.salaryMax)}</div>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatJobDate(job.createdAt)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatJobDate(job.createdAt || job.postedAt || job.posted_at)}</td>
                     <td className="hiring-board-status-cell">
                       <span className={`badge-role ${String(job.status || '').toUpperCase() === 'ACTIVE' ? 'active' : 'inactive'}`}>
                         {job.status || 'Unknown'}
@@ -302,24 +497,55 @@ export default function HiringJobBoard() {
                     </td>
                     <td className="hiring-board-actions-cell">
                       <div className="hiring-board-action-group">
-                        {canAdminApprove && (
+                        {canReview && (
                           <button
                             type="button"
-                            className="btn btn-sm btn-teal"
-                            onClick={() => approveJob(job)}
-                            disabled={isSaving}
+                            className="icon-btn hiring-review-action"
+                            title={isAdmin ? 'Review job approval' : 'Review final job approval'}
+                            aria-label={`Review approval for ${job.title || 'this job'}`}
+                            onClick={(event) => {
+                              viewTriggerRef.current = event.currentTarget;
+                              setActionError('');
+                              setDecisionJob(job);
+                              setSelectedDecision('');
+                            }}
+                            disabled={approvalLoading || Boolean(approvalError) || Boolean(savingId)}
                           >
-                            <i className="bi bi-check2-circle"></i> {isSaving ? 'Saving…' : 'Approve as Admin'}
+                            <i className={`bi ${isSaving ? 'bi-arrow-repeat' : 'bi-shield-check'}`} aria-hidden="true"></i>
                           </button>
                         )}
-                        {canSuperApprove && (
+                        {canClose && (
                           <button
                             type="button"
-                            className="btn btn-sm btn-teal"
-                            onClick={() => approveJob(job)}
-                            disabled={isSaving}
+                            className="icon-btn hiring-close-action"
+                            title="Close job"
+                            aria-label={`Close ${job.title || 'this job'}`}
+                            onClick={(event) => {
+                              viewTriggerRef.current = event.currentTarget;
+                              setActionError('');
+                              setDecisionJob(job);
+                              setSelectedDecision('CLOSE');
+                            }}
+                            disabled={approvalLoading || Boolean(approvalError) || Boolean(savingId)}
                           >
-                            <i className="bi bi-patch-check"></i> {isSaving ? 'Saving…' : 'Give Final Approval'}
+                            <i className={`bi ${isSaving ? 'bi-arrow-repeat' : 'bi-x-circle'}`} aria-hidden="true"></i>
+                          </button>
+                        )}
+                        {canReopen && (
+                          <button
+                            type="button"
+                            className="icon-btn hiring-reopen-action"
+                            title="Reopen job"
+                            aria-label={`Reopen ${job.title || 'this job'}`}
+                            onClick={(event) => {
+                              viewTriggerRef.current = event.currentTarget;
+                              setActionError('');
+                              setDecisionJob(job);
+                              setSelectedDecision('REOPEN');
+                            }}
+                            disabled={approvalLoading || Boolean(approvalError) || Boolean(savingId)}
+                          >
+                            <i className={`bi ${isSaving ? 'bi-arrow-repeat' : 'bi-arrow-counterclockwise'}`} aria-hidden="true"></i>
                           </button>
                         )}
                         <button
@@ -347,20 +573,21 @@ export default function HiringJobBoard() {
         const viewApproval = approvals[String(viewJob.id)];
         const viewApprovalStatus = viewApproval?.status || 'PENDING';
         const viewApprovalMeta = APPROVAL_META[viewApprovalStatus] || APPROVAL_META.PENDING;
-        const viewClosed = String(viewJob.status || '').toUpperCase() === 'CLOSED';
         const viewLocation = [
           viewJob.city,
           ...(Array.isArray(viewJob.localities) ? viewJob.localities.filter(Boolean) : []),
         ].filter(Boolean).join(' · ') || 'Location not specified';
+        const viewPosted = viewJob.createdAt || viewJob.postedAt || viewJob.posted_at;
         let viewApprovalHint = 'Needs Admin approval, then Super Admin final approval.';
-        if (viewApprovalStatus === 'ADMIN_APPROVED') {
-          viewApprovalHint = 'Admin approved. This job is visible to job seekers; Super Admin approval is still pending.';
+        if (String(viewJob.status || '').toUpperCase() === 'CLOSED') {
+          viewApprovalHint = 'Closed. This job is not visible to job seekers.';
+        } else if (viewApprovalStatus === 'ADMIN_APPROVED') {
+          viewApprovalHint = 'Admin approved. Waiting for Super Admin final approval; this job is not visible to job seekers yet.';
         } else if (viewApprovalStatus === 'APPROVED') {
           viewApprovalHint = 'Super Admin approved. This job is visible to logged-in job seekers.';
         } else if (viewApprovalStatus === 'REJECTED') {
           viewApprovalHint = 'Rejected. This job is not visible to job seekers.';
         }
-        if (viewClosed) viewApprovalHint = 'This job is closed and will not be shown to job seekers.';
         return (
           <div
             className="admin-hiring-modal-backdrop"
@@ -376,11 +603,12 @@ export default function HiringJobBoard() {
               aria-labelledby="hiring-job-details-title"
               tabIndex="-1"
             >
-              <header>
-                <div>
-                  <p>Hiring job details</p>
-                  <h2 id="hiring-job-details-title">{viewJob.title || 'Untitled job'}</h2>
-                  <span>{viewJob.company || 'Company not specified'}</span>
+              <header className="hiring-detail-statusbar">
+                <div className="hiring-detail-status-meta">
+                  <span className={`badge-role ${String(viewJob.status || '').toUpperCase() === 'ACTIVE' ? 'active' : 'inactive'}`}>
+                    {viewJob.status || 'Unknown'}
+                  </span>
+                  <span><i className="bi bi-calendar3" aria-hidden="true"></i> Posted {formatJobDate(viewPosted)}</span>
                 </div>
                 <button
                   type="button"
@@ -391,74 +619,207 @@ export default function HiringJobBoard() {
                   <i className="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
               </header>
-              <div className="admin-hiring-description-modal-body hiring-job-details-body">
-                <section className="hiring-job-detail-section">
-                  <h3>Job information</h3>
-                  <dl>
-                    <div><dt>Job ID</dt><dd>{String(viewJob.id)}</dd></div>
-                    <div><dt>Role</dt><dd>{viewJob.role || 'Not specified'}</dd></div>
-                    <div><dt>Category</dt><dd>{viewJob.category || 'Not specified'}</dd></div>
-                    <div><dt>Job type</dt><dd>{viewJob.jobType || 'Not specified'}</dd></div>
-                    <div><dt>Remote work</dt><dd>{viewJob.remoteWork || 'Not specified'}</dd></div>
-                    <div><dt>Location</dt><dd>{viewLocation}</dd></div>
-                    <div><dt>Experience</dt><dd>{formatJobExperience(viewJob.experienceMin, viewJob.experienceMax)}</dd></div>
-                    <div><dt>Salary</dt><dd>{formatJobSalary(viewJob.salaryMin, viewJob.salaryMax)}</dd></div>
-                    <div><dt>Posted</dt><dd>{formatJobDate(viewJob.createdAt)}</dd></div>
-                    <div><dt>Job status</dt><dd>{viewJob.status || 'Unknown'}</dd></div>
-                  </dl>
+              <div className="hiring-job-details-body">
+                <section className="hiring-job-summary-card">
+                  <span className="hiring-job-summary-icon" aria-hidden="true"><i className="bi bi-briefcase-fill"></i></span>
+                  <div>
+                    <h2 id="hiring-job-details-title">{viewJob.title || 'Untitled job'}</h2>
+                    <p>{viewJob.company || 'Company not specified'} <span>· Job ID {String(viewJob.id)}</span></p>
+                  </div>
                 </section>
-                <section className="hiring-job-detail-section">
-                  <h3>Recruiter</h3>
-                  <dl>
-                    <div><dt>Contact name</dt><dd>{viewJob.contactName || `Hiring for ${viewJob.company || 'this role'}`}</dd></div>
-                    <div><dt>Contact visibility</dt><dd>{viewJob.showContact ? 'Visible' : 'Hidden'}</dd></div>
-                    {viewJob.showContact && viewJob.contactPhone && (
-                      <div>
-                        <dt>Phone</dt>
-                        <dd><a href={`tel:${String(viewJob.contactPhone).replace(/[^\d+]/g, '')}`}>{viewJob.contactPhone}</a></dd>
-                      </div>
-                    )}
-                    {viewJob.showContact && viewJob.whatsappNumber && (
-                      <div>
-                        <dt>WhatsApp</dt>
-                        <dd><a href={`tel:${String(viewJob.whatsappNumber).replace(/[^\d+]/g, '')}`}>{viewJob.whatsappNumber}</a></dd>
-                      </div>
-                    )}
-                    {viewJob.showContact && viewJob.contactEmail && (
-                      <div><dt>Email</dt><dd><a href={`mailto:${encodeURIComponent(viewJob.contactEmail)}`}>{viewJob.contactEmail}</a></dd></div>
-                    )}
-                    {!viewJob.showContact && <div><dt>Contact details</dt><dd>Contact details hidden</dd></div>}
-                  </dl>
-                </section>
-                <section className="hiring-job-detail-section">
-                  <h3>Approval review</h3>
-                  <dl>
-                    <div>
-                      <dt>Approval status</dt>
-                      <dd><span className={`admin-hiring-state ${viewApprovalMeta.className}`}>{viewApprovalMeta.label}</span></dd>
-                    </div>
-                    <div><dt>Review</dt><dd>{viewApprovalHint}</dd></div>
-                    {viewApproval?.adminApprovedByName && (
-                      <div><dt>Admin reviewer</dt><dd>{viewApproval.adminApprovedByName}</dd></div>
-                    )}
-                    {viewApproval?.superAdminApprovedByName && (
-                      <div><dt>Super Admin reviewer</dt><dd>{viewApproval.superAdminApprovedByName}</dd></div>
-                    )}
-                  </dl>
-                </section>
-                <section className="hiring-job-detail-section hiring-job-description-section">
-                  <h3>Job description</h3>
-                  <p>{viewJob.description || 'No description provided.'}</p>
-                </section>
+
+                <dl className="hiring-job-facts">
+                  <div><dt>Experience</dt><dd>{formatJobExperience(viewJob.experienceMin, viewJob.experienceMax)}</dd></div>
+                  <div><dt>Salary</dt><dd>{formatJobSalary(viewJob.salaryMin, viewJob.salaryMax)}</dd></div>
+                  <div><dt>Location</dt><dd>{viewLocation}</dd></div>
+                </dl>
+
+                <div className="hiring-job-detail-tags" aria-label="Job categories">
+                  {[
+                    viewJob.category && ['Category', viewJob.category],
+                    viewJob.jobType && ['Job type', viewJob.jobType],
+                    viewJob.remoteWork && ['Work mode', viewJob.remoteWork],
+                    viewJob.role && ['Role', viewJob.role],
+                  ].filter(Boolean).map(([label, value]) => (
+                    <span key={label}><small>{label}</small>{value}</span>
+                  ))}
+                </div>
+
+                <div className="hiring-job-detail-grid">
+                  <section className="hiring-job-description-card">
+                    <h3>Job description</h3>
+                    <p>{viewJob.description || 'No description provided.'}</p>
+                  </section>
+                  <aside className="hiring-job-detail-sidebar">
+                    <section className="hiring-job-sidebar-card">
+                      <h3>Recruiter &amp; contact</h3>
+                      {viewJob.showContact ? (
+                        <dl>
+                          <div><dt>Contact name</dt><dd>{viewJob.contactName || `Hiring for ${viewJob.company || 'this role'}`}</dd></div>
+                          {viewJob.contactPhone && (
+                            <div><dt>Phone</dt><dd><a href={`tel:${String(viewJob.contactPhone).replace(/[^\d+]/g, '')}`}>{viewJob.contactPhone}</a></dd></div>
+                          )}
+                          {viewJob.whatsappNumber && (
+                            <div><dt>WhatsApp</dt><dd><a href={`tel:${String(viewJob.whatsappNumber).replace(/[^\d+]/g, '')}`}>{viewJob.whatsappNumber}</a></dd></div>
+                          )}
+                          {viewJob.contactEmail && (
+                            <div><dt>Email</dt><dd><a href={`mailto:${encodeURIComponent(viewJob.contactEmail)}`}>{viewJob.contactEmail}</a></dd></div>
+                          )}
+                        </dl>
+                      ) : (
+                        <p className="hiring-contact-private"><i className="bi bi-lock-fill" aria-hidden="true"></i> Contact details are hidden for this listing.</p>
+                      )}
+                    </section>
+                    <section className="hiring-job-sidebar-card">
+                      <h3>Approval review</h3>
+                      <dl>
+                        <div>
+                          <dt>Approval status</dt>
+                          <dd><span className={`admin-hiring-state ${viewApprovalMeta.className}`}>{viewApprovalMeta.label}</span></dd>
+                        </div>
+                        <div><dt>Review stage</dt><dd>{viewApprovalHint}</dd></div>
+                        {viewApproval?.rejectedByName && (
+                          <div><dt>Rejected by</dt><dd>{viewApproval.rejectedByName}</dd></div>
+                        )}
+                        {viewApproval?.rejectedAt && (
+                          <div><dt>Rejection date</dt><dd>{formatJobDate(viewApproval.rejectedAt)}</dd></div>
+                        )}
+                      </dl>
+                    </section>
+                  </aside>
+                </div>
               </div>
             </section>
           </div>
         );
       })()}
 
+      {decisionJob && !selectedDecision && (() => {
+        const approvalStatus = approvals[String(decisionJob.id)]?.status || 'PENDING';
+        const stage = isAdmin ? 'Admin review' : 'Super Admin final review';
+        return (
+          <div
+            className="admin-hiring-modal-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setDecisionJob(null);
+                setActionError('');
+              }
+            }}
+          >
+            <section
+              ref={decisionDialogRef}
+              className="hiring-decision-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="hiring-decision-title"
+              tabIndex="-1"
+            >
+              <h2 id="hiring-decision-title">{stage}</h2>
+              <p>Choose how to review <strong>{decisionJob.title || 'this job'}</strong>.</p>
+              <p className="hiring-decision-stage">Current stage: {APPROVAL_META[approvalStatus]?.label || 'Pending Admin'}</p>
+              {actionError && <p className="hiring-decision-error" role="alert">{actionError}</p>}
+              <div className="hiring-decision-actions">
+                <button type="button" className="btn btn-teal" onClick={() => setSelectedDecision('APPROVE')}>
+                  <i className="bi bi-check2-circle" aria-hidden="true"></i> Approve
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setDecisionJob(null);
+                    setActionError('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+          </div>
+        );
+      })()}
+
+      {decisionJob && selectedDecision && (
+        <div className="admin-hiring-modal-backdrop">
+          <section
+            ref={confirmationDialogRef}
+            className="hiring-decision-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="hiring-confirmation-title"
+            tabIndex="-1"
+          >
+            <p className={`hiring-confirmation-mark ${selectedDecision.toLowerCase()}`}>
+              <i className={`bi ${
+                selectedDecision === 'APPROVE'
+                  ? 'bi-shield-check'
+                  : selectedDecision === 'REOPEN'
+                    ? 'bi-arrow-counterclockwise'
+                    : 'bi-x-circle'
+              }`} aria-hidden="true"></i>
+            </p>
+            <h2 id="hiring-confirmation-title">
+              Confirm {selectedDecision === 'CLOSE' ? 'close job' : selectedDecision === 'REOPEN' ? 'reopen job' : 'approve'}
+            </h2>
+            <p>
+              {selectedDecision === 'CLOSE'
+                ? 'Close'
+                : selectedDecision === 'REOPEN'
+                  ? 'Reopen'
+                  : 'Approve'} <strong>{decisionJob.title || 'this job'}</strong>?
+              {selectedDecision === 'CLOSE' && ' This job will not be visible to job seekers.'}
+              {selectedDecision === 'REOPEN' && ' This job will be visible to job seekers again.'}
+            </p>
+            {actionError && <p className="hiring-decision-error" role="alert">{actionError}</p>}
+            <div className="hiring-decision-actions">
+              <button
+                type="button"
+                className={`btn ${
+                  selectedDecision === 'APPROVE'
+                    ? 'btn-teal'
+                    : selectedDecision === 'REOPEN'
+                      ? 'hiring-reopen-confirm-button'
+                      : 'hiring-close-confirm-button'
+                }`}
+                onClick={saveDecision}
+                disabled={savingId === String(decisionJob.id)}
+              >
+                {savingId === String(decisionJob.id)
+                  ? 'Saving…'
+                  : `Confirm ${selectedDecision === 'CLOSE' ? 'close' : selectedDecision.toLowerCase()}`}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setSelectedDecision('');
+                  if (selectedDecision === 'CLOSE' || selectedDecision === 'REOPEN') setDecisionJob(null);
+                  setActionError('');
+                }}
+                disabled={savingId === String(decisionJob.id)}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setSelectedDecision('');
+                  setDecisionJob(null);
+                  setActionError('');
+                }}
+                disabled={savingId === String(decisionJob.id)}
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       <nav className="registry-pagination user-pagination" aria-label="Hiring jobs pagination">
         <span className="registry-pagination-count">
-          Showing {firstVisible}–{lastVisible} of {total.toLocaleString('en-IN')} jobs · {filteredJobs.length} match current filters on this page
+          Showing {firstVisible}–{lastVisible} of {total.toLocaleString('en-IN')} {fromDate || toDate ? 'jobs matching date range' : 'jobs'} · {filteredJobs.length} match current-page search/status filters
         </span>
         <div className="registry-pagination-controls user-pagination-controls">
           <button

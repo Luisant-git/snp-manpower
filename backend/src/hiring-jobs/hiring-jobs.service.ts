@@ -32,6 +32,22 @@ function cleanStringArray(value: unknown) {
   return value.map((entry) => cleanText(entry)).filter(Boolean);
 }
 
+function dateFilterValue(value: string | undefined, label: string) {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new BadRequestException(`${label} must be a valid date.`);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new BadRequestException(`${label} must be a valid date.`);
+  }
+  return value;
+}
+
+function postedDate(job: JobPayload) {
+  return cleanText(job.createdAt || job.postedAt || job.posted_at);
+}
+
 function toRecord(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -60,7 +76,7 @@ function buildJobSnapshot(jobId: string, job: JobPayload) {
     experienceMax: cleanNumber(job.experienceMax),
     remoteWork: cleanText(job.remoteWork),
     status: cleanText(job.status, 'ACTIVE').toUpperCase(),
-    createdAt: cleanOptionalText(job.createdAt),
+    createdAt: cleanOptionalText(postedDate(job)),
   };
 }
 
@@ -126,11 +142,63 @@ export class HiringJobsService {
     return jobs;
   }
 
-  async listJobs(page = '1', limit = '50') {
+  private async applyClosedOverrides(jobs: JobPayload[]) {
+    const jobIds = jobs.map((job) => cleanText(job.id)).filter(Boolean);
+    if (jobIds.length === 0) return jobs;
+    const approvals = await this.prisma.jobApproval.findMany({
+      where: { externalJobId: { in: jobIds } },
+      select: { externalJobId: true, jobSnapshot: true },
+    });
+    const closedIds = new Set(
+      approvals
+        .filter((approval) => cleanText(toRecord(approval.jobSnapshot).status).toUpperCase() === 'CLOSED')
+        .map((approval) => approval.externalJobId),
+    );
+    return jobs.map((job) => (
+      closedIds.has(cleanText(job.id)) ? { ...job, status: 'CLOSED' } : job
+    ));
+  }
+
+  async listJobs(page = '1', limit = '50', fromDate?: string, toDate?: string) {
     const pageNumber = Math.max(1, Number(page) || 1);
     const limitNumber = Math.min(100, Math.max(1, Number(limit) || 50));
+    const from = dateFilterValue(fromDate, 'From date');
+    const to = dateFilterValue(toDate, 'To date');
+    if (from && to && from > to) {
+      throw new BadRequestException('From date must be on or before To date.');
+    }
+
+    if (from || to) {
+      const allJobs = await this.fetchAllLiveJobs(100);
+      const uniqueJobs = new Map<string, JobPayload>();
+      allJobs.forEach((job) => {
+        const jobId = cleanText(job.id);
+        if (jobId && !uniqueJobs.has(jobId)) uniqueJobs.set(jobId, job);
+      });
+      const filteredJobs = [...uniqueJobs.values()].filter((job) => {
+        const date = postedDate(job);
+        const day = date.slice(0, 10);
+        const parsedDay = /^\d{4}-\d{2}-\d{2}$/.test(day)
+          ? new Date(`${day}T00:00:00.000Z`)
+          : null;
+        const validDay = parsedDay && !Number.isNaN(parsedDay.getTime()) &&
+          parsedDay.toISOString().slice(0, 10) === day;
+        return Boolean(validDay) && (!from || day >= from) && (!to || day <= to);
+      });
+      const start = (pageNumber - 1) * limitNumber;
+      return {
+        success: true,
+        jobs: await this.applyClosedOverrides(filteredJobs.slice(start, start + limitNumber)),
+        total: filteredJobs.length,
+      };
+    }
+
     const result = await this.fetchJobPage(pageNumber, limitNumber);
-    return { success: true, ...result };
+    return {
+      success: true,
+      ...result,
+      jobs: await this.applyClosedOverrides(result.jobs),
+    };
   }
 
   async listApprovals() {
@@ -142,11 +210,7 @@ export class HiringJobsService {
 
   async listAvailable() {
     const approvals = await this.prisma.jobApproval.findMany({
-      where: {
-        status: {
-          in: [JobApprovalStatus.ADMIN_APPROVED, JobApprovalStatus.APPROVED],
-        },
-      },
+      where: { status: JobApprovalStatus.APPROVED },
       orderBy: { superAdminApprovedAt: 'desc' },
     });
 
@@ -165,6 +229,7 @@ export class HiringJobsService {
           !jobId ||
           !approval ||
           seenJobIds.has(jobId) ||
+          cleanText(toRecord(approval.jobSnapshot).status).toUpperCase() === 'CLOSED' ||
           cleanText(job.status, 'ACTIVE').toUpperCase() === 'CLOSED'
         ) {
           return null;
@@ -260,5 +325,140 @@ export class HiringJobsService {
     }
 
     throw new ForbiddenException('You do not have permission to approve jobs.');
+  }
+
+  async reject(jobId: string, job: JobPayload, user: SessionUser) {
+    const normalizedJobId = cleanText(jobId);
+    if (!normalizedJobId) throw new BadRequestException('Job id is required.');
+    if (!job || typeof job !== 'object' || Array.isArray(job)) {
+      throw new BadRequestException('Job details are required.');
+    }
+
+    const liveJobs = await this.fetchAllLiveJobs(100);
+    const liveJob = liveJobs.find((entry) => cleanText(entry.id) === normalizedJobId);
+    if (!liveJob) {
+      throw new BadRequestException('This job is no longer available in the hiring jobs feed.');
+    }
+
+    const existing = await this.prisma.jobApproval.findUnique({
+      where: { externalJobId: normalizedJobId },
+    });
+    const snapshot = buildJobSnapshot(normalizedJobId, liveJob);
+    if (snapshot.status === 'CLOSED') {
+      throw new BadRequestException('Closed jobs cannot be rejected.');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      if (
+        existing &&
+        existing.status !== JobApprovalStatus.PENDING &&
+        existing.status !== JobApprovalStatus.REJECTED
+      ) {
+        throw new BadRequestException('Admin can only review jobs awaiting Admin approval.');
+      }
+    } else if (
+      user.role === UserRole.SUPER_ADMIN &&
+      existing?.status !== JobApprovalStatus.ADMIN_APPROVED
+    ) {
+      throw new BadRequestException(
+        'Admin must approve this job before Super Admin can review it.',
+      );
+    } else if (user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You do not have permission to reject jobs.');
+    }
+
+    const now = new Date();
+    const commonData = {
+      jobSnapshot: snapshot as Prisma.InputJsonValue,
+      status: JobApprovalStatus.REJECTED,
+      rejectedById: user.id,
+      rejectedByName: user.name,
+      rejectedAt: now,
+      rejectionReason: null,
+      superAdminApprovedById: null,
+      superAdminApprovedByName: null,
+      superAdminApprovedAt: null,
+    };
+    const data = user.role === UserRole.ADMIN
+      ? {
+          ...commonData,
+          adminApprovedById: null,
+          adminApprovedByName: null,
+          adminApprovedAt: null,
+        }
+      : commonData;
+
+    return this.prisma.jobApproval.upsert({
+      where: { externalJobId: normalizedJobId },
+      create: { externalJobId: normalizedJobId, ...data },
+      update: data,
+    });
+  }
+
+  async close(jobId: string, user: SessionUser) {
+    const normalizedJobId = cleanText(jobId);
+    if (!normalizedJobId) throw new BadRequestException('Job id is required.');
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You do not have permission to close jobs.');
+    }
+
+    const existing = await this.prisma.jobApproval.findUnique({
+      where: { externalJobId: normalizedJobId },
+    });
+    if (
+      !existing ||
+      existing.status !== JobApprovalStatus.APPROVED
+    ) {
+      throw new BadRequestException('Only fully approved jobs can be closed.');
+    }
+
+    const liveJobs = await this.fetchAllLiveJobs(100);
+    const liveJob = liveJobs.find((entry) => cleanText(entry.id) === normalizedJobId);
+    if (!liveJob) {
+      throw new BadRequestException('This job is no longer available in the hiring jobs feed.');
+    }
+
+    const snapshot = buildJobSnapshot(normalizedJobId, liveJob);
+    return this.prisma.jobApproval.update({
+      where: { externalJobId: normalizedJobId },
+      data: {
+        jobSnapshot: { ...snapshot, status: 'CLOSED' } as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async reopen(jobId: string, user: SessionUser) {
+    const normalizedJobId = cleanText(jobId);
+    if (!normalizedJobId) throw new BadRequestException('Job id is required.');
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException('You do not have permission to reopen jobs.');
+    }
+
+    const existing = await this.prisma.jobApproval.findUnique({
+      where: { externalJobId: normalizedJobId },
+    });
+    if (
+      !existing ||
+      existing.status !== JobApprovalStatus.APPROVED ||
+      cleanText(toRecord(existing.jobSnapshot).status).toUpperCase() !== 'CLOSED'
+    ) {
+      throw new BadRequestException('Only fully approved, closed jobs can be reopened.');
+    }
+
+    const liveJobs = await this.fetchAllLiveJobs(100);
+    const liveJob = liveJobs.find((entry) => cleanText(entry.id) === normalizedJobId);
+    if (!liveJob) {
+      throw new BadRequestException('This job is no longer available in the hiring jobs feed.');
+    }
+
+    const snapshot = buildJobSnapshot(normalizedJobId, liveJob);
+    if (snapshot.status === 'CLOSED') {
+      throw new BadRequestException('This job is closed in the hiring jobs feed and cannot be reopened.');
+    }
+
+    return this.prisma.jobApproval.update({
+      where: { externalJobId: normalizedJobId },
+      data: { jobSnapshot: snapshot as Prisma.InputJsonValue },
+    });
   }
 }
