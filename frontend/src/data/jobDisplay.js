@@ -29,6 +29,17 @@ export function formatJobExperience(min, max) {
   return `${min}–${max} years`;
 }
 
+export function formatJobWorkMode(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (['yes', 'true', 'remote', 'work from home', 'wfh'].includes(normalized)) {
+    return 'Work from home';
+  }
+  if (['no', 'false', 'onsite', 'on-site', 'office', 'in-office'].includes(normalized)) {
+    return 'On-site';
+  }
+  return String(value ?? '').trim();
+}
+
 export function jobSearchText(job) {
   return [
     job.title,

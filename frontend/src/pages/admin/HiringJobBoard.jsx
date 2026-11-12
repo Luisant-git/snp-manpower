@@ -5,6 +5,7 @@ import {
   formatJobDate,
   formatJobExperience,
   formatJobSalary,
+  formatJobWorkMode,
   jobSearchText,
 } from '../../data/jobDisplay.js';
 import { getSession } from '../../data/session.js';
@@ -638,7 +639,7 @@ export default function HiringJobBoard() {
                   {[
                     viewJob.category && ['Category', viewJob.category],
                     viewJob.jobType && ['Job type', viewJob.jobType],
-                    viewJob.remoteWork && ['Work mode', viewJob.remoteWork],
+                    viewJob.remoteWork && ['Work mode', formatJobWorkMode(viewJob.remoteWork)],
                     viewJob.role && ['Role', viewJob.role],
                   ].filter(Boolean).map(([label, value]) => (
                     <span key={label}><small>{label}</small>{value}</span>

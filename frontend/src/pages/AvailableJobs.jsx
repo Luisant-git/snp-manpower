@@ -5,6 +5,7 @@ import {
   formatJobDate,
   formatJobExperience,
   formatJobSalary,
+  formatJobWorkMode,
   jobSearchText,
 } from '../data/jobDisplay.js';
 import { getSession } from '../data/session.js';
@@ -167,7 +168,7 @@ export default function AvailableJobs() {
                       <span><i className="bi bi-person-workspace" aria-hidden="true"></i> {formatJobExperience(job.experienceMin, job.experienceMax)} experience</span>
                       <span><i className="bi bi-cash-coin" aria-hidden="true"></i> {formatJobSalary(job.salaryMin, job.salaryMax)}</span>
                       {job.category && job.category !== job.jobType && <span><i className="bi bi-tag" aria-hidden="true"></i> {job.category}</span>}
-                      {job.remoteWork && <span><i className="bi bi-house" aria-hidden="true"></i> {job.remoteWork}</span>}
+                      {job.remoteWork && <span><i className="bi bi-house" aria-hidden="true"></i> {formatJobWorkMode(job.remoteWork)}</span>}
                     </div>
 
                     {job.description && (
