@@ -6948,3 +6948,695 @@ form .form-field-invalid {
     padding-left: 14px;
   }
 }
+
+/* Available jobs seeker experience */
+.available-jobs-page {
+  max-width: 1120px;
+  padding-top: 30px;
+  padding-bottom: 64px;
+}
+
+.available-jobs-page .hiring-board-hero {
+  position: relative;
+  isolation: isolate;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  overflow: hidden;
+  margin-bottom: 22px;
+  padding: clamp(26px, 4vw, 46px);
+  border: 0;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 92% 10%, rgba(45, 212, 191, 0.2), transparent 34%),
+    linear-gradient(118deg, #10243b 0%, #163b53 62%, #145b60 100%);
+  box-shadow: 0 18px 38px -24px rgba(15, 41, 58, 0.7);
+}
+
+.available-jobs-page .hiring-board-hero::after {
+  position: absolute;
+  z-index: -1;
+  right: -72px;
+  bottom: -180px;
+  width: 390px;
+  height: 390px;
+  border: 1px solid rgba(204, 251, 241, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 34px rgba(204, 251, 241, 0.035), 0 0 0 70px rgba(204, 251, 241, 0.025);
+  content: '';
+}
+
+.available-jobs-page .hiring-board-hero-copy {
+  max-width: 860px;
+}
+
+.available-jobs-page .hiring-board-hero-copy .section-eyebrow {
+  color: #a7f3d0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.available-jobs-page .hiring-board-hero-copy h1 {
+  margin: 14px 0 12px;
+  color: #fff;
+  font-size: clamp(2.15rem, 4.5vw, 3.65rem);
+  font-weight: 760;
+  letter-spacing: -0.055em;
+  line-height: 1.03;
+}
+
+.available-jobs-page .hiring-board-hero-copy h1 span {
+  color: #8ee4cf;
+}
+
+.available-jobs-page .hiring-board-hero-copy p:not(.section-eyebrow) {
+  max-width: 590px;
+  color: #d3e2e8;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.hiring-board-hero-note {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid rgba(226, 255, 248, 0.17);
+  border-radius: 14px;
+  background: rgba(5, 23, 38, 0.27);
+  color: #e2f2ef;
+}
+
+.hiring-board-live-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #a7f3d0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.hiring-board-hero-note > p {
+  color: #d2e3e5;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.hiring-board-hero-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.hiring-board-hero-count strong {
+  color: #fff;
+  font-size: 2.2rem;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.hiring-board-hero-count span {
+  color: #c1e3dc;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.available-jobs-page .hiring-board-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px;
+  border-color: #dce5eb;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.available-jobs-page .hiring-board-search .auth-input {
+  min-height: 48px;
+  padding-right: 44px;
+  border-color: transparent;
+  background: #f3f7f8;
+  color: var(--ink);
+  font-size: 0.94rem;
+}
+
+.available-jobs-page .hiring-board-search .auth-input::placeholder {
+  color: #637482;
+  opacity: 1;
+}
+
+.available-jobs-page .hiring-board-search .auth-input:focus {
+  border-color: var(--teal-dark);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+}
+
+.available-jobs-page .hiring-board-search > i {
+  z-index: 1;
+  color: #526977;
+}
+
+.hiring-search-clear {
+  position: absolute;
+  right: 10px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #506574;
+  font-size: 1rem;
+}
+
+.hiring-search-clear:hover {
+  background: #e6eef0;
+  color: var(--ink);
+}
+
+.available-jobs-page .hiring-board-toolbar > .btn {
+  min-height: 48px;
+  padding-inline: 16px;
+}
+
+.available-jobs-page .hiring-board-total {
+  margin: 0;
+  padding: 0 8px;
+  color: #536574;
+  font-size: 0.84rem;
+}
+
+.available-jobs-page .hiring-board-total strong {
+  color: var(--ink);
+}
+
+.available-jobs-page .hiring-job-list {
+  gap: 14px;
+}
+
+.available-jobs-page .hiring-job-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 24px 20px;
+  border-color: #dfe7ea;
+  border-radius: 15px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.035);
+}
+
+.available-jobs-page .hiring-job-card:hover {
+  transform: translateY(-2px);
+  border-color: #a9cec8;
+  box-shadow: 0 14px 28px -20px rgba(17, 74, 81, 0.38);
+}
+
+.available-jobs-page .hiring-job-accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #149184;
+}
+
+.available-jobs-page .hiring-job-main {
+  min-width: 0;
+  padding-left: 2px;
+}
+
+.available-jobs-page .hiring-job-title-row {
+  align-items: flex-start;
+}
+
+.hiring-job-card-kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+
+.available-jobs-page .hiring-job-pill {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: #edf5f4;
+  color: #17675f;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.hiring-availability {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #26734d;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.hiring-availability i {
+  font-size: 0.42rem;
+}
+
+.available-jobs-page .hiring-job-title-row h2 {
+  margin-bottom: 5px;
+  font-size: clamp(1.2rem, 2.1vw, 1.48rem);
+  font-weight: 760;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.available-jobs-page .hiring-job-company {
+  color: #526574;
+  font-size: 0.93rem;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.available-jobs-page .hiring-approval-badge.approved {
+  padding: 6px 9px;
+  background: #eef7f1;
+  color: #2a6947;
+  font-size: 0.66rem;
+}
+
+.available-jobs-page .hiring-job-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin: 17px 0;
+  padding: 12px;
+  border: 1px solid #e6eeed;
+  border-radius: 10px;
+  background: #f7faf9;
+  color: #334c55;
+  font-size: 0.83rem;
+  line-height: 1.4;
+}
+
+.available-jobs-page .hiring-job-facts > span {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #e1eae8;
+  border-radius: 8px;
+  background: #fff;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.available-jobs-page .hiring-job-facts i {
+  flex: 0 0 auto;
+  margin-top: 0.12em;
+  color: #128174;
+}
+
+.hiring-job-details {
+  margin: 0 0 13px;
+}
+
+.hiring-job-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: #145f59;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 750;
+  list-style: none;
+}
+
+.hiring-job-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.hiring-job-details summary i {
+  transition: transform 0.18s ease;
+}
+
+.hiring-job-details[open] summary i {
+  transform: rotate(180deg);
+}
+
+.hiring-job-details summary:hover {
+  color: #0c4944;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hiring-job-details summary:focus-visible,
+.hiring-search-clear:focus-visible,
+.available-jobs-page .hiring-board-toolbar .btn:focus-visible,
+.available-jobs-page .hiring-job-actions a:focus-visible,
+.hiring-board-empty-enhanced .btn:focus-visible {
+  outline: 3px solid rgba(13, 148, 136, 0.42);
+  outline-offset: 3px;
+}
+
+.available-jobs-page .hiring-job-description {
+  margin: 9px 0 3px;
+  padding: 13px 15px;
+  border-left: 2px solid #8cc9bd;
+  background: #f7faf9;
+  color: #344b55;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.available-jobs-page .hiring-job-footer {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding-top: 12px;
+  border-color: #e9eef0;
+  color: #647580;
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.available-jobs-page .hiring-job-footer > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.hiring-contact-note {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.available-jobs-page .hiring-job-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.available-jobs-page .hiring-job-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 116px;
+  min-height: 40px;
+  gap: 7px;
+}
+
+.available-jobs-page .hiring-job-actions .btn-primary {
+  background: #155e63;
+  box-shadow: 0 3px 8px rgba(21, 94, 99, 0.19);
+}
+
+.available-jobs-page .hiring-job-actions .btn-primary:hover {
+  background: #104c50;
+}
+
+.btn-whatsapp {
+  border: 1px solid #bee6cd;
+  background: #f0fbf3;
+  color: #17693b;
+}
+
+.btn-whatsapp:hover {
+  border-color: #83c99d;
+  background: #e1f6e8;
+}
+
+.available-jobs-page .hiring-board-error {
+  padding: 14px 16px;
+  border-radius: 11px;
+}
+
+.available-jobs-page .hiring-board-empty-enhanced {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-style: solid;
+  border-color: #dfe8e9;
+  background: #fff;
+}
+
+.hiring-empty-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 3px;
+  place-items: center;
+  border-radius: 15px;
+  background: #edf6f4;
+  color: #16736b;
+  font-size: 1.25rem;
+}
+
+.hiring-board-empty-enhanced h2 {
+  color: #203342;
+  font-size: 1.15rem;
+  font-weight: 750;
+}
+
+.hiring-board-empty-enhanced p {
+  max-width: 410px;
+  color: #5b6d78;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.hiring-board-empty-enhanced .btn {
+  margin-top: 5px;
+}
+
+.hiring-job-skeleton {
+  display: grid;
+  gap: 14px;
+  padding: 23px 24px;
+  border: 1px solid #e2e9eb;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.hiring-skeleton-line {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #edf2f2 25%, #f7f9f9 50%, #edf2f2 75%);
+  background-size: 200% 100%;
+  animation: hiring-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.hiring-skeleton-line.short {
+  width: 78px;
+  height: 18px;
+}
+
+.hiring-skeleton-line.title {
+  width: min(42%, 290px);
+  height: 24px;
+}
+
+.hiring-skeleton-line.medium {
+  width: min(32%, 210px);
+}
+
+.hiring-skeleton-line.facts {
+  width: 78%;
+  height: 38px;
+  margin-top: 4px;
+}
+
+.hiring-spin {
+  animation: hiring-spin 1s linear infinite;
+}
+
+@keyframes hiring-skeleton-shimmer {
+  to { background-position: -200% 0; }
+}
+
+@keyframes hiring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 820px) {
+  .available-jobs-page .hiring-board-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hiring-board-hero-note {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 7px 18px;
+    padding: 16px 18px;
+  }
+
+  .hiring-board-hero-note > p {
+    grid-column: 1;
+  }
+
+  .hiring-board-hero-count {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .available-jobs-page .hiring-board-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .available-jobs-page .hiring-board-total {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .available-jobs-page {
+    padding-top: 18px;
+    padding-bottom: 40px;
+  }
+
+  .available-jobs-page .hiring-board-hero {
+    gap: 18px;
+    margin-bottom: 15px;
+    padding: 25px 20px;
+    border-radius: 15px;
+  }
+
+  .available-jobs-page .hiring-board-hero-copy h1 {
+    font-size: clamp(2.05rem, 9.5vw, 2.7rem);
+  }
+
+  .available-jobs-page .hiring-board-hero-copy p:not(.section-eyebrow) {
+    font-size: 0.9rem;
+  }
+
+  .hiring-board-hero-note {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .hiring-board-hero-count {
+    grid-column: 1;
+    grid-row: auto;
+    align-items: baseline;
+    flex-direction: row;
+  }
+
+  .hiring-board-hero-count strong {
+    font-size: 1.65rem;
+  }
+
+  .available-jobs-page .hiring-board-toolbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px;
+    padding: 9px;
+  }
+
+  .available-jobs-page .hiring-board-toolbar > .btn {
+    width: 46px;
+    min-width: 46px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .available-jobs-page .hiring-board-toolbar > .btn i {
+    font-size: 1rem;
+  }
+
+  .available-jobs-page .hiring-board-search .auth-input {
+    min-height: 46px;
+    padding-left: 38px;
+    font-size: 0.84rem;
+  }
+
+  .available-jobs-page .hiring-board-search > i {
+    left: 12px;
+  }
+
+  .available-jobs-page .hiring-board-total {
+    padding-left: 3px;
+  }
+
+  .available-jobs-page .hiring-job-card {
+    padding: 17px 15px 16px;
+  }
+
+  .available-jobs-page .hiring-job-title-row {
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .available-jobs-page .hiring-job-facts {
+    align-items: flex-start;
+    gap: 7px;
+    margin: 14px 0;
+    padding: 10px;
+    font-size: 0.79rem;
+  }
+
+  .available-jobs-page .hiring-job-facts > span {
+    flex: 1 1 calc(50% - 4px);
+    padding: 7px 9px;
+  }
+
+  .available-jobs-page .hiring-job-facts > span:first-child {
+    flex-basis: 100%;
+  }
+
+  .available-jobs-page .hiring-job-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .available-jobs-page .hiring-job-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .available-jobs-page .hiring-job-actions .btn {
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 0.8rem;
+  }
+
+  .available-jobs-page .hiring-job-actions .btn:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hiring-skeleton-line,
+  .hiring-spin {
+    animation: none;
+  }
+
+  .available-jobs-page .hiring-job-card,
+  .hiring-job-details summary i {
+    transition: none;
+  }
+}

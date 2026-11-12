@@ -29,7 +29,7 @@ export default function AvailableJobs() {
         if (active) setJobs(Array.isArray(result.jobs) ? result.jobs : []);
       } catch (loadError) {
         if (active) {
-          setError(loadError.message);
+          setError(loadError.message || 'Please try again in a moment.');
           setJobs([]);
         }
       } finally {
@@ -49,136 +49,166 @@ export default function AvailableJobs() {
     return jobs.filter((job) => jobSearchText(job).includes(query));
   }, [jobs, search]);
 
-  const totalOpenRoles = jobs.filter(
-    (job) => String(job.status || '').toUpperCase() !== 'CLOSED',
-  ).length;
-
   if (!session) return <Navigate to="/login" replace />;
 
   return (
     <div className="container available-jobs-page">
-      <section className="hiring-board hiring-board-shell">
+      <section className="hiring-board hiring-board-shell" aria-labelledby="available-jobs-title">
         <div className="hiring-board-hero">
           <div className="hiring-board-hero-copy">
-            <p className="section-eyebrow"><i className="bi bi-briefcase"></i> Opportunities</p>
-            <h1>Find the right role for your next move</h1>
-            <p>Explore verified openings from SNP Manpower &amp; Job Services across skilled, semi-skilled, and support roles.</p>
+            <p className="section-eyebrow"><i className="bi bi-briefcase"></i> SNP · Career opportunities</p>
+            <h1 id="available-jobs-title">Your next opportunity<br /><span>starts here.</span></h1>
+            <p>Explore current openings from SNP Manpower &amp; Job Services. Find a role that fits, then contact the hiring team directly.</p>
           </div>
 
-          <div className="hiring-board-hero-stats" aria-label="Available roles summary">
-            <div className="hiring-board-stat">
-              <strong>{totalOpenRoles.toLocaleString('en-IN')}</strong>
-              <span>Open roles</span>
-            </div>
-            <div className="hiring-board-stat">
-              <strong>{filteredJobs.length.toLocaleString('en-IN')}</strong>
-              <span>Matches</span>
-            </div>
-            <div className="hiring-board-stat">
-              <strong>24/7</strong>
-              <span>Support</span>
-            </div>
-          </div>
         </div>
 
         <div className="hiring-board-toolbar">
           <label className="hiring-board-search">
-            <span className="visually-hidden">Search available jobs</span>
+            <span className="visually-hidden">Search available jobs by title, company, role, or location</span>
             <i className="bi bi-search" aria-hidden="true"></i>
             <input
               type="search"
               className="auth-input"
-              placeholder="Search by job, company, or location"
+              placeholder="Try “driver”, “warehouse”, or “Mumbai”"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              aria-controls="available-job-results"
             />
+            {search && (
+              <button
+                type="button"
+                className="hiring-search-clear"
+                onClick={() => setSearch('')}
+                aria-label="Clear job search"
+              >
+                <i className="bi bi-x-circle" aria-hidden="true"></i>
+              </button>
+            )}
           </label>
           <button
             type="button"
             className="btn btn-outline"
             onClick={() => setRefreshKey((key) => key + 1)}
             disabled={loading}
+            aria-label={loading ? 'Refreshing available jobs' : 'Refresh available jobs'}
           >
-            <i className={`bi ${loading ? 'bi-arrow-repeat' : 'bi-arrow-clockwise'}`}></i>
+            <i className={`bi ${loading ? 'bi-arrow-repeat hiring-spin' : 'bi-arrow-clockwise'}`} aria-hidden="true"></i>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
-          <span className="hiring-board-total">
-            {filteredJobs.length.toLocaleString('en-IN')} {filteredJobs.length === 1 ? 'job' : 'jobs'} available
-          </span>
+          <p className="hiring-board-total" aria-live="polite">
+            <strong>{filteredJobs.length.toLocaleString('en-IN')}</strong>
+            {filteredJobs.length === 1 ? ' role found' : ' roles found'}
+          </p>
         </div>
 
         {error && (
-          <div className="track-result track-error hiring-board-error" role="alert">
-            <span>{error}</span>
+          <div className="track-result track-error hiring-board-error" id="available-job-results" role="alert">
+            <span><strong>We couldn’t load the jobs.</strong> {error}</span>
             <button type="button" className="btn btn-sm btn-outline" onClick={() => setRefreshKey((key) => key + 1)}>
-              Try again
+              <i className="bi bi-arrow-clockwise" aria-hidden="true"></i> Try again
             </button>
           </div>
         )}
 
         {loading ? (
-          <div className="hiring-board-empty" role="status">Loading available jobs…</div>
+          <div className="hiring-job-list hiring-job-list-loading" id="available-job-results" role="status" aria-label="Loading available jobs">
+            {[0, 1, 2].map((item) => (
+              <div className="hiring-job-skeleton" key={item} aria-hidden="true">
+                <span className="hiring-skeleton-line short"></span>
+                <span className="hiring-skeleton-line title"></span>
+                <span className="hiring-skeleton-line medium"></span>
+                <span className="hiring-skeleton-line facts"></span>
+              </div>
+            ))}
+            <span className="visually-hidden">Loading available jobs…</span>
+          </div>
         ) : !error && filteredJobs.length === 0 ? (
-          <div className="hiring-board-empty">
-            {jobs.length ? 'No jobs match your search.' : 'No approved jobs are available right now.'}
+          <div className="hiring-board-empty hiring-board-empty-enhanced" id="available-job-results" role="status">
+            <span className="hiring-empty-icon" aria-hidden="true">
+              <i className={`bi ${jobs.length ? 'bi-search' : 'bi-briefcase'}`}></i>
+            </span>
+            <h2>{jobs.length ? 'No roles match that search' : 'No openings just yet'}</h2>
+            <p>{jobs.length ? 'Try another job title, company, role, or location.' : 'Please check back soon for new approved opportunities.'}</p>
+            {jobs.length > 0 && search && (
+              <button type="button" className="btn btn-outline" onClick={() => setSearch('')}>
+                Clear search
+              </button>
+            )}
           </div>
         ) : !error && (
-          <div className="hiring-job-list">
-            {filteredJobs.map((job) => {
+          <div className="hiring-job-list" id="available-job-results" role="list" aria-label="Available job listings">
+            {filteredJobs.map((job, index) => {
               const contactPhone = job.showContact ? (job.contactPhone || job.whatsappNumber) : '';
+              const whatsappPhone = job.showContact ? job.whatsappNumber : '';
               const localities = Array.isArray(job.localities) ? job.localities.filter(Boolean) : [];
               const location = [job.city, ...localities].filter(Boolean).join(' · ') || 'Location not specified';
-              const roleType = job.jobType || 'Full Time';
+              const phoneDigits = String(whatsappPhone || '').replace(/\D/g, '');
+              const whatsappNumber = phoneDigits.length === 10 ? `91${phoneDigits}` : phoneDigits;
+              const hasContact = Boolean(job.showContact && (contactPhone || job.contactEmail));
 
               return (
-                <article className="hiring-job-card" key={job.id}>
+                <article className="hiring-job-card" key={job.id || `${job.title || 'job'}-${index}`} role="listitem">
                   <div className="hiring-job-accent" aria-hidden="true" />
                   <div className="hiring-job-main">
                     <div className="hiring-job-title-row">
                       <div className="hiring-job-heading">
-                        <span className="hiring-job-pill">{roleType}</span>
+                        <div className="hiring-job-card-kicker">
+                          <span className="hiring-job-pill">{job.jobType || job.category || 'Full Time'}</span>
+                          <span className="hiring-availability"><i className="bi bi-circle-fill" aria-hidden="true"></i> Open</span>
+                        </div>
                         <h2>{job.title || 'Untitled job'}</h2>
                         <p className="hiring-job-company">
                           {job.company || 'Company not specified'}
                           {job.role ? <span> · {job.role}</span> : null}
                         </p>
                       </div>
-                      <span className="hiring-approval-badge approved">
-                        <i className="bi bi-patch-check-fill"></i> Approved
-                      </span>
+                      <span className="hiring-approval-badge approved"><i className="bi bi-patch-check-fill" aria-hidden="true"></i> Verified</span>
                     </div>
 
                     <div className="hiring-job-facts">
-                      <span><i className="bi bi-geo-alt"></i> {location}</span>
-                      {job.category && <span><i className="bi bi-tag"></i> {job.category}</span>}
-                      {job.jobType && <span><i className="bi bi-clock"></i> {job.jobType}</span>}
-                      <span><i className="bi bi-cash-coin"></i> {formatJobSalary(job.salaryMin, job.salaryMax)}</span>
-                      <span><i className="bi bi-person-workspace"></i> {formatJobExperience(job.experienceMin, job.experienceMax)} experience</span>
-                      {job.remoteWork && <span><i className="bi bi-house"></i> Remote: {job.remoteWork}</span>}
+                      <span><i className="bi bi-geo-alt" aria-hidden="true"></i> {location}</span>
+                      <span><i className="bi bi-person-workspace" aria-hidden="true"></i> {formatJobExperience(job.experienceMin, job.experienceMax)} experience</span>
+                      <span><i className="bi bi-cash-coin" aria-hidden="true"></i> {formatJobSalary(job.salaryMin, job.salaryMax)}</span>
+                      {job.category && <span><i className="bi bi-tag" aria-hidden="true"></i> {job.category}</span>}
+                      {job.remoteWork && <span><i className="bi bi-house" aria-hidden="true"></i> {job.remoteWork}</span>}
                     </div>
 
-                    {job.description && <p className="hiring-job-description">{job.description}</p>}
+                    {job.description && (
+                      <details className="hiring-job-details">
+                        <summary>
+                          <span>Read job details</span>
+                          <i className="bi bi-chevron-down" aria-hidden="true"></i>
+                        </summary>
+                        <div className="hiring-job-description">{job.description}</div>
+                      </details>
+                    )}
 
                     <div className="hiring-job-footer">
-                      <span>Posted {formatJobDate(job.createdAt)}</span>
-                      {job.showContact && (contactPhone || job.contactEmail) && (
-                        <div className="hiring-job-contact">
-                          {contactPhone && <a href={`tel:${String(contactPhone).replace(/[^\d+]/g, '')}`}><i className="bi bi-telephone"></i> {contactPhone}</a>}
-                          {job.contactEmail && <a href={`mailto:${encodeURIComponent(job.contactEmail)}`}><i className="bi bi-envelope"></i> {job.contactEmail}</a>}
-                        </div>
-                      )}
+                      <span><i className="bi bi-calendar3" aria-hidden="true"></i> Posted {formatJobDate(job.createdAt)}</span>
+                      <span className="hiring-contact-note">{hasContact ? 'Contact the hiring team to apply' : 'Contact details are not public'}</span>
                     </div>
 
-                    {job.showContact && (contactPhone || job.contactEmail) && (
+                    {hasContact && (
                       <div className="hiring-job-actions">
                         {contactPhone && (
                           <a className="btn btn-primary btn-sm" href={`tel:${String(contactPhone).replace(/[^\d+]/g, '')}`}>
-                            <i className="bi bi-telephone"></i> Call now
+                            <i className="bi bi-telephone" aria-hidden="true"></i> Call
+                          </a>
+                        )}
+                        {whatsappPhone && whatsappNumber && (
+                          <a
+                            className="btn btn-whatsapp btn-sm"
+                            href={`https://wa.me/${whatsappNumber}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <i className="bi bi-whatsapp" aria-hidden="true"></i> WhatsApp
                           </a>
                         )}
                         {job.contactEmail && (
                           <a className="btn btn-outline btn-sm" href={`mailto:${encodeURIComponent(job.contactEmail)}`}>
-                            <i className="bi bi-send"></i> Apply now
+                            <i className="bi bi-envelope" aria-hidden="true"></i> Email to enquire
                           </a>
                         )}
                       </div>
