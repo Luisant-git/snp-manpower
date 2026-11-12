@@ -43,23 +43,22 @@ export default function TermsAndConditions({
             <i className="bi bi-file-earmark-text"></i>
           </span>
           <div className="terms-conditions-heading">
-            <span className="terms-conditions-eyebrow">Terms &amp; Conditions</span>
-            <h3>{terms.label}</h3>
-            <p>These terms apply to your selected job type.</p>
+            <h3>Terms &amp; Conditions</h3>
           </div>
-          <a
-            href="#terms-and-conditions"
-            className="terms-conditions-view"
-            onClick={(event) => {
-              event.preventDefault();
-              setOpen(true);
-            }}
-          >
-            <i className="bi bi-eye"></i> View T&amp;C
-          </a>
+          <div className="terms-conditions-actions">
+            <span className="terms-conditions-type">{terms.label}</span>
+            <a
+              href="#terms-and-conditions"
+              className="terms-conditions-view"
+              onClick={(event) => {
+                event.preventDefault();
+                setOpen(true);
+              }}
+            >
+              <i className="bi bi-eye"></i> View
+            </a>
+          </div>
         </div>
-
-        <p className="terms-conditions-summary">{terms.intro}</p>
 
         {readOnly ? (
           <div className={`terms-conditions-readonly${accepted ? ' accepted' : ''}`}>
@@ -78,10 +77,7 @@ export default function TermsAndConditions({
               checked={accepted}
               onChange={(event) => onAcceptedChange?.(event.target.checked)}
             />
-            <span>
-              I have read and understood the <strong>{terms.label}</strong> Terms &amp; Conditions
-              and agree to them.
-            </span>
+            <span>I have read and agree to the Terms &amp; Conditions.</span>
           </label>
         )}
       </div>

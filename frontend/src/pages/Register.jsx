@@ -487,6 +487,10 @@ export default function Register({ readOnly = false, editable = false }) {
       voterId: String(details.voterId || (details.idDocType === 'VOTER_ID' ? details.idDocNumber : '') || '').toUpperCase(),
       idDocNumber: String(details.idDocNumber || details.pan || details.voterId || '').toUpperCase(),
       driverType: details.driverType || 'Monthly Driver',
+      hasLicense:
+        details.jobType === 'DRIVER' || details.jobType === 'TAXI'
+          ? 'YES'
+          : details.hasLicense || 'YES',
       aadhaar: formatAadhaar(details.aadhaar),
       fullName: viewApplication.name || details.fullName || '',
       mobile: String(viewApplication.mobile || details.mobile || '').replace(/^\+91\s*/, ''),
@@ -990,6 +994,8 @@ export default function Register({ readOnly = false, editable = false }) {
         pan: idDocType === 'PAN' ? cleanPan : '',
         voterId: idDocType === 'VOTER_ID' ? cleanVoterId : '',
         driverType,
+        hasLicense:
+          form.jobType === 'DRIVER' || form.jobType === 'TAXI' ? 'YES' : form.hasLicense,
         termsType,
         aadhaar: normalizeAadhaar(form.aadhaar),
         regNo: applicationRef || form.regNo,
@@ -1176,6 +1182,10 @@ export default function Register({ readOnly = false, editable = false }) {
     : form.addressProofUrl
       ? [{ url: form.addressProofUrl, name: form.addressProofName }]
       : [];
+
+  // Driver and Taxi jobs always require a driving licence, so the Yes/No question is skipped.
+  const licenceRequiredByJob = form.jobType === 'DRIVER' || form.jobType === 'TAXI';
+  const showLicenceDetails = licenceRequiredByJob || form.hasLicense === 'YES';
 
   return (
     <div className={`register-wrap${readOnly ? ' registration-view-mode' : ''}`}>
@@ -2178,56 +2188,58 @@ export default function Register({ readOnly = false, editable = false }) {
                   </td>
                 </tr>
 
-                {/* 19. Do you have a Driving Licence? - Dedicated Separate Row */}
-                <tr>
-                  <FormLabelCell k="hasDrivingLicenceQuestion" enSecondary="Do you have a Driving Licence? *" required />
-                  <td className="field-input-cell">
-                    <div className="radio-options-row">
-                      <label className="radio-option-item">
-                        <input
-                          type="radio"
-                          name="hasLicense"
-                          value="YES"
-                          checked={form.hasLicense === 'YES'}
-                          onChange={() =>
-                            setForm((f) => ({
-                              ...f,
-                              hasLicense: 'YES',
-                              dlNumber:
-                                f.dlNumber === 'NO LICENCE' || f.dlNumber === 'NOT APPLICABLE'
-                                  ? ''
-                                  : f.dlNumber,
-                            }))
-                          }
-                        />
-                        <span>{ts('yes')}</span>
-                      </label>
-                      <label className="radio-option-item">
-                        <input
-                          type="radio"
-                          name="hasLicense"
-                          value="NO"
-                          checked={form.hasLicense === 'NO'}
-                          onChange={() =>
-                            setForm((f) => ({
-                              ...f,
-                              hasLicense: 'NO',
-                              dlNumber: 'NO LICENCE',
-                              dlValidityDate: '',
-                              dlExperience: '',
-                              badgeNumber: '',
-                              badgeDate: '',
-                            }))
-                          }
-                        />
-                        <span>{ts('no')}</span>
-                      </label>
-                    </div>
-                  </td>
-                </tr>
+                {/* 19. Do you have a Driving Licence? — not asked for Driver/Taxi jobs */}
+                {!licenceRequiredByJob && (
+                  <tr>
+                    <FormLabelCell k="hasDrivingLicenceQuestion" enSecondary="Do you have a Driving Licence? *" required />
+                    <td className="field-input-cell">
+                      <div className="radio-options-row">
+                        <label className="radio-option-item">
+                          <input
+                            type="radio"
+                            name="hasLicense"
+                            value="YES"
+                            checked={form.hasLicense === 'YES'}
+                            onChange={() =>
+                              setForm((f) => ({
+                                ...f,
+                                hasLicense: 'YES',
+                                dlNumber:
+                                  f.dlNumber === 'NO LICENCE' || f.dlNumber === 'NOT APPLICABLE'
+                                    ? ''
+                                    : f.dlNumber,
+                              }))
+                            }
+                          />
+                          <span>{ts('yes')}</span>
+                        </label>
+                        <label className="radio-option-item">
+                          <input
+                            type="radio"
+                            name="hasLicense"
+                            value="NO"
+                            checked={form.hasLicense === 'NO'}
+                            onChange={() =>
+                              setForm((f) => ({
+                                ...f,
+                                hasLicense: 'NO',
+                                dlNumber: 'NO LICENCE',
+                                dlValidityDate: '',
+                                dlExperience: '',
+                                badgeNumber: '',
+                                badgeDate: '',
+                              }))
+                            }
+                          />
+                          <span>{ts('no')}</span>
+                        </label>
+                      </div>
+                    </td>
+                  </tr>
+                )}
 
-                {/* 20. Driving Licence Number (Shown ONLY when Driving Licence is YES) */}
-                {form.hasLicense === 'YES' && (
+                {/* 20. Driving Licence Number */}
+                {showLicenceDetails && (
                   <tr>
                     <FormLabelCell
                       k="drivingLicence"
@@ -2247,8 +2259,8 @@ export default function Register({ readOnly = false, editable = false }) {
                   </tr>
                 )}
 
-                {/* 21. Validity Date (Shown ONLY when Driving Licence is YES) */}
-                {form.hasLicense === 'YES' && (
+                {/* 21. Validity Date */}
+                {showLicenceDetails && (
                   <tr>
                     <FormLabelCell k="validityDate" enSecondary="Validity Date" />
                     <td className="field-input-cell">
@@ -2264,7 +2276,7 @@ export default function Register({ readOnly = false, editable = false }) {
                 )}
 
                 {/* 22. FOR DRIVER: Do you have a Commercial Badge? */}
-                {form.hasLicense === 'YES' && form.jobType === 'DRIVER' && (
+                {showLicenceDetails && form.jobType === 'DRIVER' && (
                   <tr>
                     <FormLabelCell k="hasBadgeQuestion" enSecondary="Do you have a Badge? *" required />
                     <td className="field-input-cell">
@@ -2307,7 +2319,7 @@ export default function Register({ readOnly = false, editable = false }) {
                 )}
 
                 {/* 23. FOR DRIVER: Badge Number & Expiry Date (Shown ONLY if hasBadge is YES) */}
-                {form.hasLicense === 'YES' &&
+                {showLicenceDetails &&
                   form.jobType === 'DRIVER' &&
                   form.hasBadge === 'YES' && (
                     <tr>
@@ -2351,7 +2363,7 @@ export default function Register({ readOnly = false, editable = false }) {
                   )}
 
                 {/* TAXI VEHICLE DETAILS (Shown INSTEAD of Badge when Type of Job is TAXI) */}
-                {form.hasLicense === 'YES' && form.jobType === 'TAXI' && (
+                {showLicenceDetails && form.jobType === 'TAXI' && (
                   <>
                     {/* A. Vehicle Type (Seater Capacity Dropdown) */}
                     <tr>
@@ -3349,9 +3361,6 @@ export default function Register({ readOnly = false, editable = false }) {
               </div>
               <div className="sig-right">
                 <div className="sig-title">{ts('placeBangalore')}</div>
-                <div className="sig-meta">
-                  {ts('candidateSignature')}
-                </div>
               </div>
             </div>
 
