@@ -103,7 +103,7 @@ export default function Navbar() {
                   end
                   className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                 >
-                  {link.label}
+                  <i className={`bi ${link.icon}`} aria-hidden="true"></i> {link.label}
                 </NavLink>
               </li>
             ))}
@@ -217,7 +217,7 @@ export default function Navbar() {
                 className="nav-link"
                 onClick={() => setOpen(false)}
               >
-                {link.label}
+                <i className={`bi ${link.icon}`} aria-hidden="true"></i> {link.label}
               </NavLink>
             ))}
             {isApplicant && applicantCanViewJobs && (

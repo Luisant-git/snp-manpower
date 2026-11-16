@@ -1233,19 +1233,7 @@ export default function Register({ readOnly = false, editable = false }) {
           </button>
         </div>
       )}
-      {!recordMode && (
-        <header className="registration-welcome-bar no-print">
-          <span className="registration-welcome-mark" aria-hidden="true">
-            <i className="bi bi-file-earmark-person"></i>
-          </span>
-          <div className="registration-welcome-copy">
-            <span className="registration-welcome-eyebrow">Candidate Registration</span>
-            <h2 className="registration-welcome-title">Job Interview Application Form</h2>
-            <p>Complete the form to submit a manpower application.</p>
-          </div>
-        </header>
-      )}
-      {recordMode ? (
+      {recordMode && (
         <div className="registration-record-toolbar no-print">
           <div>
             <span className="section-eyebrow"><i className="bi bi-file-earmark-person"></i> {editable ? 'Edit Application' : 'Application Record'}</span>
@@ -1270,15 +1258,6 @@ export default function Register({ readOnly = false, editable = false }) {
               <i className="bi bi-printer"></i> Print
             </button>
           </div>
-        </div>
-      ) : session && (
-        <div className="session-ribbon no-print">
-          <i className="bi bi-person-badge-fill"></i> Filling as: <strong>{session.name}</strong>
-          {isAdminRole(session.role)
-            ? ' (Administrator)'
-            : String(session.role).toUpperCase() === 'APPLICANT'
-              ? ' (Applicant)'
-              : ' (Employee)'}
         </div>
       )}
 
@@ -1328,37 +1307,6 @@ export default function Register({ readOnly = false, editable = false }) {
           </div>
         </div>
       )}
-
-      {/* ============================================================
-          LANGUAGE SELECTOR ON TOP (REQUESTED BY USER)
-          Changes all form labels dynamically to chosen language
-          ============================================================ */}
-      {!recordMode && <div className="language-bar-container no-print">
-        <div className="language-bar-inner">
-          <div className="lang-icon-title">
-            <i className="bi bi-translate"></i>
-            <span>{ts('selectLanguage')}:</span>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <select
-              value={lang}
-              onChange={pickLang}
-              className="form-select lang-dropdown-select"
-              aria-label="Select form language"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.native} ({l.name})
-                </option>
-              ))}
-            </select>
-          </div>
-          <span className="lang-hint-text">
-            <i className="bi bi-check2-circle text-success me-1"></i>
-            {ts('langNote')}
-          </span>
-        </div>
-      </div>}
 
       <form
         noValidate
@@ -1411,6 +1359,36 @@ export default function Register({ readOnly = false, editable = false }) {
               <div className="title-p1">{ts('formTitleKn')}</div>
               <div className="title-p2">{ts('formTitleEn')}</div>
             </div>
+
+            {/* Language Selector — inside the application form */}
+            {!recordMode && (
+              <div className="language-bar-container no-print">
+                <div className="language-bar-inner">
+                  <div className="lang-icon-title">
+                    <i className="bi bi-translate"></i>
+                    <span>{ts('selectLanguage')}:</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <select
+                      value={lang}
+                      onChange={pickLang}
+                      className="form-select lang-dropdown-select"
+                      aria-label="Select form language"
+                    >
+                      {LANGUAGES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.native} ({l.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <span className="lang-hint-text">
+                    <i className="bi bi-check2-circle text-success me-1"></i>
+                    {ts('langNote')}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Top Meta Container: Photo Affix Box + Meta Grid Table */}
             <div className="form-meta-container">
