@@ -178,7 +178,7 @@ textarea {
    NOTICE BAR (top strip)
    ============================================================ */
 .notice-bar {
-  background: linear-gradient(90deg, var(--navy-dark), var(--teal-dark));
+  background: linear-gradient(135deg, var(--navy), var(--royal));
   color: #e2e8f0;
   font-size: 0.82rem;
   font-weight: 500;
@@ -2548,12 +2548,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: var(--ink);
+  background: linear-gradient(135deg, var(--navy), var(--royal));
   color: #fff;
   border-radius: var(--radius);
   padding: 18px 22px;
   margin: 26px 0 22px;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 18px -10px rgba(29, 78, 216, 0.7);
 }
 
 .dues-card .stat-icon.amber {
@@ -2563,7 +2563,7 @@ textarea {
 
 .dues-card small {
   display: block;
-  color: #94a3b8;
+  color: #dbe4ff;
   font-size: 0.82rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -6997,9 +6997,9 @@ form .form-field-invalid {
   border: 0;
   border-radius: 20px;
   background:
-    radial-gradient(ellipse at 92% 10%, rgba(45, 212, 191, 0.2), transparent 34%),
-    linear-gradient(118deg, #10243b 0%, #163b53 62%, #145b60 100%);
-  box-shadow: 0 18px 38px -24px rgba(15, 41, 58, 0.7);
+    radial-gradient(ellipse at 92% 10%, rgba(96, 165, 250, 0.28), transparent 34%),
+    linear-gradient(118deg, #102a56 0%, #1e3a8a 58%, #1d4ed8 100%);
+  box-shadow: 0 18px 38px -24px rgba(23, 55, 120, 0.7);
 }
 
 .available-jobs-page .hiring-board-hero::after {
@@ -7009,9 +7009,9 @@ form .form-field-invalid {
   bottom: -180px;
   width: 390px;
   height: 390px;
-  border: 1px solid rgba(204, 251, 241, 0.12);
+  border: 1px solid rgba(191, 219, 254, 0.14);
   border-radius: 50%;
-  box-shadow: 0 0 0 34px rgba(204, 251, 241, 0.035), 0 0 0 70px rgba(204, 251, 241, 0.025);
+  box-shadow: 0 0 0 34px rgba(191, 219, 254, 0.04), 0 0 0 70px rgba(191, 219, 254, 0.025);
   content: '';
 }
 
@@ -7020,7 +7020,7 @@ form .form-field-invalid {
 }
 
 .available-jobs-page .hiring-board-hero-copy .section-eyebrow {
-  color: #a7f3d0;
+  color: #bfdbfe;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.11em;
@@ -7037,12 +7037,12 @@ form .form-field-invalid {
 }
 
 .available-jobs-page .hiring-board-hero-copy h1 span {
-  color: #8ee4cf;
+  color: #93c5fd;
 }
 
 .available-jobs-page .hiring-board-hero-copy p:not(.section-eyebrow) {
   max-width: 590px;
-  color: #d3e2e8;
+  color: #dbeafe;
   font-size: 1rem;
   line-height: 1.7;
 }
@@ -7405,23 +7405,24 @@ form .form-field-invalid {
 }
 
 .available-jobs-page .hiring-job-actions .btn-primary {
-  background: #155e63;
-  box-shadow: 0 3px 8px rgba(21, 94, 99, 0.19);
+  background: linear-gradient(135deg, var(--navy), var(--royal));
+  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.25);
 }
 
 .available-jobs-page .hiring-job-actions .btn-primary:hover {
-  background: #104c50;
+  background: linear-gradient(135deg, var(--navy-dark), #1e40af);
 }
 
 .btn-whatsapp {
-  border: 1px solid #bee6cd;
-  background: #f0fbf3;
-  color: #17693b;
+  border: 1px solid #1ebe5b;
+  background: #25d366;
+  color: #fff;
 }
 
 .btn-whatsapp:hover {
-  border-color: #83c99d;
-  background: #e1f6e8;
+  border-color: #17a94a;
+  background: #1ebe5b;
+  color: #fff;
 }
 
 .available-jobs-page .hiring-board-error {
