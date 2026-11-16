@@ -1856,12 +1856,6 @@ export default function Register({ readOnly = false, editable = false }) {
                             style={{ maxWidth: '320px', flex: '1 1 200px' }}
                           />
                         )}
-                        <span
-                          className="badge bg-light text-primary border px-2 py-1"
-                          style={{ fontSize: '0.74rem', fontWeight: 600 }}
-                        >
-                          {(form.idDocType || 'PAN') === 'PAN' ? ts('panCard') : ts('voterId')}
-                        </span>
                       </div>
                     </div>
                   </td>
