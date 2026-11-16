@@ -1003,7 +1003,7 @@ export default function Register({ readOnly = false, editable = false }) {
 
     const applicableTerms = getTermsForJob(form.jobType, form.driverType);
     if (applicableTerms && !form.termsAccepted) {
-      showToast('error', `Please read and accept the ${applicableTerms.label} Terms & Conditions before submitting.`);
+      showToast('error', ts('termsAcceptWarning'));
       document.querySelector('.terms-conditions-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
@@ -3240,6 +3240,7 @@ export default function Register({ readOnly = false, editable = false }) {
               accepted={Boolean(form.termsAccepted)}
               onAcceptedChange={handleTermsAcceptedChange}
               readOnly={readOnly}
+              lang={lang}
             />
 
             {/* Declaration */}

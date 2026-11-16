@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getTermsForJob } from '../data/termsConditions.js';
+import { getTermsUi } from '../data/termsConditions.i18n.js';
 
 export default function TermsAndConditions({
   jobType,
@@ -8,9 +9,11 @@ export default function TermsAndConditions({
   accepted = false,
   onAcceptedChange,
   readOnly = false,
+  lang = 'en',
 }) {
   const [open, setOpen] = useState(false);
-  const terms = getTermsForJob(jobType, driverType);
+  const terms = getTermsForJob(jobType, driverType, lang);
+  const ui = getTermsUi(lang);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -43,7 +46,7 @@ export default function TermsAndConditions({
             <i className="bi bi-file-earmark-text"></i>
           </span>
           <div className="terms-conditions-heading">
-            <h3>Terms &amp; Conditions</h3>
+            <h3>{ui.heading}</h3>
           </div>
           <div className="terms-conditions-actions">
             <span className="terms-conditions-type">{terms.label}</span>
@@ -55,7 +58,7 @@ export default function TermsAndConditions({
                 setOpen(true);
               }}
             >
-              <i className="bi bi-eye"></i> View
+              <i className="bi bi-eye"></i> {ui.view}
             </a>
           </div>
         </div>
@@ -65,8 +68,8 @@ export default function TermsAndConditions({
             <i className={`bi ${accepted ? 'bi-check-circle-fill' : 'bi-info-circle-fill'}`}></i>
             <span>
               {accepted
-                ? `Terms & Conditions accepted for ${terms.label}.`
-                : 'Terms & Conditions acceptance was not recorded for this application.'}
+                ? ui.acceptedFor.replace('{label}', terms.label)
+                : ui.notRecorded}
             </span>
           </div>
         ) : (
@@ -77,7 +80,7 @@ export default function TermsAndConditions({
               checked={accepted}
               onChange={(event) => onAcceptedChange?.(event.target.checked)}
             />
-            <span>I have read and agree to the Terms &amp; Conditions.</span>
+            <span>{ui.readAgree}</span>
           </label>
         )}
       </div>
@@ -104,7 +107,7 @@ export default function TermsAndConditions({
                 type="button"
                 className="terms-modal-close"
                 onClick={() => setOpen(false)}
-                aria-label="Close terms and conditions"
+                aria-label={ui.closeAria}
               >
                 <i className="bi bi-x-lg"></i>
               </button>
@@ -118,7 +121,7 @@ export default function TermsAndConditions({
 
               {terms.declaration && (
                 <div className="terms-modal-declaration">
-                  <strong>Declaration</strong>
+                  <strong>{ui.declaration}</strong>
                   <p>{terms.declaration}</p>
                 </div>
               )}
@@ -139,19 +142,19 @@ export default function TermsAndConditions({
               <span className="terms-modal-foot-note">
                 {accepted ? (
                   <>
-                    <i className="bi bi-check-circle-fill"></i> Accepted
+                    <i className="bi bi-check-circle-fill"></i> {ui.accepted}
                   </>
                 ) : (
-                  'Please read all terms before accepting.'
+                  ui.readAll
                 )}
               </span>
               <div className="terms-modal-actions">
                 <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>
-                  Close
+                  {ui.close}
                 </button>
                 {!readOnly && !accepted && (
                   <button type="button" className="btn btn-primary" onClick={acceptTerms}>
-                    <i className="bi bi-check2-circle"></i> I Agree
+                    <i className="bi bi-check2-circle"></i> {ui.agree}
                   </button>
                 )}
               </div>

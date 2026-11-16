@@ -1,3 +1,5 @@
+import { TERMS_TRANSLATIONS } from './termsConditions.i18n.js';
+
 const MONTHLY_DRIVER_TERMS = {
   id: 'monthly-driver',
   label: 'Monthly Driver',
@@ -159,17 +161,41 @@ const ACTING_DRIVER_TERMS = {
 };
 
 /**
+ * Returns the terms translated into the requested language.
+ * English is the base content; other languages fall back to it for any missing field.
+ */
+export function localizeTerms(terms, lang = 'en') {
+  if (!terms || !lang || lang === 'en') return terms;
+  const bundle = TERMS_TRANSLATIONS[lang]?.[terms.id];
+  if (!bundle) return terms;
+
+  // Acting driver reuses the spare driver clauses, only its label/title differ.
+  const fallback =
+    terms.id === 'acting-driver' ? TERMS_TRANSLATIONS[lang]?.['spare-driver'] : null;
+
+  return {
+    ...terms,
+    label: bundle.label || terms.label,
+    title: bundle.title || terms.title,
+    intro: bundle.intro || fallback?.intro || terms.intro,
+    declaration: bundle.declaration || fallback?.declaration || terms.declaration,
+    sections: bundle.sections || fallback?.sections || terms.sections,
+  };
+}
+
+/**
  * Returns the terms that apply to the job type selected in the registration form.
  * Monthly drivers, spare/acting drivers and taxi owners each have different terms.
  */
-export function getTermsForJob(jobType, driverType) {
-  if (jobType === 'TAXI') return TAXI_TERMS;
-  if (jobType === 'DRIVER') {
-    if (!driverType || driverType === 'Monthly Driver') return MONTHLY_DRIVER_TERMS;
-    if (driverType === 'Acting Driver') return ACTING_DRIVER_TERMS;
-    return SPARE_DRIVER_TERMS;
+export function getTermsForJob(jobType, driverType, lang = 'en') {
+  let terms = null;
+  if (jobType === 'TAXI') terms = TAXI_TERMS;
+  else if (jobType === 'DRIVER') {
+    if (!driverType || driverType === 'Monthly Driver') terms = MONTHLY_DRIVER_TERMS;
+    else if (driverType === 'Acting Driver') terms = ACTING_DRIVER_TERMS;
+    else terms = SPARE_DRIVER_TERMS;
   }
-  return null;
+  return localizeTerms(terms, lang);
 }
 
 export default getTermsForJob;
