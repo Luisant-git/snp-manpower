@@ -50,6 +50,8 @@ export interface RegistrationDetails {
   vehicleRegNo?: string;
   taxiSeaterType?: string;
   taxiPermitType?: string;
+  taxiPermitFromDate?: string;
+  taxiPermitToDate?: string;
   vehicleModel?: string;
   taxiFcNo?: string;
   taxiFcExpiryDate?: string;
@@ -98,7 +100,7 @@ const stringFields: Array<keyof RegistrationDetails> = [
   'dlNumber', 'dlValidityDate', 'dlExperience', 'hasBadge', 'badgeNumber',
   'badgeDate', 'altMobile1', 'altMobile2', 'altMobile3', 'hasSangha',
   'sangha', 'vehicleName', 'vehicleRegNo', 'taxiSeaterType', 'vehicleModel',
-  'taxiPermitType',
+  'taxiPermitType', 'taxiPermitFromDate', 'taxiPermitToDate',
   'taxiFcNo', 'taxiFcExpiryDate', 'taxiInsuranceNo', 'taxiInsuranceExpiryDate',
   'taxiEmissionNo', 'taxiEmissionExpiryDate', 'presentAddress',
   'permanentAddress', 'addressProofName', 'bankProofName', 'employeeBranch',

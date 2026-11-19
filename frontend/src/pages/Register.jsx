@@ -283,6 +283,8 @@ const emptyForm = {
   vehicleRegNo: '',
   taxiSeaterType: '7+1 Seater (Innova / Crysta / Carens / Hycross)',
   taxiPermitType: '',
+  taxiPermitFromDate: '',
+  taxiPermitToDate: '',
   vehicleModel: '',
   taxiFcNo: '',
   taxiFcExpiryDate: '',
@@ -2058,6 +2060,8 @@ export default function Register({ readOnly = false, editable = false }) {
                               designation: `DRIVER - ${(f.driverType || 'Monthly Driver').toUpperCase()}`,
                               hasLicense: 'YES',
                               taxiPermitType: '',
+                              taxiPermitFromDate: '',
+                              taxiPermitToDate: '',
                               termsAccepted: false,
                               termsAcceptedAt: '',
                             }));
@@ -2076,6 +2080,8 @@ export default function Register({ readOnly = false, editable = false }) {
                               ...f,
                               jobType: 'OTHERS',
                               taxiPermitType: '',
+                              taxiPermitFromDate: '',
+                              taxiPermitToDate: '',
                               designation:
                                 f.designation === 'TAXI' || f.designation === 'DRIVER'
                                   ? ''
@@ -2428,6 +2434,58 @@ export default function Register({ readOnly = false, editable = false }) {
                           <option value="State Permit">State Permit</option>
                           <option value="All India Permit">All India Permit</option>
                         </select>
+                      </td>
+                    </tr>
+
+                    {/* Taxi Permit From & To Date */}
+                    <tr>
+                      <FormLabelCell k="taxiPermitDates" enSecondary="Permit From & To Date *" required />
+                      <td className="field-input-cell">
+                        <div className="inline-split-row">
+                          <div className="inline-split-col">
+                            <span
+                              className="inline-label"
+                              style={{
+                                fontSize: '0.76rem',
+                                fontWeight: 800,
+                                color: '#881337',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {ts('permitFrom')}:
+                            </span>
+                            <input
+                              type="date"
+                              name="taxiPermitFromDate"
+                              required
+                              value={form.taxiPermitFromDate}
+                              onChange={set}
+                              style={{ flex: 1 }}
+                            />
+                          </div>
+                          <div className="inline-split-col">
+                            <span
+                              className="inline-label"
+                              style={{
+                                fontSize: '0.76rem',
+                                fontWeight: 800,
+                                color: '#881337',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {ts('permitTo')}:
+                            </span>
+                            <input
+                              type="date"
+                              name="taxiPermitToDate"
+                              required
+                              min={form.taxiPermitFromDate || undefined}
+                              value={form.taxiPermitToDate}
+                              onChange={set}
+                              style={{ flex: 1 }}
+                            />
+                          </div>
+                        </div>
                       </td>
                     </tr>
 
