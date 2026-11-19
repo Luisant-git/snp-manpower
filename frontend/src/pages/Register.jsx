@@ -11,7 +11,96 @@ import { whatsappApi } from '../api/whatsappApi.js';
 import SearchableSelect from '../components/SearchableSelect.jsx';
 import MultiSearchableSelect from '../components/MultiSearchableSelect.jsx';
 import TermsAndConditions from '../components/TermsAndConditions.jsx';
+import DocumentUploadSection from '../components/DocumentUploadSection.jsx';
 import { getTermsForJob } from '../data/termsConditions.js';
+
+function ViewDocIcon({ href, label, className = '' }) {
+  if (!href) return null;
+  return (
+    <a
+      className={`proof-view-link ${className}`.trim()}
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={`View ${label}`}
+      aria-label={`View ${label}`}
+    >
+      <i className="bi bi-eye"></i>
+    </a>
+  );
+}
+
+function ProofFileCard({
+  url,
+  name,
+  label,
+  readOnly = false,
+  onDownload,
+  onRemove,
+  onChange,
+}) {
+  const isPdf = name?.toLowerCase().endsWith('.pdf') || url?.toLowerCase().includes('.pdf');
+  const displayName = name || label;
+  return (
+    <div className="file-card proof-file-card">
+      <span className={`file-card-icon${isPdf ? ' is-pdf' : ''}`} aria-hidden="true">
+        <i className={`bi ${isPdf ? 'bi-file-earmark-pdf' : 'bi-file-earmark-image'}`}></i>
+      </span>
+      <div className="file-card-body">
+        <span className="file-card-name" title={displayName}>{displayName}</span>
+        <div className="file-card-meta">
+          <span className="file-card-type">{label}</span>
+          <span className="file-card-status"><i className="bi bi-check-circle-fill"></i> Uploaded</span>
+        </div>
+      </div>
+      <div className="file-card-actions">
+        <a
+          className="file-action is-view"
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          title="View document"
+          aria-label={`View ${label}`}
+        >
+          <i className="bi bi-eye"></i>
+        </a>
+        {readOnly ? (
+          <a
+            className="file-action is-download"
+            href={url}
+            download={displayName}
+            target="_blank"
+            rel="noreferrer"
+            title="Download document"
+            aria-label={`Download ${label}`}
+          >
+            <i className="bi bi-download"></i>
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="file-action is-download"
+            title="Download document"
+            aria-label={`Download ${label}`}
+            onClick={() => onDownload?.(url, displayName)}
+          >
+            <i className="bi bi-download"></i>
+          </button>
+        )}
+        {!readOnly && onChange && (
+          <button type="button" className="file-action" title="Change document" aria-label={`Change ${label}`} onClick={onChange}>
+            <i className="bi bi-arrow-repeat"></i>
+          </button>
+        )}
+        {!readOnly && onRemove && (
+          <button type="button" className="file-action is-remove" title="Remove document" aria-label={`Remove ${label}`} onClick={onRemove}>
+            <i className="bi bi-trash3"></i>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const BLOOD_GROUPS = [
   'A+',
@@ -191,6 +280,37 @@ const TAXI_SEATER_OPTIONS = [
   'Other Passenger Car / Taxi',
 ];
 
+const IDENTITY_DOC_TYPES = [
+  'Aadhaar Card',
+  'PAN Card',
+  'Voter ID',
+  'Passport',
+  'Driving Licence - Front',
+  'Driving Licence - Back',
+  'Passport Size Photograph',
+  'Address Proof',
+  'Police Verification Certificate',
+  'Medical Fitness Certificate',
+  'Character Certificate',
+  'Driver Badge / PSV Badge',
+  'Transport Vehicle Authorization',
+  'Driving Experience Certificate',
+  'Vehicle Registration Certificate (RC)',
+  'Vehicle Insurance Certificate',
+  'State Permit',
+  'All India Tourist Permit',
+  'Fitness Certificate (FC)',
+  'Pollution Under Control Certificate (PUC)',
+  'Road Tax Receipt',
+  'Vehicle Ownership Proof',
+  'NOC Certificate',
+  'Bank Passbook',
+  'Cancelled Cheque',
+  'Bank Account Proof',
+  'Previous Employment Certificate',
+  'Other Documents',
+];
+
 const INDIAN_STATES = [
   'ANDHRA PRADESH',
   'ARUNACHAL PRADESH',
@@ -320,17 +440,19 @@ const emptyForm = {
   fam4Name: '',
   fam4Mobile: '',
   prevCustomer: '',
+  identityDocType: '',
+  identityDocs: [],
   termsAccepted: false,
   termsAcceptedAt: '',
   confirmed: true,
 };
 
-function validateUpload(file, acceptedTypes) {
+function validateUpload(file, acceptedTypes, maxSizeBytes = 2 * 1024 * 1024) {
   if (!acceptedTypes.includes(file.type)) {
-    throw new Error('Choose a JPG, PNG, or PDF file.');
+    throw new Error('This file type is not accepted. Only JPG, PNG, or PDF files are allowed.');
   }
-  if (file.size > 2 * 1024 * 1024) {
-    throw new Error('Each uploaded document must be 2 MB or smaller.');
+  if (file.size > maxSizeBytes) {
+    throw new Error(`Each uploaded document must be ${maxSizeBytes / (1024 * 1024)} MB or smaller.`);
   }
 }
 
@@ -373,6 +495,7 @@ export default function Register({ readOnly = false, editable = false }) {
   const fileInputRef = useRef(null);
   const proofFileInputRef = useRef(null);
   const bankProofFileRef = useRef(null);
+  const identityDocInputRef = useRef(null);
 
   const [candidateOtpSent, setCandidateOtpSent] = useState(false);
   const [employeeOtpSent, setEmployeeOtpSent] = useState(false);
@@ -668,6 +791,7 @@ export default function Register({ readOnly = false, editable = false }) {
       setExpiresAt(null);
     } catch (error) {
       setError(error.message);
+      showToast('error', error.message);
     } finally {
       setSending(false);
     }
@@ -772,6 +896,55 @@ export default function Register({ readOnly = false, editable = false }) {
         addressProofName: next[0]?.name || '',
       };
     });
+  };
+
+  const openIdentityDocPicker = () => {
+    if (!form.identityDocType) {
+      showToast('error', 'Choose a document type before browsing files.');
+      return;
+    }
+    identityDocInputRef.current?.click();
+  };
+
+  const handleIdentityDocsUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+
+    const docType = form.identityDocType;
+    if (!docType) {
+      showToast('error', 'Choose a document type before browsing files.');
+      return;
+    }
+
+    try {
+      files.forEach((file) => validateUpload(file, ['image/jpeg', 'image/png', 'application/pdf'], 5 * 1024 * 1024));
+      for (const file of files) {
+        const uploaded = await uploadRegistrationFile('identity-document', file);
+        setForm((f) => ({
+          ...f,
+          identityDocs: [
+            ...(Array.isArray(f.identityDocs) ? f.identityDocs : []),
+            {
+              type: docType,
+              url: uploaded.url,
+              name: uploaded.name,
+              mimeType: uploaded.mimeType,
+              size: uploaded.size,
+            },
+          ],
+        }));
+      }
+    } catch (error) {
+      showToast('error', error.message);
+    }
+  };
+
+  const removeIdentityDoc = (index) => {
+    setForm((f) => ({
+      ...f,
+      identityDocs: (Array.isArray(f.identityDocs) ? f.identityDocs : []).filter((_, i) => i !== index),
+    }));
   };
 
   const pickLang = (e) => {
@@ -985,6 +1158,12 @@ export default function Register({ readOnly = false, editable = false }) {
     if (!form.addressProofs?.length && !form.addressProofUrl) {
       showToast('error', 'Upload at least one address proof document before submitting.');
       document.querySelector('.address-proof-upload-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (!identityDocs.length) {
+      showToast('error', 'Choose a document type and upload at least one ID document before submitting.');
+      document.querySelector('.document-upload-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -1219,6 +1398,7 @@ export default function Register({ readOnly = false, editable = false }) {
     : form.addressProofUrl
       ? [{ url: form.addressProofUrl, name: form.addressProofName }]
       : [];
+  const identityDocs = Array.isArray(form.identityDocs) ? form.identityDocs : [];
 
   // Driver and Taxi jobs always require a driving licence, so the Yes/No question is skipped.
   const licenceRequiredByJob = form.jobType === 'DRIVER' || form.jobType === 'TAXI';
@@ -1403,6 +1583,7 @@ export default function Register({ readOnly = false, editable = false }) {
                       alt="Candidate Passport"
                       crossOrigin={form.photoUrl.startsWith('http') ? 'use-credentials' : undefined}
                     />
+                    <ViewDocIcon href={form.photoUrl} label="candidate photo" className="photo-view-link" />
                     <div className="photo-overlay-bottom no-print">
                       <button
                         type="button"
@@ -2879,58 +3060,15 @@ export default function Register({ readOnly = false, editable = false }) {
                     {addressProofDocs.length ? (
                       <div className="address-proof-list">
                         {addressProofDocs.map((proof, index) => (
-                          <div className="address-proof-preview-card" key={`${proof.url}-${index}`}>
-                            <div className="d-flex align-items-center gap-3">
-                              {proof.name?.toLowerCase().endsWith('.pdf') ? (
-                                <a href={proof.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
-                                  <i className="bi bi-file-earmark-pdf"></i> View PDF
-                                </a>
-                              ) : (
-                                <a
-                                  href={proof.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  aria-label={`Open address proof ${index + 1} in a new tab`}
-                                >
-                                  <img
-                                    src={proof.url}
-                                    alt={`Address Proof ${index + 1} Preview`}
-                                    className="address-proof-thumb"
-                                    crossOrigin={proof.url?.startsWith('http') ? 'use-credentials' : undefined}
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                    }}
-                                  />
-                                </a>
-                              )}
-                              <div>
-                                <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
-                                  <i className="bi bi-file-earmark-check-fill text-success me-1"></i>
-                                  {proof.name || `Address_Proof_Document_${index + 1}`}
-                                </div>
-                                <span className="badge bg-success-subtle text-success border border-success px-2 py-0.5" style={{ fontSize: '0.72rem' }}>
-                                  ✓ Document {index + 1} uploaded
-                                </span>
-                              </div>
-                            </div>
-                            <div className="address-proof-actions no-print">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={() => downloadProof(proof.url, proof.name || `address-proof-${index + 1}`)}
-                              >
-                                <i className="bi bi-download"></i> Download
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger fw-bold"
-                                style={{ fontSize: '0.75rem' }}
-                                onClick={() => removeAddressProof(index)}
-                              >
-                                <i className="bi bi-trash"></i>
-                              </button>
-                            </div>
-                          </div>
+                          <ProofFileCard
+                            key={`${proof.url}-${index}`}
+                            url={proof.url}
+                            name={proof.name || `Address_Proof_Document_${index + 1}`}
+                            label={`Address Proof ${index + 1}`}
+                            readOnly={readOnly}
+                            onDownload={downloadProof}
+                            onRemove={() => removeAddressProof(index)}
+                          />
                         ))}
                         <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                           <small className="address-proof-hint">
@@ -3038,65 +3176,15 @@ export default function Register({ readOnly = false, editable = false }) {
                         onChange={handleBankProofUpload}
                       />
                       {form.bankProofUrl ? (
-                        <div className="address-proof-preview-card">
-                          <div className="d-flex align-items-center gap-2">
-                            {form.bankProofName?.toLowerCase().endsWith('.pdf') ? (
-                              <a href={form.bankProofUrl} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary">
-                                <i className="bi bi-file-earmark-pdf"></i> View PDF
-                              </a>
-                            ) : (
-                              <a
-                                href={form.bankProofUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                aria-label="Open bank proof in a new tab"
-                              >
-                                <img
-                                  src={form.bankProofUrl}
-                                  alt="Bank Document Preview"
-                                  className="address-proof-thumb"
-                                  crossOrigin={form.bankProofUrl.startsWith('http') ? 'use-credentials' : undefined}
-                                  onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                              </a>
-                            )}
-                            <div>
-                              <div className="fw-bold text-dark" style={{ fontSize: '0.82rem' }}>
-                                <i className="bi bi-file-earmark-check-fill text-success me-1"></i>
-                                {form.bankProofName || 'Bank_Passbook_Document'}
-                              </div>
-                              <span className="badge bg-success-subtle text-success border border-success px-2 py-0.5" style={{ fontSize: '0.70rem' }}>
-                                ✓ Passbook / Cheque / QR Attached
-                              </span>
-                            </div>
-                          </div>
-                          <div className="address-proof-actions no-print">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary py-0 px-2 fw-bold"
-                              style={{ fontSize: '0.72rem' }}
-                              onClick={() => downloadProof(form.bankProofUrl, form.bankProofName || 'bank-proof')}
-                            >
-                              <i className="bi bi-download"></i> Download
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary py-0 px-2 fw-bold"
-                              style={{ fontSize: '0.72rem' }}
-                              onClick={() => bankProofFileRef.current?.click()}
-                            >
-                              <i className="bi bi-arrow-repeat"></i> Change
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger py-0 px-2 fw-bold"
-                              style={{ fontSize: '0.72rem' }}
-                              onClick={() => setForm((f) => ({ ...f, bankProofUrl: null, bankProofName: '' }))}
-                            >
-                              <i className="bi bi-trash"></i>
-                            </button>
-                          </div>
-                        </div>
+                        <ProofFileCard
+                          url={form.bankProofUrl}
+                          name={form.bankProofName || 'Bank_Passbook_Document'}
+                          label="Bank Proof"
+                          readOnly={readOnly}
+                          onDownload={downloadProof}
+                          onChange={() => bankProofFileRef.current?.click()}
+                          onRemove={() => setForm((f) => ({ ...f, bankProofUrl: null, bankProofName: '' }))}
+                        />
                       ) : (
                         <div className="bank-proof-content">
                           <div className="bank-proof-description">
@@ -3266,8 +3354,28 @@ export default function Register({ readOnly = false, editable = false }) {
                     />
                   </td>
                 </tr>
+
               </tbody>
             </table>
+
+            {/* ID & Document Proofs — standalone section above Terms & Conditions */}
+            <DocumentUploadSection
+              docs={identityDocs}
+              docType={form.identityDocType}
+              docTypes={IDENTITY_DOC_TYPES}
+              onDocTypeChange={set}
+              fileInputRef={identityDocInputRef}
+              onFilesChange={handleIdentityDocsUpload}
+              onBrowse={openIdentityDocPicker}
+              onRemove={removeIdentityDoc}
+              onDownload={downloadProof}
+              readOnly={readOnly}
+              heading={ts('documentUploadHeading')}
+              subtitle={ts('documentUploadSubtitle')}
+              documentTypeLabel={ts('documentTypeLabel')}
+              hint={ts('identityDocHint')}
+              selectLabel={ts('selectDocType')}
+            />
 
             {/* Terms & Conditions — adapts to Monthly Driver / Spare Driver / Acting Driver / Taxi */}
             <TermsAndConditions

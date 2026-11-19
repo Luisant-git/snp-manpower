@@ -594,6 +594,48 @@ export const T = {
     te: 'మునుపటి కస్టమర్ పేరు నం',
     ta: 'முந்தைய வாடிக்கையாளர் பெயர் எண்',
   },
+  documentUploadHeading: {
+    en: 'Upload Your Documents',
+    kn: 'ದಾಖಲೆಗಳನ್ನು ಅಪ್‍ಲೋಡ್ ಮಾಡಿ',
+    hi: 'दस्तावेज़ अपलोड करें',
+    te: 'పత్రాలను అప్‍లోడ్ చేయండి',
+    ta: 'ஆவணங்களைப் பதிவேற்றவும்',
+  },
+  documentUploadSubtitle: {
+    en: 'Select a document type and upload the required file.',
+    kn: 'ದಾಖಲೆಯ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆ ಮಾಡಿ ಅಗತ್ಯವಿರುವ ಫೈಲ್ ಅನ್ನು ಅಪ್‍ಲೋಡ್ ಮಾಡಿ.',
+    hi: 'दस्तावेज़ का प्रकार चुनें और आवश्यक फ़ाइल अपलोड करें।',
+    te: 'పత్ర రకాన్ని ఎంచుకుని అవసరమైన ఫైల్‍ను అప్‍లోడ్ చేయండి.',
+    ta: 'ஆவண வகையைத் தேர்ந்தெடுத்து தேவையான கோப்பைப் பதிவேற்றவும்.',
+  },
+  documentTypeLabel: {
+    en: 'Document Type',
+    kn: 'ದಾಖಲೆ ಪ್ರಕಾರ',
+    hi: 'दस्तावेज़ का प्रकार',
+    te: 'పత్ర రకం',
+    ta: 'ஆவண வகை',
+  },
+  identityDocuments: {
+    en: 'ID & Document Proofs *',
+    kn: 'ಗುರುತು ಮತ್ತು ದಾಖಲೆ ಪತ್ರಗಳು *',
+    hi: 'पहचान एवं दस्तावेज़ प्रमाण *',
+    te: 'గుర్తింపు & పత్ర రుజువులు *',
+    ta: 'அடையாள & ஆவண ஆதாரங்கள் *',
+  },
+  selectDocType: {
+    en: 'Select document type',
+    kn: 'ದಾಖಲೆ ಪ್ರಕಾರವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    hi: 'दस्तावेज़ का प्रकार चुनें',
+    te: 'పత్ర రకాన్ని ఎంచుకోండి',
+    ta: 'ஆவண வகையைத் தேர்ந்தெடுக்கவும்',
+  },
+  identityDocHint: {
+    en: 'Search and select a document type, then upload one or more files (JPG, PNG or PDF, max 5 MB each). At least one document is required before submission.',
+    kn: 'ದಾಖಲೆಯ ಪ್ರಕಾರವನ್ನು ಹುಡುಕಿ ಆಯ್ಕೆ ಮಾಡಿ, ನಂತರ ಒಂದು ಅಥವಾ ಹೆಚ್ಚಿನ ಫೈಲ್ಗಳನ್ನು ಅಪ್ಲೋಡ್ ಮಾಡಿ (JPG, PNG ಅಥವಾ PDF, ಪ್ರತಿ 5 MB ವರೆಗೆ). ಸಲ್ಲಿಸುವ ಮೊದಲು ಕನಿಷ್ಠ ಒಂದು ದಾಖಲೆ ಅಗತ್ಯ.',
+    hi: 'दस्तावेज़ का प्रकार खोजकर चुनें, फिर एक या अधिक फ़ाइलें अपलोड करें (JPG, PNG या PDF, प्रत्येक 5 MB तक). जमा करने से पहले कम से कम एक दस्तावेज़ आवश्यक है।',
+    te: 'పత్ర రకాన్ని వెతికి ఎంచుకుని, ఒకటి లేదా అంతకంటే ఎక్కువ ఫైళ్లను అప్లోడ్ చేయండి (JPG, PNG లేదా PDF, ఒక్కొక్కటి 5 MB వరకు). సమర్పించే ముందు కనిష్టంగా ఒక పత్రం అవసరం.',
+    ta: 'ஆவண வகையைத் தேடித் தேர்ந்தெடுத்து, ஒன்று அல்லது அதிக கோப்புகளைப் பதிவேற்றவும் (JPG, PNG அல்லது PDF, ஒவ்வொன்றும் 5 MB வரை). சமர்ப்பிக்கும் முன் குறைந்தது ஒரு ஆவணம் தேவை.',
+  },
 
   declaration: {
     en: 'Declaration : I Here By Declare The Above Information Furnished Above Are True & Correct To The Best Of My Knowledge And Belief.',

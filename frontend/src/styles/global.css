@@ -3839,6 +3839,11 @@ textarea {
   pointer-events: none;
 }
 
+.registration-view-mode .registration-view-fieldset .proof-view-link,
+.registration-view-mode .registration-view-fieldset .proof-file-card {
+  pointer-events: auto;
+}
+
 .registration-view-mode .registration-view-fieldset :disabled {
   opacity: 1;
   color: inherit;
@@ -5361,6 +5366,37 @@ form .form-field-invalid {
   color: #ffffff;
 }
 
+.proof-view-link {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  line-height: 1;
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+.proof-view-link:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.proof-view-link.photo-view-link {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
+}
+
 .bank-proof-upload-box {
   padding: 12px 14px;
   border-top: 1px solid #dbeafe;
@@ -5420,6 +5456,7 @@ form .form-field-invalid {
   border-radius: 7px;
   border: 1px solid #cbd5e1;
 }
+
 
 .branch-verification-card {
   margin: 18px 0;

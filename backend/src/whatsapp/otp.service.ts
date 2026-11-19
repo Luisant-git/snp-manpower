@@ -53,6 +53,18 @@ export class OtpService {
       }
     }
 
+    if (purpose === OtpPurpose.CANDIDATE) {
+      const existingRegistration = await this.prisma.registration.findFirst({
+        where: { mobile },
+        select: { ref: true },
+      });
+      if (existingRegistration) {
+        throw new BadRequestException(
+          `This mobile number is already registered. Use reference ${existingRegistration.ref} to track your application.`,
+        );
+      }
+    }
+
     const since = new Date(Date.now() - resendCooldownMs);
     const recentChallenge = await this.prisma.otpChallenge.findFirst({
       where: { mobile, purpose, createdAt: { gt: since } },

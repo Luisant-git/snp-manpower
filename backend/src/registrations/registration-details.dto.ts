@@ -65,6 +65,12 @@ export interface RegistrationDetails {
   addressProofUrl?: string | null;
   addressProofName?: string;
   addressProofs?: Array<{ url: string; name?: string }>;
+  identityDocs?: Array<{
+    type: string;
+    url: string;
+    name?: string;
+    mimeType?: string;
+  }>;
   bankProofUrl?: string | null;
   bankProofName?: string;
   employeeBranch?: string;

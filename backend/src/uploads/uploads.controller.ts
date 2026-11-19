@@ -18,7 +18,13 @@ import { promises as fs } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { AuthGuard } from '../common/auth.guard';
 
-const maxFileSize = 2 * 1024 * 1024;
+const maxFileSize = 5 * 1024 * 1024;
+const maxSizeByKind: Record<string, number> = {
+  photo: 2 * 1024 * 1024,
+  'address-proof': 2 * 1024 * 1024,
+  'bank-proof': 2 * 1024 * 1024,
+  'identity-document': 5 * 1024 * 1024,
+};
 const uploadRoot = () => resolve(process.env.UPLOADS_DIR || join(process.cwd(), 'uploads'));
 const registrationDirectory = () => join(uploadRoot(), 'registration');
 const extensionsByMime: Record<string, string> = {
@@ -79,11 +85,16 @@ export class UploadsController {
     @Param('kind') kind: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!['photo', 'address-proof', 'bank-proof'].includes(kind)) {
+    if (!['photo', 'address-proof', 'bank-proof', 'identity-document'].includes(kind)) {
       if (file) await fs.unlink(file.path);
       throw new NotFoundException('Upload category not found.');
     }
     if (!file) throw new BadRequestException('Choose a file to upload.');
+    const kindMaxSize = maxSizeByKind[kind] ?? 2 * 1024 * 1024;
+    if (file.size > kindMaxSize) {
+      await fs.unlink(file.path);
+      throw new BadRequestException(`File is too large. Maximum size for this document type is ${kindMaxSize / (1024 * 1024)} MB.`);
+    }
     if (kind === 'photo' && file.mimetype === 'application/pdf') {
       await fs.unlink(file.path);
       throw new BadRequestException('Candidate photo must be a JPG or PNG image.');

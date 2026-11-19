@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FeeMasterService } from '../fee-master/fee-master.service';
 import { OtpService } from '../whatsapp/otp.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { parseRegistrationDetails } from './registration-details.dto';
+import { parseRegistrationDetails, RegistrationDetails } from './registration-details.dto';
 
 const defaultRegistrationFee = 2400;
 const applicationStatuses = new Set<string>(Object.values(ApplicationStatus));
@@ -21,6 +21,17 @@ export class RegistrationsService {
     private readonly whatsApp: WhatsAppService,
     private readonly feeMasterService: FeeMasterService,
   ) { }
+
+  private assertIdentityDocs(details: RegistrationDetails) {
+    const docs = details.identityDocs;
+    if (
+      !Array.isArray(docs) ||
+      docs.length === 0 ||
+      docs.some((doc) => !doc?.type?.trim() || !doc?.url?.trim())
+    ) {
+      throw new BadRequestException('At least one ID document with a selected type is required.');
+    }
+  }
 
   async create(body: Record<string, unknown>, user: SessionUser) {
     const details = parseRegistrationDetails(body.registrationData ?? body);
@@ -39,6 +50,7 @@ export class RegistrationsService {
     if (!details.addressProofUrl) {
       throw new BadRequestException('An address proof document is required.');
     }
+    this.assertIdentityDocs(details);
     const employeeMobile = this.normalizeMobile(details.employeeMobile);
     if (!details.employeeName?.trim()) throw new BadRequestException('Employee name is required.');
 
@@ -296,6 +308,7 @@ export class RegistrationsService {
     if (!details.addressProofUrl) {
       throw new BadRequestException('An address proof document is required.');
     }
+    this.assertIdentityDocs(details);
 
     let branchId = registration.branchId;
     const branchName = String(details.employeeBranch || '').trim();
