@@ -1410,7 +1410,7 @@ export default function Register({ readOnly = false, editable = false }) {
             <Link to="/track" className="btn btn-outline">
               <i className="bi bi-search"></i> {ts('trackApplication')}
             </Link>
-            <button type="button" className="btn btn-dark" onClick={() => window.print()}>
+            <button type="button" className="btn btn-print" onClick={() => window.print()}>
               <i className="bi bi-printer"></i> {ts('printBtn')}
             </button>
             <button
@@ -1472,7 +1472,7 @@ export default function Register({ readOnly = false, editable = false }) {
                 <i className="bi bi-pencil-square"></i> Edit Application
               </Link>
             )}
-            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+            <button type="button" className="btn btn-print" onClick={() => window.print()}>
               <i className="bi bi-printer"></i> Print
             </button>
           </div>
@@ -3627,7 +3627,7 @@ export default function Register({ readOnly = false, editable = false }) {
             </button>
             <button
               type="button"
-              className="btn btn-outline-secondary btn-lg ms-3"
+              className="btn btn-print btn-lg print-action-gap"
               onClick={() => window.print()}
             >
               <i className="bi bi-printer me-2"></i> {ts('printBtn')}

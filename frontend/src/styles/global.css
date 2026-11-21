@@ -159,6 +159,33 @@ textarea {
   transform: translateY(-1px);
 }
 
+/* Print buttons — solid coloured background so they stand out */
+.btn-print {
+  background: linear-gradient(135deg, #0d9488, #047857);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 10px rgba(4, 120, 87, 0.28);
+}
+
+.btn-print:hover {
+  background: linear-gradient(135deg, #0f766e, #065f46);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(4, 120, 87, 0.35);
+}
+
+/* Space between the Submit Application and Print Application Form buttons */
+.print-action-gap {
+  margin-left: 16px !important;
+}
+
+@media (max-width: 640px) {
+  .print-action-gap {
+    margin-left: 0 !important;
+    margin-top: 12px;
+  }
+}
+
 .btn-sm {
   padding: 8px 16px;
   font-size: 0.85rem;
@@ -5105,10 +5132,25 @@ form .form-field-invalid {
 
 /* Print Optimization */
 @media print {
+  html,
   body {
+    height: auto !important;
+    margin: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
+    font-size: 10pt !important;
+  }
+  .app-shell {
+    display: block !important;
+    min-height: 0 !important;
+  }
+  .app-main {
+    flex: initial !important;
+  }
+  .register-wrap {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   .no-print,
   .navbar,
@@ -5124,18 +5166,66 @@ form .form-field-invalid {
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
+    zoom: 0.7;
   }
   .physical-sheet {
     border: 2px solid #881337 !important;
     box-shadow: none !important;
     margin-bottom: 0 !important;
-    page-break-after: always !important;
-    break-after: page !important;
-    padding: 15px 20px !important;
+    padding: 8px 12px !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
-  .physical-sheet:last-child {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
+  .sheet-main-header {
+    padding-bottom: 4px !important;
+    margin-bottom: 6px !important;
+  }
+  .physical-table {
+    margin-bottom: 6px !important;
+  }
+  .physical-table td,
+  .physical-table th {
+    padding: 1px 4px !important;
+  }
+  .field-input-cell {
+    padding: 1px 4px !important;
+  }
+  .field-input-cell input,
+  .field-input-cell select,
+  .field-input-cell textarea {
+    padding: 1px 4px !important;
+  }
+  .fee-yellow-bar {
+    margin-top: 4px !important;
+    margin-bottom: 2px !important;
+    padding: 4px 10px !important;
+  }
+  .sheet-declaration {
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+  }
+  .sheet-thanking {
+    margin-bottom: 6px !important;
+  }
+  .signature-grid {
+    margin-top: 10px !important;
+    padding-top: 4px !important;
+  }
+  .sig-meta {
+    margin-top: 8px !important;
+  }
+  .physical-sheet .mt-3 {
+    margin-top: 6px !important;
+  }
+  /* Only force a new page between the two application sheets. Never break
+     after the final sheet (a hidden action bar can be the real last child). */
+  #sheet1 {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  #sheet2 {
+    break-after: auto !important;
+    page-break-after: auto !important;
   }
   .field-input-cell input,
   .field-input-cell select,

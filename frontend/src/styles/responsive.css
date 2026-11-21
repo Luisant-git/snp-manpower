@@ -1043,7 +1043,10 @@
   .sheet {
     box-shadow: none;
     border: 1.5px solid #333;
-    page-break-inside: avoid;
+    /* Let dense sheets flow across pages instead of leaving a large gap
+       and pushing the whole sheet onto the next printed page. */
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .physical-sheet {
