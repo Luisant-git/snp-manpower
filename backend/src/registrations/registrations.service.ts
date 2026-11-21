@@ -8,6 +8,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { parseRegistrationDetails, RegistrationDetails } from './registration-details.dto';
 
 const defaultRegistrationFee = 2400;
+const otherDocType = 'Other Documents';
 const applicationStatuses = new Set<string>(Object.values(ApplicationStatus));
 const adminRoles: readonly UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
 
@@ -30,6 +31,9 @@ export class RegistrationsService {
       docs.some((doc) => !doc?.type?.trim() || !doc?.url?.trim())
     ) {
       throw new BadRequestException('At least one ID document with a selected type is required.');
+    }
+    if (details.identityDocType === otherDocType && !details.identityDocOtherName?.trim()) {
+      throw new BadRequestException('Enter a document name for Other Documents before submitting.');
     }
   }
 

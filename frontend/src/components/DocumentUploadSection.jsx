@@ -24,8 +24,16 @@ export default function DocumentUploadSection({
   documentTypeLabel,
   hint,
   selectLabel,
+  otherDocType = 'Other Documents',
+  customDocName = '',
+  onCustomDocNameChange,
+  customDocNameLabel,
+  customDocNamePlaceholder,
+  customDocNameHelp,
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const isOtherDoc = docType === otherDocType;
+  const needsCustomDocName = isOtherDoc && !String(customDocName || '').trim();
 
   const handleDropzoneClick = () => {
     if (!readOnly) onBrowse?.();
@@ -83,6 +91,36 @@ export default function DocumentUploadSection({
           )}
         </div>
 
+        {isOtherDoc && (
+          <div className="doc-field doc-other-name-field">
+            <label className="doc-field-label" htmlFor="identityDocOtherName">
+              {customDocNameLabel || 'Document Name'} <span className="text-danger">*</span>
+            </label>
+            {readOnly ? (
+              <div className="doc-type-readonly">
+                <i className="bi bi-input-cursor-text" aria-hidden="true"></i>
+                {customDocName || '—'}
+              </div>
+            ) : (
+              <>
+                <input
+                  id="identityDocOtherName"
+                  name="identityDocOtherName"
+                  type="text"
+                  className="doc-other-name-input"
+                  value={customDocName}
+                  onChange={(event) => onCustomDocNameChange?.(event)}
+                  placeholder={customDocNamePlaceholder || 'Enter the document name'}
+                  maxLength={80}
+                  autoComplete="off"
+                  required
+                />
+                {customDocNameHelp && <p className="doc-field-help">{customDocNameHelp}</p>}
+              </>
+            )}
+          </div>
+        )}
+
         {!readOnly && (
           <div className="doc-field doc-upload-field">
             <input
@@ -95,7 +133,7 @@ export default function DocumentUploadSection({
               onChange={onFilesChange}
             />
             <div
-              className={`doc-dropzone${isDragging ? ' is-dragging' : ''}${!docType ? ' is-idle' : ''}`}
+              className={`doc-dropzone${isDragging ? ' is-dragging' : ''}${!docType || needsCustomDocName ? ' is-idle' : ''}`}
               role="button"
               tabIndex={0}
               aria-label="Upload documents"

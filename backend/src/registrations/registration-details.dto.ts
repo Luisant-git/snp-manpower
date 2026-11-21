@@ -65,11 +65,14 @@ export interface RegistrationDetails {
   addressProofUrl?: string | null;
   addressProofName?: string;
   addressProofs?: Array<{ url: string; name?: string }>;
+  identityDocType?: string;
+  identityDocOtherName?: string;
   identityDocs?: Array<{
     type: string;
     url: string;
     name?: string;
     mimeType?: string;
+    size?: number;
   }>;
   bankProofUrl?: string | null;
   bankProofName?: string;
@@ -101,6 +104,7 @@ const stringFields: Array<keyof RegistrationDetails> = [
   'formDate', 'state', 'regNo', 'mobile', 'hasPoliceCert', 'policeCertDate', 'policeCertNo',
   'refCandidate', 'refOtherDetail', 'fullName', 'fatherName', 'motherName',
   'dob', 'age', 'pan', 'idDocType', 'idDocNumber', 'voterId', 'bloodGroup', 'gender', 'nationality', 'religion',
+  'identityDocType', 'identityDocOtherName',
   'languages', 'maritalStatus', 'qualification', 'aadhaar', 'hobbies',
   'otherSkills', 'jobType', 'driverType', 'designation', 'workExperience', 'hasLicense',
   'dlNumber', 'dlValidityDate', 'dlExperience', 'hasBadge', 'badgeNumber',

@@ -629,6 +629,27 @@ export const T = {
     te: 'పత్ర రకాన్ని ఎంచుకోండి',
     ta: 'ஆவண வகையைத் தேர்ந்தெடுக்கவும்',
   },
+  otherDocNameLabel: {
+    en: 'Document Name',
+    kn: 'ದಾಖಲೆಯ ಹೆಸರು',
+    hi: 'दस्तावेज़ का नाम',
+    te: 'పత్రం పేరు',
+    ta: 'ஆவணத்தின் பெயர்',
+  },
+  otherDocNamePlaceholder: {
+    en: 'Enter the document name (e.g. Experience Certificate)',
+    kn: 'ದಾಖಲೆಯ ಹೆಸರನ್ನು ನಮೂದಿಸಿ (ಉದಾ. ಅನುಭವದ ಪ್ರಮಾಣಪತ್ರ)',
+    hi: 'दस्तावेज़ का नाम दर्ज करें (जैसे अनुभव प्रमाणपत्र)',
+    te: 'పత్రం పేరును నమోదు చేయండి (ఉదా. అనుభవ ధృవీకరణ పత్రం)',
+    ta: 'ஆவணத்தின் பெயரை உள்ளிடவும் (எ.கா. அனுபவ சான்றிதழ்)',
+  },
+  otherDocNameHelp: {
+    en: 'Enter the name of the document you are uploading, then upload the file below.',
+    kn: 'ನೀವು ಅಪ್‍ಲೋಡ್ ಮಾಡುತ್ತಿರುವ ದಾಖಲೆಯ ಹೆಸರನ್ನು ನಮೂದಿಸಿ, ನಂತರ ಕೆಳಗೆ ಫೈಲ್ ಅನ್ನು ಅಪ್‍ಲೋಡ್ ಮಾಡಿ.',
+    hi: 'आपके द्वारा अपलोड किए जा रहे दस्तावेज़ का नाम दर्ज करें, फिर नीचे फ़ाइल अपलोड करें।',
+    te: 'మీరు అప్‍లోడ్ చేస్తున్న పత్రం పేరును నమోదు చేసి, కింద ఫైల్‍ను అప్‍లోడ్ చేయండి.',
+    ta: 'நீங்கள் பதிவேற்றும் ஆவணத்தின் பெயரை உள்ளிட்டு, கீழே கோப்பைப் பதிவேற்றவும்.',
+  },
   identityDocHint: {
     en: 'Search and select a document type, then upload one or more files (JPG, PNG or PDF, max 5 MB each). At least one document is required before submission.',
     kn: 'ದಾಖಲೆಯ ಪ್ರಕಾರವನ್ನು ಹುಡುಕಿ ಆಯ್ಕೆ ಮಾಡಿ, ನಂತರ ಒಂದು ಅಥವಾ ಹೆಚ್ಚಿನ ಫೈಲ್ಗಳನ್ನು ಅಪ್ಲೋಡ್ ಮಾಡಿ (JPG, PNG ಅಥವಾ PDF, ಪ್ರತಿ 5 MB ವರೆಗೆ). ಸಲ್ಲಿಸುವ ಮೊದಲು ಕನಿಷ್ಠ ಒಂದು ದಾಖಲೆ ಅಗತ್ಯ.',

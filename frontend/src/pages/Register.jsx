@@ -280,6 +280,8 @@ const TAXI_SEATER_OPTIONS = [
   'Other Passenger Car / Taxi',
 ];
 
+const OTHER_DOC_TYPE = 'Other Documents';
+
 const IDENTITY_DOC_TYPES = [
   'Aadhaar Card',
   'PAN Card',
@@ -308,7 +310,7 @@ const IDENTITY_DOC_TYPES = [
   'Cancelled Cheque',
   'Bank Account Proof',
   'Previous Employment Certificate',
-  'Other Documents',
+  OTHER_DOC_TYPE,
 ];
 
 const INDIAN_STATES = [
@@ -441,6 +443,7 @@ const emptyForm = {
   fam4Mobile: '',
   prevCustomer: '',
   identityDocType: '',
+  identityDocOtherName: '',
   identityDocs: [],
   termsAccepted: false,
   termsAcceptedAt: '',
@@ -620,6 +623,7 @@ export default function Register({ readOnly = false, editable = false }) {
     }
     const details = viewApplication.registrationData || {};
     const storedProofs = Array.isArray(details.addressProofs) ? details.addressProofs : [];
+    const storedIdentityDocs = Array.isArray(details.identityDocs) ? details.identityDocs : [];
     const primaryProofUrl = viewApplication.addressProofUrl || details.addressProofUrl || null;
     const primaryProofName = viewApplication.addressProofName || details.addressProofName || '';
     const addressProofs = storedProofs.length
@@ -634,6 +638,12 @@ export default function Register({ readOnly = false, editable = false }) {
         details.hasPoliceCert ||
         (details.policeCertNo || details.policeCertDate ? 'YES' : 'NO'),
       addressProofs,
+      identityDocType: details.identityDocType || '',
+      identityDocOtherName:
+        details.identityDocOtherName ||
+        (details.identityDocType === OTHER_DOC_TYPE
+          ? (storedIdentityDocs.find((doc) => doc?.type && doc.type !== OTHER_DOC_TYPE)?.type || '')
+          : ''),
       idDocType: details.idDocType || (details.voterId ? 'VOTER_ID' : 'PAN'),
       pan: String(details.pan || (details.idDocType !== 'VOTER_ID' ? details.idDocNumber : '') || '').toUpperCase(),
       voterId: String(details.voterId || (details.idDocType === 'VOTER_ID' ? details.idDocNumber : '') || '').toUpperCase(),
@@ -898,9 +908,26 @@ export default function Register({ readOnly = false, editable = false }) {
     });
   };
 
+  const resolveIdentityDocType = () => (
+    form.identityDocType === OTHER_DOC_TYPE
+      ? (form.identityDocOtherName || '').trim()
+      : form.identityDocType
+  );
+
+  const focusOtherDocNameField = () => {
+    const field = document.querySelector('[name="identityDocOtherName"]');
+    field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    field?.focus({ preventScroll: true });
+  };
+
   const openIdentityDocPicker = () => {
     if (!form.identityDocType) {
       showToast('error', 'Choose a document type before browsing files.');
+      return;
+    }
+    if (!resolveIdentityDocType()) {
+      showToast('error', 'Enter the document name before browsing files.');
+      focusOtherDocNameField();
       return;
     }
     identityDocInputRef.current?.click();
@@ -911,9 +938,12 @@ export default function Register({ readOnly = false, editable = false }) {
     e.target.value = '';
     if (!files.length) return;
 
-    const docType = form.identityDocType;
+    const docType = resolveIdentityDocType();
     if (!docType) {
-      showToast('error', 'Choose a document type before browsing files.');
+      showToast('error', form.identityDocType === OTHER_DOC_TYPE
+        ? 'Enter the document name before uploading files.'
+        : 'Choose a document type before browsing files.');
+      if (form.identityDocType === OTHER_DOC_TYPE) focusOtherDocNameField();
       return;
     }
 
@@ -1103,6 +1133,12 @@ export default function Register({ readOnly = false, editable = false }) {
       return;
     }
 
+    if (form.identityDocType === OTHER_DOC_TYPE && !(form.identityDocOtherName || '').trim()) {
+      showToast('error', 'Enter the document name for "Other Documents" before submitting.');
+      focusOtherDocNameField();
+      return;
+    }
+
     const formElement = e.currentTarget;
     if (!formElement.checkValidity()) {
       setValidationAttempted(true);
@@ -1163,7 +1199,7 @@ export default function Register({ readOnly = false, editable = false }) {
 
     if (!identityDocs.length) {
       showToast('error', 'Choose a document type and upload at least one ID document before submitting.');
-      document.querySelector('.document-upload-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.querySelector('.doc-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -3375,6 +3411,12 @@ export default function Register({ readOnly = false, editable = false }) {
               documentTypeLabel={ts('documentTypeLabel')}
               hint={ts('identityDocHint')}
               selectLabel={ts('selectDocType')}
+              otherDocType={OTHER_DOC_TYPE}
+              customDocName={form.identityDocOtherName}
+              onCustomDocNameChange={set}
+              customDocNameLabel={ts('otherDocNameLabel')}
+              customDocNamePlaceholder={ts('otherDocNamePlaceholder')}
+              customDocNameHelp={ts('otherDocNameHelp')}
             />
 
             {/* Terms & Conditions — adapts to Monthly Driver / Spare Driver / Acting Driver / Taxi */}
