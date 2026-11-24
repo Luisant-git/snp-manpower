@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { branchApi } from '../../api/branchApi.js';
 import { userApi } from '../../api/userApi.js';
 
@@ -24,12 +25,22 @@ export default function UserManagement() {
   const [pageSize, setPageSize] = useState(10);
   const requestId = useRef(0);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [toast, setToast] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   /* Modal state — 'add' | 'edit' */
   const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', user }
   const [form, setForm] = useState({ name: '', mobile: '', password: '', role: 'EMPLOYEE', status: 'active', branchId: '' });
   const [formError, setFormError] = useState('');
+
+  const showToast = (type, message) => setToast({ type, message });
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(null), 4500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   /* Close modal with Escape key */
   useEffect(() => {
@@ -67,14 +78,14 @@ export default function UserManagement() {
 
   /* ---------- Actions ---------- */
   const openAdd = () => {
-    setMsg('');
+    setToast(null);
     setFormError('');
     setForm({ name: '', mobile: '', password: '', role: 'EMPLOYEE', status: 'active', branchId: '' });
     setModal({ mode: 'add' });
   };
 
   const openEdit = (u) => {
-    setMsg('');
+    setToast(null);
     setFormError('');
     setForm({
       name: u.name,
@@ -108,7 +119,7 @@ export default function UserManagement() {
           role: form.role,
           branchId: form.branchId ? Number(form.branchId) : undefined,
         });
-        setMsg(`User "${form.name}" created — they can now log in and fill candidate forms.`);
+        showToast('success', `User "${form.name}" created — they can now log in and fill candidate forms.`);
       } else {
         await userApi.update(modal.user.id, {
           name: form.name.trim(),
@@ -120,27 +131,32 @@ export default function UserManagement() {
         if (modal.user.isActive !== (form.status !== 'inactive')) {
           await userApi.setActive(modal.user.id, form.status !== 'inactive');
         }
-        setMsg(`User "${form.name}" updated successfully.`);
+        showToast('success', `User "${form.name}" updated successfully.`);
       }
       if (page !== 1) setPage(1);
       else await refresh();
       setModal(null);
     } catch (err) {
-      setFormError(err.message);
+      showToast('error', err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const removeUser = async (u) => {
-    if (!window.confirm(`Delete user "${u.name}"? This cannot be undone.`)) return;
+  const removeUser = async () => {
+    if (!deleteTarget || deleting) return;
+    const target = deleteTarget;
+    setDeleting(true);
     try {
-      await userApi.remove(u.id);
+      await userApi.remove(target.id);
       if (users.length === 1 && page > 1) setPage((currentPage) => currentPage - 1);
       else await refresh();
-      setMsg(`User "${u.name}" deleted.`);
+      showToast('success', `User "${target.name}" deleted.`);
     } catch (error) {
-      setMsg(error.message);
+      showToast('error', error.message);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -148,8 +164,10 @@ export default function UserManagement() {
     try {
       await userApi.setActive(id, active);
       await refresh();
+      const user = users.find((item) => item.id === id);
+      showToast('success', `${user ? user.name : 'User'} is now ${active ? 'active' : 'inactive'}.`);
     } catch (error) {
-      setLoadError(error.message);
+      showToast('error', error.message);
     }
   };
 
@@ -185,19 +203,20 @@ export default function UserManagement() {
 
   return (
     <div className="admin-panel">
-      {msg && (
+      {toast && (
         <div
-          className={`track-result${msg.includes('deleted') || msg.includes('created') ? '' : ' track-error'}`}
-          style={{ marginBottom: 14 }}
+          className={`app-toast ${toast.type}`}
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
         >
           <i
-            className={
-              msg.includes('deleted') || msg.includes('created')
-                ? 'bi bi-check-circle-fill'
-                : 'bi bi-exclamation-triangle-fill'
-            }
+            className={`bi ${toast.type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill'}`}
+            aria-hidden="true"
           ></i>
-          <div>{msg}</div>
+          <span>{toast.message}</span>
+          <button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">
+            <i className="bi bi-x-lg" aria-hidden="true"></i>
+          </button>
         </div>
       )}
       {loadError && <div className="track-result track-error" role="alert">{loadError}</div>}
@@ -318,7 +337,7 @@ export default function UserManagement() {
                   <button className="icon-btn primary" title="Edit user" onClick={() => openEdit(u)}>
                     <i className="bi bi-pencil-square"></i>
                   </button>{' '}
-                  <button className="icon-btn danger" title="Delete user" onClick={() => removeUser(u)}>
+                  <button className="icon-btn danger" title="Delete user" onClick={() => setDeleteTarget(u)}>
                     <i className="bi bi-trash3"></i>
                   </button>
                 </td>
@@ -485,6 +504,16 @@ export default function UserManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete this user?"
+          message={`"${deleteTarget.name}" will be removed permanently. This action cannot be undone.`}
+          busy={deleting}
+          onConfirm={removeUser}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   );

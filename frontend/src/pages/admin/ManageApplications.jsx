@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 import { registrationApi } from '../../api/registrationApi.js';
 import { feeMasterApi } from '../../api/feeMasterApi.js';
 import { getSession } from '../../data/session.js';
@@ -90,6 +91,8 @@ export default function ManageApplications({ mySubmissions = false }) {
   const [editRequestReason, setEditRequestReason] = useState('');
   const [editRequestError, setEditRequestError] = useState('');
   const [rejectionReasonModal, setRejectionReasonModal] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const feeCurrentPaid = feeModal ? Number(feeModal.feesPaid || 0) : 0;
   const feePendingAmount = feeModal ? Math.max(0, masterFee - feeCurrentPaid) : 0;
   const feePaidNow = feeForm.paid === '' ? NaN : Number(feeForm.paid);
@@ -315,13 +318,18 @@ export default function ManageApplications({ mySubmissions = false }) {
     }
   };
 
-  const remove = async (ref) => {
-    if (!window.confirm(`Delete application ${ref}? This cannot be undone.`)) return;
+  const remove = async () => {
+    if (!deleteTarget || deleting) return;
+    const target = deleteTarget;
+    setDeleting(true);
     try {
-      await registrationApi.remove(ref);
+      await registrationApi.remove(target.ref);
       await refresh();
     } catch (error) {
       setLoadError(error.message);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -824,7 +832,7 @@ export default function ManageApplications({ mySubmissions = false }) {
                     <button
                       className="icon-btn danger"
                       title="Delete application"
-                      onClick={() => remove(a.ref)}
+                      onClick={() => setDeleteTarget(a)}
                     >
                       <i className="bi bi-trash3"></i>
                     </button></>}
@@ -1401,6 +1409,15 @@ export default function ManageApplications({ mySubmissions = false }) {
         </div>
       )}
 
+      {deleteTarget && (
+        <ConfirmDialog
+          title="Delete this application?"
+          message={`Application ${deleteTarget.ref} will be removed permanently. This action cannot be undone.`}
+          busy={deleting}
+          onConfirm={remove}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }
